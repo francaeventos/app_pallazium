@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, UserCog } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link2, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -22,9 +24,14 @@ type AccessRow = Profile & {
   roles: UserRole[];
   client: Client | null;
 };
+type PromoteAdminRpc = (
+  fn: "promote_user_to_admin_by_email",
+  args: { _email: string },
+) => Promise<{ error: { message: string } | null }>;
 
 function Page() {
   const [rows, setRows] = useState<AccessRow[]>([]);
+  const [adminEmail, setAdminEmail] = useState("");
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: clients }] = await Promise.all([
@@ -72,6 +79,39 @@ function Page() {
     load();
   };
 
+  const promoteByEmail = async () => {
+    const email = adminEmail.trim();
+    if (!email) return toast.error("Informe o e-mail.");
+    const promote = supabase.rpc as unknown as PromoteAdminRpc;
+    const { error } = await promote("promote_user_to_admin_by_email", { _email: email });
+    if (error) return toast.error(error.message);
+    toast.success("Admin liberado pelo e-mail");
+    setAdminEmail("");
+    load();
+  };
+
+  const linkClientByEmail = async (row: AccessRow) => {
+    if (!row.email) return toast.error("Este perfil não tem e-mail salvo.");
+    const { error } = await supabase
+      .from("clients")
+      .update({ user_id: row.id })
+      .eq("email", row.email)
+      .is("user_id", null);
+    if (error) return toast.error(error.message);
+    toast.success("Cliente vinculado pelo e-mail");
+    load();
+  };
+
+  const unlinkClient = async (row: AccessRow) => {
+    const { error } = await supabase
+      .from("clients")
+      .update({ user_id: null })
+      .eq("user_id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success("Cliente desvinculado");
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div>
@@ -81,6 +121,25 @@ function Page() {
           Gerencie perfis, permissões de admin e vínculos com clientes cadastrados.
         </p>
       </div>
+
+      <Card className="border-gold/30">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="admin-email">Promover usuário para admin por e-mail</Label>
+            <Input
+              id="admin-email"
+              type="email"
+              placeholder="email@cliente.com"
+              value={adminEmail}
+              onChange={(event) => setAdminEmail(event.target.value)}
+            />
+          </div>
+          <Button onClick={promoteByEmail}>
+            <Shield className="mr-2 h-4 w-4" />
+            Tornar admin
+          </Button>
+        </CardContent>
+      </Card>
 
       {rows.length === 0 && (
         <Card>
@@ -108,7 +167,9 @@ function Page() {
                       </Badge>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">ID: {row.id}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {row.email ?? "E-mail não salvo"} • ID: {row.id}
+                  </p>
                   {row.client && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Cliente: {row.client.full_name} • {row.client.email} •{" "}
@@ -136,6 +197,22 @@ function Page() {
                     <Button variant="ghost" size="sm" onClick={() => addRole(row.id, "client")}>
                       <UserCog className="mr-1 h-3 w-3" />
                       Liberar cliente
+                    </Button>
+                  )}
+                  {row.client ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose"
+                      onClick={() => unlinkClient(row)}
+                    >
+                      <Unlink className="mr-1 h-3 w-3" />
+                      Desvincular cliente
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => linkClientByEmail(row)}>
+                      <Link2 className="mr-1 h-3 w-3" />
+                      Vincular cliente
                     </Button>
                   )}
                 </div>

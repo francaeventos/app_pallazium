@@ -138,6 +138,7 @@ export function AppShell({
       await supabase.from("profiles").upsert({
         id: user.id,
         full_name: fullName,
+        email: user.email ?? null,
       });
     }
     setSavingProfile(false);

@@ -400,6 +400,7 @@ export type Database = {
         Row: {
           created_at: string;
           document: string | null;
+          email: string | null;
           full_name: string | null;
           id: string;
           phone: string | null;
@@ -409,6 +410,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           document?: string | null;
+          email?: string | null;
           full_name?: string | null;
           id: string;
           phone?: string | null;
@@ -418,6 +420,7 @@ export type Database = {
         Update: {
           created_at?: string;
           document?: string | null;
+          email?: string | null;
           full_name?: string | null;
           id?: string;
           phone?: string | null;
@@ -573,6 +576,12 @@ export type Database = {
           _user_id: string;
         };
         Returns: boolean;
+      };
+      promote_user_to_admin_by_email: {
+        Args: {
+          _email: string;
+        };
+        Returns: void;
       };
     };
     Enums: {
