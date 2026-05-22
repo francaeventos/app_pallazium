@@ -149,11 +149,11 @@ export function AppShell({
     <div className="pallazium-sidebar flex h-full flex-col">
       <div className="pallazium-sidebar-brand border-b p-4">
         <div className="space-y-4">
-          <div className="pallazium-logo-card rounded-lg border border-white/10 bg-black p-2">
+          <div className="pallazium-logo-card rounded-lg border border-white/10 bg-black">
             <img
               src="/logo-pallazium.png"
               alt="Espaço Pallazium"
-              className="h-auto w-full object-contain"
+              className="block h-auto w-full object-contain"
             />
           </div>
         </div>
