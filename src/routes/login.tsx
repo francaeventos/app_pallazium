@@ -17,11 +17,20 @@ const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
   password: z
     .string()
-    .min(8, "Use pelo menos 8 caracteres")
-    .regex(/[A-Za-z]/, "Use letras na senha")
-    .regex(/[0-9]/, "Use números na senha")
+    .min(10, "Use pelo menos 10 caracteres")
+    .regex(/[a-z]/, "Use pelo menos uma letra minúscula")
+    .regex(/[A-Z]/, "Use pelo menos uma letra maiúscula")
+    .regex(/[0-9]/, "Use pelo menos um número")
+    .regex(/[^A-Za-z0-9]/, "Use pelo menos um símbolo, como @, # ou !")
     .max(72),
 });
+
+const friendlyAuthError = (message: string) => {
+  if (message.toLowerCase().includes("password is known to be weak")) {
+    return "Senha muito fraca. Use uma senha mais forte, com maiúscula, minúscula, número e símbolo.";
+  }
+  return message;
+};
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -62,7 +71,7 @@ function LoginPage() {
     });
     setLoading(false);
 
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(friendlyAuthError(error.message));
     toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
   };
 
@@ -183,11 +192,12 @@ function LoginPage() {
                     name="password"
                     type="password"
                     required
-                    minLength={8}
+                    minLength={10}
                     autoComplete="new-password"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use pelo menos 8 caracteres, com letras e números.
+                    Use 10+ caracteres com maiúscula, minúscula, número e símbolo. Exemplo:
+                    Pallazium2026!
                   </p>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
