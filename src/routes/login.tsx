@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -27,6 +26,7 @@ const signupSchema = loginSchema.extend({
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,13 +93,27 @@ function LoginPage() {
             <h1 className="font-serif text-3xl">Espaço Pallazium</h1>
           </div>
 
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
-            </TabsList>
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+            <Button
+              type="button"
+              variant={mode === "login" ? "secondary" : "ghost"}
+              onClick={() => setMode("login")}
+              className="w-full"
+            >
+              Entrar
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "signup" ? "secondary" : "ghost"}
+              onClick={() => setMode("signup")}
+              className="w-full"
+            >
+              Criar conta
+            </Button>
+          </div>
 
-            <TabsContent value="login" className="mt-6">
+          {mode === "login" ? (
+            <div className="mt-6">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
@@ -127,10 +141,17 @@ function LoginPage() {
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Entrando…" : "Entrar"}
                 </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Primeiro acesso? Clique em{" "}
+                  <button type="button" className="underline" onClick={() => setMode("signup")}>
+                    Criar conta
+                  </button>
+                  .
+                </p>
               </form>
-            </TabsContent>
-
-            <TabsContent value="signup" className="mt-6">
+            </div>
+          ) : (
+            <div className="mt-6">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
@@ -176,8 +197,8 @@ function LoginPage() {
                   Após o cadastro, a equipe Pallazium vinculará seu evento à conta.
                 </p>
               </form>
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
       </div>
     </div>
