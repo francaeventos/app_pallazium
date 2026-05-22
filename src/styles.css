@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss" source(none);
 @import "tw-animate-css";
 @source "../src";
@@ -6,8 +6,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
-  --font-sans: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -51,71 +51,71 @@
 :root {
   --radius: 0.75rem;
 
-  /* Pallazium LP — Uva, Dourado & Champagne */
-  --background: oklch(0.955 0.024 55);
-  --foreground: oklch(0.19 0.035 330);
-  --ink: oklch(0.18 0.04 330);
+  /* Pallazium LP — roxo magenta, champagne, dourado e oliva */
+  --background: #f4e2d7;
+  --foreground: #211321;
+  --ink: #211321;
 
-  --card: oklch(0.995 0.006 45);
-  --card-foreground: oklch(0.19 0.035 330);
-  --popover: oklch(0.995 0.006 45);
-  --popover-foreground: oklch(0.19 0.035 330);
+  --card: #fffaf5;
+  --card-foreground: #211321;
+  --popover: #fffaf5;
+  --popover-foreground: #211321;
 
-  --primary: oklch(0.33 0.11 325);
-  --primary-foreground: oklch(0.98 0.018 75);
+  --primary: #7a006d;
+  --primary-foreground: #fff7ec;
 
-  --secondary: oklch(0.88 0.055 76);
-  --secondary-foreground: oklch(0.24 0.06 325);
+  --secondary: #6d5a28;
+  --secondary-foreground: #fff7ec;
 
-  --muted: oklch(0.9 0.032 62);
-  --muted-foreground: oklch(0.45 0.035 330);
+  --muted: #ead7c7;
+  --muted-foreground: #6f5b62;
 
-  --accent: oklch(0.38 0.14 325);
-  --accent-foreground: oklch(0.98 0.018 75);
+  --accent: #a00082;
+  --accent-foreground: #fff7ec;
 
-  --gold: oklch(0.67 0.12 78);
-  --rose: oklch(0.5 0.15 350);
-  --champagne: oklch(0.9 0.055 76);
+  --gold: #c4a24f;
+  --rose: #97006f;
+  --champagne: #ead2b7;
 
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.98 0 0);
+  --destructive: #b02a2a;
+  --destructive-foreground: #fff7ec;
 
-  --border: oklch(0.86 0.028 55);
-  --input: oklch(0.9 0.018 45);
-  --ring: oklch(0.67 0.12 78);
+  --border: #d7bfa8;
+  --input: #ead7c7;
+  --ring: #c4a24f;
 
-  --sidebar: oklch(0.24 0.075 325);
-  --sidebar-foreground: oklch(0.96 0.025 75);
-  --sidebar-primary: oklch(0.33 0.11 325);
-  --sidebar-primary-foreground: oklch(0.98 0.018 75);
-  --sidebar-accent: oklch(0.72 0.13 78);
-  --sidebar-accent-foreground: oklch(0.18 0.04 325);
-  --sidebar-border: oklch(0.36 0.08 325);
-  --sidebar-ring: oklch(0.67 0.12 78);
+  --sidebar: #260022;
+  --sidebar-foreground: #fff7ec;
+  --sidebar-primary: #7a006d;
+  --sidebar-primary-foreground: #fff7ec;
+  --sidebar-accent: #c4a24f;
+  --sidebar-accent-foreground: #211321;
+  --sidebar-border: #6d4d35;
+  --sidebar-ring: #c4a24f;
 
-  --gradient-luxe: oklch(0.93 0.035 66);
-  --gradient-gold: oklch(0.68 0.12 78);
-  --shadow-luxe: 0 14px 42px -18px oklch(0.33 0.11 325 / 0.32);
-  --shadow-soft: 0 3px 16px -7px oklch(0.25 0.07 325 / 0.16);
+  --gradient-luxe: #ead2b7;
+  --gradient-gold: #c4a24f;
+  --shadow-luxe: 0 18px 46px -20px rgb(38 0 34 / 0.38);
+  --shadow-soft: 0 8px 24px -16px rgb(38 0 34 / 0.22);
 }
 
 .dark {
-  --background: oklch(0.14 0.012 25);
-  --foreground: oklch(0.96 0.015 60);
-  --card: oklch(0.18 0.015 25);
-  --card-foreground: oklch(0.96 0.015 60);
-  --popover: oklch(0.18 0.015 25);
-  --popover-foreground: oklch(0.96 0.015 60);
-  --primary: oklch(0.93 0.04 60);
-  --primary-foreground: oklch(0.18 0.015 25);
-  --secondary: oklch(0.24 0.015 25);
-  --secondary-foreground: oklch(0.96 0.015 60);
-  --muted: oklch(0.24 0.015 25);
-  --muted-foreground: oklch(0.7 0.02 25);
-  --accent: oklch(0.28 0.03 20);
-  --accent-foreground: oklch(0.96 0.015 60);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
+  --background: #160015;
+  --foreground: #fff7ec;
+  --card: #23101e;
+  --card-foreground: #fff7ec;
+  --popover: #23101e;
+  --popover-foreground: #fff7ec;
+  --primary: #c4a24f;
+  --primary-foreground: #211321;
+  --secondary: #3f351f;
+  --secondary-foreground: #fff7ec;
+  --muted: #2e1a28;
+  --muted-foreground: #d9c2ba;
+  --accent: #7a006d;
+  --accent-foreground: #fff7ec;
+  --border: rgb(255 247 236 / 0.14);
+  --input: rgb(255 247 236 / 0.16);
 }
 
 @layer base {
@@ -137,6 +137,7 @@
   .font-serif {
     font-family: var(--font-serif);
     letter-spacing: -0.01em;
+    font-weight: 600;
   }
 }
 
@@ -160,16 +161,16 @@
 }
 
 .pallazium-sidebar {
-  background: oklch(0.19 0.065 325);
-  border-color: oklch(0.58 0.11 78 / 0.35);
-  box-shadow: inset -1px 0 0 oklch(0.58 0.11 78 / 0.22);
-  color: oklch(0.96 0.025 75);
+  background: #260022;
+  border-color: rgb(196 162 79 / 0.36);
+  box-shadow: inset -1px 0 0 rgb(196 162 79 / 0.26);
+  color: #fff7ec;
 }
 
 .pallazium-topbar {
-  background: oklch(0.19 0.065 325);
-  border-color: oklch(0.58 0.11 78 / 0.35);
-  color: oklch(0.96 0.025 75);
+  background: #700064;
+  border-color: rgb(196 162 79 / 0.36);
+  color: #fff7ec;
 }
 
 .pallazium-logo-card {
@@ -178,40 +179,40 @@
 }
 
 .pallazium-sidebar-brand {
-  border-color: oklch(0.58 0.11 78 / 0.28);
+  border-color: rgb(196 162 79 / 0.32);
 }
 
 .pallazium-sidebar-link {
-  color: oklch(0.96 0.025 75 / 0.72);
+  color: rgb(255 247 236 / 0.72);
 }
 
 .pallazium-sidebar-link:hover {
-  background: oklch(1 0 0 / 0.08);
-  color: oklch(0.98 0.02 75);
+  background: rgb(255 247 236 / 0.08);
+  color: #fff7ec;
 }
 
 .pallazium-sidebar-link-active {
-  background: oklch(0.72 0.12 78);
-  color: oklch(0.17 0.045 325);
-  box-shadow: 0 10px 24px -18px oklch(0.9 0.12 78 / 0.75);
+  background: #c4a24f;
+  color: #211321;
+  box-shadow: 0 10px 24px -18px rgb(196 162 79 / 0.82);
 }
 
 .pallazium-sidebar-muted {
-  color: oklch(0.96 0.025 75 / 0.6);
+  color: rgb(255 247 236 / 0.62);
 }
 
 .pallazium-feature-card {
-  background: oklch(0.22 0.075 325);
-  border: 1px solid oklch(0.63 0.11 78 / 0.45);
-  color: oklch(0.96 0.025 75);
+  background: #504320;
+  border: 1px solid rgb(196 162 79 / 0.5);
+  color: #fff7ec;
 }
 
 .pallazium-feature-muted {
-  color: oklch(0.96 0.025 75 / 0.64);
+  color: rgb(255 247 236 / 0.68);
 }
 
 .pallazium-feature-value {
-  color: oklch(0.98 0.018 75);
+  color: #fff7ec;
 }
 
 main {
