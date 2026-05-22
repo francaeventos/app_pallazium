@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Bell, Plus, Trash2 } from "lucide-react";
+import { Bell, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import type { Database } from "@/integrations/supabase/types";
@@ -38,6 +38,7 @@ function Page() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Notification | null>(null);
   const [selectedClientId, setSelectedClientId] = useState("");
 
   const load = async () => {
@@ -56,7 +57,7 @@ function Page() {
     load();
   }, []);
 
-  const create = async (e: FormEvent<HTMLFormElement>) => {
+  const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const client = clients.find((item) => item.id === selectedClientId);
@@ -64,15 +65,21 @@ function Page() {
       return toast.error("Este cliente ainda não está vinculado a uma conta de acesso.");
     }
 
-    const { error } = await supabase.from("notifications").insert({
+    const payload = {
       user_id: client.user_id,
       title: String(fd.get("title")),
       message: String(fd.get("message") || "") || null,
-    });
+      read: fd.get("read") === "on",
+    };
+
+    const { error } = editing
+      ? await supabase.from("notifications").update(payload).eq("id", editing.id)
+      : await supabase.from("notifications").insert(payload);
 
     if (error) return toast.error(error.message);
-    toast.success("Notificação enviada");
+    toast.success(editing ? "Notificação atualizada" : "Notificação enviada");
     setOpen(false);
+    setEditing(null);
     setSelectedClientId("");
     load();
   };
@@ -85,6 +92,19 @@ function Page() {
   };
 
   const clientByUser = new Map(clients.map((client) => [client.user_id, client]));
+
+  const openCreate = () => {
+    setEditing(null);
+    setSelectedClientId("");
+    setOpen(true);
+  };
+
+  const openEdit = (notification: Notification) => {
+    const client = clients.find((item) => item.user_id === notification.user_id);
+    setEditing(notification);
+    setSelectedClientId(client?.id ?? "");
+    setOpen(true);
+  };
 
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
@@ -102,20 +122,25 @@ function Page() {
           open={open}
           onOpenChange={(value) => {
             setOpen(value);
-            if (!value) setSelectedClientId("");
+            if (!value) {
+              setEditing(null);
+              setSelectedClientId("");
+            }
           }}
         >
           <DialogTrigger asChild>
-            <Button size="lg">
+            <Button size="lg" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Nova notificação
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-serif text-2xl">Nova notificação</DialogTitle>
+              <DialogTitle className="font-serif text-2xl">
+                {editing ? "Editar notificação" : "Nova notificação"}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={create} className="space-y-4">
+            <form onSubmit={save} className="space-y-4">
               <div>
                 <Label>Cliente</Label>
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
@@ -133,14 +158,25 @@ function Page() {
               </div>
               <div>
                 <Label>Título</Label>
-                <Input name="title" required maxLength={120} />
+                <Input name="title" required maxLength={120} defaultValue={editing?.title ?? ""} />
               </div>
               <div>
                 <Label>Mensagem</Label>
-                <Textarea name="message" rows={4} maxLength={1000} />
+                <Textarea
+                  name="message"
+                  rows={4}
+                  maxLength={1000}
+                  defaultValue={editing?.message ?? ""}
+                />
               </div>
+              {editing && (
+                <label className="flex items-center gap-2 rounded-xl border p-3 text-sm">
+                  <input name="read" type="checkbox" defaultChecked={editing.read} />
+                  Marcar como lida
+                </label>
+              )}
               <Button type="submit" className="w-full">
-                Enviar
+                {editing ? "Salvar alterações" : "Enviar"}
               </Button>
             </form>
           </DialogContent>
@@ -184,15 +220,21 @@ function Page() {
                     <p className="mt-3 text-sm text-muted-foreground">{notification.message}</p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-rose"
-                  onClick={() => remove(notification.id)}
-                >
-                  <Trash2 className="mr-1 h-3 w-3" />
-                  Excluir
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(notification)}>
+                    <Pencil className="mr-1 h-3 w-3" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose"
+                    onClick={() => remove(notification.id)}
+                  >
+                    <Trash2 className="mr-1 h-3 w-3" />
+                    Excluir
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );

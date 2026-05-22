@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -33,6 +36,9 @@ type MenuInterest = Database["public"]["Tables"]["menu_interests"]["Row"] & {
 function Page() {
   const [list, setList] = useState<UpgradeInterest[]>([]);
   const [menuList, setMenuList] = useState<MenuInterest[]>([]);
+  const [editingUpgrade, setEditingUpgrade] = useState<UpgradeInterest | null>(null);
+  const [editingMenu, setEditingMenu] = useState<MenuInterest | null>(null);
+  const [editStatus, setEditStatus] = useState<InterestStatus>("novo");
 
   const load = async () => {
     const [{ data }, { data: menus }] = await Promise.all([
@@ -94,6 +100,50 @@ function Page() {
     load();
   };
 
+  const openUpgradeEdit = (interest: UpgradeInterest) => {
+    setEditingUpgrade(interest);
+    setEditStatus(interest.status);
+  };
+
+  const openMenuEdit = (interest: MenuInterest) => {
+    setEditingMenu(interest);
+    setEditStatus(interest.status);
+  };
+
+  const saveUpgradeInterest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingUpgrade) return;
+    const fd = new FormData(event.currentTarget);
+    const { error } = await supabase
+      .from("upgrade_interests")
+      .update({
+        status: editStatus,
+        notes: String(fd.get("notes") || "") || null,
+      })
+      .eq("id", editingUpgrade.id);
+    if (error) return toast.error(error.message);
+    toast.success("Interesse atualizado");
+    setEditingUpgrade(null);
+    load();
+  };
+
+  const saveMenuInterest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingMenu) return;
+    const fd = new FormData(event.currentTarget);
+    const { error } = await supabase
+      .from("menu_interests")
+      .update({
+        status: editStatus,
+        notes: String(fd.get("notes") || "") || null,
+      })
+      .eq("id", editingMenu.id);
+    if (error) return toast.error(error.message);
+    toast.success("Interesse atualizado");
+    setEditingMenu(null);
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div>
@@ -125,6 +175,7 @@ function Page() {
                   {i.events?.event_type} • {i.events?.event_date} • registrado{" "}
                   {format(new Date(i.created_at), "dd/MM/yyyy")}
                 </p>
+                {i.notes && <p className="mt-2 text-sm text-muted-foreground">{i.notes}</p>}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={i.status} onValueChange={(v) => updateStatus(i.id, v)}>
@@ -138,6 +189,10 @@ function Page() {
                     <SelectItem value="perdido">Perdido</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={() => openUpgradeEdit(i)}>
+                  <Pencil className="mr-1 h-3 w-3" />
+                  Editar
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -179,6 +234,7 @@ function Page() {
                   {i.events?.event_type} • {i.events?.event_date} • registrado{" "}
                   {format(new Date(i.created_at), "dd/MM/yyyy")}
                 </p>
+                {i.notes && <p className="mt-2 text-sm text-muted-foreground">{i.notes}</p>}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={i.status} onValueChange={(v) => updateMenuStatus(i.id, v)}>
@@ -192,6 +248,10 @@ function Page() {
                     <SelectItem value="perdido">Perdido</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={() => openMenuEdit(i)}>
+                  <Pencil className="mr-1 h-3 w-3" />
+                  Editar
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -205,6 +265,78 @@ function Page() {
           ))}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingUpgrade} onOpenChange={(value) => !value && setEditingUpgrade(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar interesse em upgrade</DialogTitle>
+          </DialogHeader>
+          {editingUpgrade && (
+            <form onSubmit={saveUpgradeInterest} className="space-y-4">
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={editStatus}
+                  onValueChange={(value) => setEditStatus(value as InterestStatus)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="novo">Novo</SelectItem>
+                    <SelectItem value="em_contato">Em contato</SelectItem>
+                    <SelectItem value="vendido">Vendido</SelectItem>
+                    <SelectItem value="perdido">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" rows={4} defaultValue={editingUpgrade.notes ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar alterações
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingMenu} onOpenChange={(value) => !value && setEditingMenu(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar interesse em cardápio</DialogTitle>
+          </DialogHeader>
+          {editingMenu && (
+            <form onSubmit={saveMenuInterest} className="space-y-4">
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={editStatus}
+                  onValueChange={(value) => setEditStatus(value as InterestStatus)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="novo">Novo</SelectItem>
+                    <SelectItem value="em_contato">Em contato</SelectItem>
+                    <SelectItem value="vendido">Vendido</SelectItem>
+                    <SelectItem value="perdido">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" rows={4} defaultValue={editingMenu.notes ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar alterações
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

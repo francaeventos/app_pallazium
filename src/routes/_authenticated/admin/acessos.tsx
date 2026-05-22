@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link2, Shield, Unlink, UserCog } from "lucide-react";
+import { Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -32,6 +33,7 @@ type PromoteAdminRpc = (
 function Page() {
   const [rows, setRows] = useState<AccessRow[]>([]);
   const [adminEmail, setAdminEmail] = useState("");
+  const [editingProfile, setEditingProfile] = useState<AccessRow | null>(null);
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: clients }] = await Promise.all([
@@ -112,6 +114,26 @@ function Page() {
     load();
   };
 
+  const updateProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingProfile) return;
+    const fd = new FormData(event.currentTarget);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: String(fd.get("full_name") || "") || null,
+        email: String(fd.get("email") || "") || null,
+        phone: String(fd.get("phone") || "") || null,
+        whatsapp: String(fd.get("whatsapp") || "") || null,
+        document: String(fd.get("document") || "") || null,
+      })
+      .eq("id", editingProfile.id);
+    if (error) return toast.error(error.message);
+    toast.success("Perfil atualizado");
+    setEditingProfile(null);
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div>
@@ -178,6 +200,10 @@ function Page() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditingProfile(row)}>
+                    <Pencil className="mr-1 h-3 w-3" />
+                    Editar perfil
+                  </Button>
                   {isAdmin ? (
                     <Button
                       variant="outline"
@@ -221,6 +247,47 @@ function Page() {
           );
         })}
       </div>
+
+      <Dialog open={!!editingProfile} onOpenChange={(value) => !value && setEditingProfile(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar perfil de acesso</DialogTitle>
+          </DialogHeader>
+          {editingProfile && (
+            <form onSubmit={updateProfile} className="space-y-4">
+              <div>
+                <Label>Nome</Label>
+                <Input name="full_name" defaultValue={editingProfile.full_name ?? ""} />
+              </div>
+              <div>
+                <Label>E-mail de exibição/vínculo</Label>
+                <Input name="email" type="email" defaultValue={editingProfile.email ?? ""} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Este campo ajuda no vínculo com clientes. O login do Auth continua sendo
+                  gerenciado pela conta do usuário.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" defaultValue={editingProfile.phone ?? ""} />
+                </div>
+                <div>
+                  <Label>WhatsApp</Label>
+                  <Input name="whatsapp" defaultValue={editingProfile.whatsapp ?? ""} />
+                </div>
+              </div>
+              <div>
+                <Label>Documento</Label>
+                <Input name="document" defaultValue={editingProfile.document ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar alterações
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
