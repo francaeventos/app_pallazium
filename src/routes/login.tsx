@@ -24,7 +24,7 @@ const signupSchema = loginSchema.extend({
 
 const friendlyAuthError = (message: string) => {
   if (message.toLowerCase().includes("password is known to be weak")) {
-    return "Senha muito fraca. Use pelo menos 6 caracteres e evite senhas óbvias, como 123456.";
+    return "Essa senha é comum e foi bloqueada pelo login. Tente uma senha simples, mas menos óbvia, como Pallazium12 ou Festa2026.";
   }
   return message;
 };
@@ -251,7 +251,7 @@ function LoginPage() {
                     autoComplete="new-password"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use pelo menos 6 caracteres. Evite senhas óbvias como 123456.
+                    Use pelo menos 6 caracteres. Ex.: Pallazium12 ou Festa2026.
                   </p>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
