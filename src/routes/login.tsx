@@ -13,6 +13,9 @@ const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
   password: z.string().min(6, "Mínimo 6 caracteres").max(72),
 });
+const resetSchema = z.object({
+  email: z.string().trim().email("E-mail inválido").max(255),
+});
 const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
   password: z
@@ -36,6 +39,20 @@ function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
+
+  const handleResetPassword = async (email: FormDataEntryValue | null) => {
+    const parsed = resetSchema.safeParse({ email });
+    if (!parsed.success) return toast.error(parsed.error.errors[0].message);
+
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setLoading(false);
+
+    if (error) return toast.error(error.message);
+    toast.success("Enviamos o link de recuperação para o e-mail informado.");
+  };
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -156,6 +173,16 @@ function LoginPage() {
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Entrando…" : "Entrar"}
                 </Button>
+                <button
+                  type="button"
+                  className="block w-full text-center text-xs text-muted-foreground underline"
+                  onClick={(event) => {
+                    const form = event.currentTarget.closest("form");
+                    if (form) handleResetPassword(new FormData(form).get("email"));
+                  }}
+                >
+                  Esqueci minha senha
+                </button>
                 <p className="text-xs text-muted-foreground text-center">
                   Primeiro acesso? Clique em{" "}
                   <button type="button" className="underline" onClick={() => setMode("signup")}>
