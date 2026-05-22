@@ -230,10 +230,10 @@ main {
 }
 
 main > div[class*="max-w-"] {
-  width: 100%;
-  max-width: none;
-  margin-right: 0;
-  margin-left: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
 }
 
 main p,
@@ -274,13 +274,5 @@ main .grid > * {
   main .sm\:grid-cols-2,
   main .sm\:grid-cols-3 {
     grid-template-columns: minmax(0, 1fr) !important;
-  }
-}
-
-@media (min-width: 1440px) {
-  main > div[class*="max-w-"] {
-    max-width: 80rem;
-    margin-right: auto;
-    margin-left: auto;
   }
 }
