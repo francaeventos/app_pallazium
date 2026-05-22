@@ -11,6 +11,7 @@ import {
   Users,
   Lightbulb,
   GalleryHorizontalEnd,
+  MailCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app")({ component: Layout });
@@ -19,6 +20,7 @@ const nav: NavItem[] = [
   { to: "/app", label: "Painel", icon: LayoutDashboard },
   { to: "/app/checklist", label: "Checklist", icon: ListChecks },
   { to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
+  { to: "/app/convites", label: "Convites", icon: MailCheck },
   { to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
   { to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
   { to: "/app/referencias", label: "Referências", icon: Images },

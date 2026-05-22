@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
@@ -22,6 +23,7 @@ import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppPendenciasRouteImport } from './routes/_authenticated/app/pendencias'
 import { Route as AuthenticatedAppParceirosRouteImport } from './routes/_authenticated/app/parceiros'
 import { Route as AuthenticatedAppDicasRouteImport } from './routes/_authenticated/app/dicas'
+import { Route as AuthenticatedAppConvitesRouteImport } from './routes/_authenticated/app/convites'
 import { Route as AuthenticatedAppChecklistRouteImport } from './routes/_authenticated/app/checklist'
 import { Route as AuthenticatedAppCardapiosRouteImport } from './routes/_authenticated/app/cardapios'
 import { Route as AuthenticatedAdminUpgradesRouteImport } from './routes/_authenticated/admin/upgrades'
@@ -32,6 +34,7 @@ import { Route as AuthenticatedAdminNotificacoesRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_authenticated/admin/interesses'
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
 import { Route as AuthenticatedAdminDicasRouteImport } from './routes/_authenticated/admin/dicas'
+import { Route as AuthenticatedAdminConvitesRouteImport } from './routes/_authenticated/admin/convites'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
@@ -50,6 +53,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConviteTokenRoute = ConviteTokenRouteImport.update({
+  id: '/convite/$token',
+  path: '/convite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
@@ -107,6 +115,12 @@ const AuthenticatedAppDicasRoute = AuthenticatedAppDicasRouteImport.update({
   path: '/dicas',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppConvitesRoute =
+  AuthenticatedAppConvitesRouteImport.update({
+    id: '/convites',
+    path: '/convites',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppChecklistRoute =
   AuthenticatedAppChecklistRouteImport.update({
     id: '/checklist',
@@ -166,6 +180,12 @@ const AuthenticatedAdminDicasRoute = AuthenticatedAdminDicasRouteImport.update({
   path: '/dicas',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminConvitesRoute =
+  AuthenticatedAdminConvitesRouteImport.update({
+    id: '/convites',
+    path: '/convites',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/clientes',
@@ -202,9 +222,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/app': typeof AuthenticatedAppRouteWithChildren
+  '/convite/$token': typeof ConviteTokenRoute
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
@@ -215,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
@@ -229,9 +252,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
@@ -242,6 +267,7 @@ export interface FileRoutesByTo {
   '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
@@ -260,9 +286,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/convite/$token': typeof ConviteTokenRoute
   '/_authenticated/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/_authenticated/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/_authenticated/admin/interesses': typeof AuthenticatedAdminInteressesRoute
@@ -273,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/_authenticated/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/_authenticated/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/_authenticated/app/convites': typeof AuthenticatedAppConvitesRoute
   '/_authenticated/app/dicas': typeof AuthenticatedAppDicasRoute
   '/_authenticated/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/_authenticated/app/pendencias': typeof AuthenticatedAppPendenciasRoute
@@ -291,9 +320,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/app'
+    | '/convite/$token'
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/convites'
     | '/admin/dicas'
     | '/admin/eventos'
     | '/admin/interesses'
@@ -304,6 +335,7 @@ export interface FileRouteTypes {
     | '/admin/upgrades'
     | '/app/cardapios'
     | '/app/checklist'
+    | '/app/convites'
     | '/app/dicas'
     | '/app/parceiros'
     | '/app/pendencias'
@@ -318,9 +350,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/convite/$token'
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/convites'
     | '/admin/dicas'
     | '/admin/eventos'
     | '/admin/interesses'
@@ -331,6 +365,7 @@ export interface FileRouteTypes {
     | '/admin/upgrades'
     | '/app/cardapios'
     | '/app/checklist'
+    | '/app/convites'
     | '/app/dicas'
     | '/app/parceiros'
     | '/app/pendencias'
@@ -348,9 +383,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/admin'
     | '/_authenticated/app'
+    | '/convite/$token'
     | '/_authenticated/admin/acessos'
     | '/_authenticated/admin/cardapios'
     | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/convites'
     | '/_authenticated/admin/dicas'
     | '/_authenticated/admin/eventos'
     | '/_authenticated/admin/interesses'
@@ -361,6 +398,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/upgrades'
     | '/_authenticated/app/cardapios'
     | '/_authenticated/app/checklist'
+    | '/_authenticated/app/convites'
     | '/_authenticated/app/dicas'
     | '/_authenticated/app/parceiros'
     | '/_authenticated/app/pendencias'
@@ -377,6 +415,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ConviteTokenRoute: typeof ConviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -400,6 +439,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/convite/$token': {
+      id: '/convite/$token'
+      path: '/convite/$token'
+      fullPath: '/convite/$token'
+      preLoaderRoute: typeof ConviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app': {
@@ -472,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppDicasRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/convites': {
+      id: '/_authenticated/app/convites'
+      path: '/convites'
+      fullPath: '/app/convites'
+      preLoaderRoute: typeof AuthenticatedAppConvitesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/checklist': {
       id: '/_authenticated/app/checklist'
       path: '/checklist'
@@ -542,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDicasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/convites': {
+      id: '/_authenticated/admin/convites'
+      path: '/convites'
+      fullPath: '/admin/convites'
+      preLoaderRoute: typeof AuthenticatedAdminConvitesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/clientes': {
       id: '/_authenticated/admin/clientes'
       path: '/clientes'
@@ -584,6 +644,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAcessosRoute: typeof AuthenticatedAdminAcessosRoute
   AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminConvitesRoute: typeof AuthenticatedAdminConvitesRoute
   AuthenticatedAdminDicasRoute: typeof AuthenticatedAdminDicasRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
   AuthenticatedAdminInteressesRoute: typeof AuthenticatedAdminInteressesRoute
@@ -601,6 +662,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAcessosRoute: AuthenticatedAdminAcessosRoute,
   AuthenticatedAdminCardapiosRoute: AuthenticatedAdminCardapiosRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminConvitesRoute: AuthenticatedAdminConvitesRoute,
   AuthenticatedAdminDicasRoute: AuthenticatedAdminDicasRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
   AuthenticatedAdminInteressesRoute: AuthenticatedAdminInteressesRoute,
@@ -621,6 +683,7 @@ const AuthenticatedAdminRouteWithChildren =
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppCardapiosRoute: typeof AuthenticatedAppCardapiosRoute
   AuthenticatedAppChecklistRoute: typeof AuthenticatedAppChecklistRoute
+  AuthenticatedAppConvitesRoute: typeof AuthenticatedAppConvitesRoute
   AuthenticatedAppDicasRoute: typeof AuthenticatedAppDicasRoute
   AuthenticatedAppParceirosRoute: typeof AuthenticatedAppParceirosRoute
   AuthenticatedAppPendenciasRoute: typeof AuthenticatedAppPendenciasRoute
@@ -633,6 +696,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppCardapiosRoute: AuthenticatedAppCardapiosRoute,
   AuthenticatedAppChecklistRoute: AuthenticatedAppChecklistRoute,
+  AuthenticatedAppConvitesRoute: AuthenticatedAppConvitesRoute,
   AuthenticatedAppDicasRoute: AuthenticatedAppDicasRoute,
   AuthenticatedAppParceirosRoute: AuthenticatedAppParceirosRoute,
   AuthenticatedAppPendenciasRoute: AuthenticatedAppPendenciasRoute,
@@ -663,6 +727,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  ConviteTokenRoute: ConviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

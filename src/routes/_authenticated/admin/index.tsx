@@ -12,6 +12,7 @@ import {
   Images,
   Lightbulb,
   ListChecks,
+  MailCheck,
   Shield,
   Sparkles,
   UtensilsCrossed,
@@ -114,6 +115,12 @@ function Dashboard() {
           icon={ListChecks}
           title="Checklists"
           text="Controlar pendências por evento."
+        />
+        <AdminAction
+          to="/admin/convites"
+          icon={MailCheck}
+          title="Convites"
+          text="RSVP, convidados e padrinhos."
         />
         <AdminAction
           to="/admin/cardapios"

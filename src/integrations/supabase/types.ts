@@ -209,6 +209,193 @@ export type Database = {
           },
         ];
       };
+      event_guests: {
+        Row: {
+          allowed_companions: number;
+          confirmed_companions: number;
+          created_at: string;
+          dietary_restrictions: string | null;
+          email: string | null;
+          event_id: string;
+          group_name: string | null;
+          id: string;
+          invitation_id: string | null;
+          name: string;
+          notes: string | null;
+          phone: string | null;
+          responded_at: string | null;
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"];
+          updated_at: string;
+        };
+        Insert: {
+          allowed_companions?: number;
+          confirmed_companions?: number;
+          created_at?: string;
+          dietary_restrictions?: string | null;
+          email?: string | null;
+          event_id: string;
+          group_name?: string | null;
+          id?: string;
+          invitation_id?: string | null;
+          name: string;
+          notes?: string | null;
+          phone?: string | null;
+          responded_at?: string | null;
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
+          updated_at?: string;
+        };
+        Update: {
+          allowed_companions?: number;
+          confirmed_companions?: number;
+          created_at?: string;
+          dietary_restrictions?: string | null;
+          email?: string | null;
+          event_id?: string;
+          group_name?: string | null;
+          id?: string;
+          invitation_id?: string | null;
+          name?: string;
+          notes?: string | null;
+          phone?: string | null;
+          responded_at?: string | null;
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_guests_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_guests_invitation_id_fkey";
+            columns: ["invitation_id"];
+            isOneToOne: false;
+            referencedRelation: "event_invitations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      event_invitations: {
+        Row: {
+          ceremony_location: string | null;
+          cover_image_url: string | null;
+          created_at: string;
+          dress_code: string | null;
+          event_id: string;
+          id: string;
+          map_url: string | null;
+          message: string | null;
+          public_token: string;
+          published_at: string | null;
+          reception_location: string | null;
+          status: Database["public"]["Enums"]["invitation_status"];
+          title: string;
+          updated_at: string;
+          whatsapp_text: string | null;
+        };
+        Insert: {
+          ceremony_location?: string | null;
+          cover_image_url?: string | null;
+          created_at?: string;
+          dress_code?: string | null;
+          event_id: string;
+          id?: string;
+          map_url?: string | null;
+          message?: string | null;
+          public_token?: string;
+          published_at?: string | null;
+          reception_location?: string | null;
+          status?: Database["public"]["Enums"]["invitation_status"];
+          title: string;
+          updated_at?: string;
+          whatsapp_text?: string | null;
+        };
+        Update: {
+          ceremony_location?: string | null;
+          cover_image_url?: string | null;
+          created_at?: string;
+          dress_code?: string | null;
+          event_id?: string;
+          id?: string;
+          map_url?: string | null;
+          message?: string | null;
+          public_token?: string;
+          published_at?: string | null;
+          reception_location?: string | null;
+          status?: Database["public"]["Enums"]["invitation_status"];
+          title?: string;
+          updated_at?: string;
+          whatsapp_text?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_invitations_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: true;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      event_party_members: {
+        Row: {
+          attire: string | null;
+          created_at: string;
+          email: string | null;
+          event_id: string;
+          id: string;
+          name: string;
+          notes: string | null;
+          phone: string | null;
+          role: string;
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"];
+          side: string | null;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          attire?: string | null;
+          created_at?: string;
+          email?: string | null;
+          event_id: string;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          phone?: string | null;
+          role: string;
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
+          side?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          attire?: string | null;
+          created_at?: string;
+          email?: string | null;
+          event_id?: string;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          phone?: string | null;
+          role?: string;
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
+          side?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_party_members_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       menus: {
         Row: {
           active: boolean;
@@ -593,7 +780,9 @@ export type Database = {
       client_status: "ativo" | "inativo" | "evento_concluido";
       event_status: "novo" | "em_organizacao" | "proximo" | "concluido" | "cancelado";
       interest_status: "novo" | "em_contato" | "vendido" | "perdido";
+      invitation_status: "rascunho" | "publicado" | "pausado";
       priority_level: "baixa" | "media" | "alta";
+      rsvp_status: "pendente" | "confirmado" | "recusado";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -724,7 +913,9 @@ export const Constants = {
       client_status: ["ativo", "inativo", "evento_concluido"],
       event_status: ["novo", "em_organizacao", "proximo", "concluido", "cancelado"],
       interest_status: ["novo", "em_contato", "vendido", "perdido"],
+      invitation_status: ["rascunho", "publicado", "pausado"],
       priority_level: ["baixa", "media", "alta"],
+      rsvp_status: ["pendente", "confirmado", "recusado"],
     },
   },
 } as const;
