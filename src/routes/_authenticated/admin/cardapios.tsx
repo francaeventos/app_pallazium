@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ChefHat, Eye, EyeOff, ImageIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -68,12 +68,38 @@ function Page() {
     load();
   };
 
+  const toggleActive = async (menu: Menu) => {
+    const { error } = await supabase
+      .from("menus")
+      .update({ active: !menu.active })
+      .eq("id", menu.id);
+    if (error) return toast.error(error.message);
+    toast.success(menu.active ? "Cardápio ocultado" : "Cardápio publicado");
+    load();
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
+  const openEdit = (menu: Menu) => {
+    setEditing(menu);
+    setOpen(true);
+  };
+
+  const activeCount = menus.filter((menu) => menu.active).length;
+  const hiddenCount = menus.length - activeCount;
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-wrap justify-between items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Gastronomia</p>
           <h1 className="font-serif text-4xl mt-2">Cardápios</h1>
+          <p className="mt-2 text-muted-foreground">
+            Cadastre, edite e publique as opções que aparecem na área do cliente.
+          </p>
         </div>
         <Dialog
           open={open}
@@ -83,12 +109,12 @@ function Page() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button size="lg" onClick={openCreate}>
               <Plus className="h-4 w-4 mr-1" />
-              Novo
+              Novo cardápio
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
                 {editing ? "Editar cardápio" : "Novo cardápio"}
@@ -107,16 +133,25 @@ function Page() {
                   placeholder="Entrada, Prato principal, ..."
                   defaultValue={editing?.category ?? ""}
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Ex.: Jantar, Coquetel, Brunch, Infantil, Premium.
+                </p>
               </div>
               <div>
                 <Label>Descrição</Label>
-                <Textarea name="description" defaultValue={editing?.description ?? ""} />
+                <Textarea
+                  name="description"
+                  rows={3}
+                  placeholder="Resumo curto que será exibido para o cliente"
+                  defaultValue={editing?.description ?? ""}
+                />
               </div>
               <div>
-                <Label>Itens</Label>
+                <Label>Itens do cardápio</Label>
                 <Textarea
                   name="items"
-                  placeholder="Lista de itens inclusos"
+                  rows={7}
+                  placeholder={"Entrada: ...\nPrato principal: ...\nSobremesa: ..."}
                   defaultValue={editing?.items ?? ""}
                 />
               </div>
@@ -128,7 +163,7 @@ function Page() {
                 <Label>Imagem (URL)</Label>
                 <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
               </div>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 rounded-xl border p-3 text-sm">
                 <input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />
                 Visível para clientes
               </label>
@@ -139,40 +174,98 @@ function Page() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total</p>
+            <p className="font-serif text-3xl">{menus.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Publicados</p>
+            <p className="font-serif text-3xl text-gold">{activeCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Ocultos</p>
+            <p className="font-serif text-3xl">{hiddenCount}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {menus.length === 0 && (
+        <Card className="border-gold/30">
+          <CardContent className="flex flex-col items-center justify-center gap-4 p-10 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-champagne text-gold">
+              <ChefHat className="h-8 w-8" />
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl">Cadastre o primeiro cardápio</h2>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                Depois de publicado, ele aparece automaticamente em Cardápios na área do cliente.
+              </p>
+            </div>
+            <Button size="lg" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo cardápio
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3">
         {menus.map((menu) => (
           <Card key={menu.id} className={!menu.active ? "opacity-70" : undefined}>
-            {menu.image_url && (
-              <div
-                className="h-36 bg-muted bg-cover bg-center"
-                style={{ backgroundImage: `url(${menu.image_url})` }}
-              />
-            )}
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-serif text-xl">{menu.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{menu.category}</p>
+            <CardContent className="grid gap-4 p-4 lg:grid-cols-[160px_1fr_auto] lg:items-center">
+              {menu.image_url ? (
+                <div
+                  className="h-32 rounded-xl bg-muted bg-cover bg-center lg:h-24"
+                  style={{ backgroundImage: `url(${menu.image_url})` }}
+                />
+              ) : (
+                <div className="flex h-32 items-center justify-center rounded-xl bg-muted text-gold lg:h-24">
+                  <ImageIcon className="h-7 w-7" />
                 </div>
-                <Badge variant={menu.active ? "default" : "outline"}>
-                  {menu.active ? "Ativo" : "Oculto"}
-                </Badge>
-              </div>
-              {menu.description && <p className="text-sm">{menu.description}</p>}
-              {menu.items && (
-                <p className="text-xs text-muted-foreground whitespace-pre-line">{menu.items}</p>
               )}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(menu);
-                    setOpen(true);
-                  }}
-                >
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-serif text-2xl">{menu.name}</p>
+                  <Badge variant="outline" className="capitalize">
+                    {menu.category}
+                  </Badge>
+                  <Badge variant={menu.active ? "default" : "outline"}>
+                    {menu.active ? "Publicado" : "Oculto"}
+                  </Badge>
+                </div>
+                {menu.description && (
+                  <p className="text-sm text-muted-foreground">{menu.description}</p>
+                )}
+                {menu.items && (
+                  <p className="line-clamp-3 text-xs text-muted-foreground whitespace-pre-line">
+                    {menu.items}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <Button variant="outline" size="sm" onClick={() => openEdit(menu)}>
                   <Pencil className="h-3 w-3 mr-1" />
                   Editar
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => toggleActive(menu)}>
+                  {menu.active ? (
+                    <>
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Ocultar
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3 mr-1" />
+                      Publicar
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
