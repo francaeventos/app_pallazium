@@ -34,11 +34,15 @@ function PasswordInput({
   name,
   autoComplete,
   minLength,
+  value,
+  onChange,
 }: {
   id: string;
   name: string;
   autoComplete: string;
   minLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -52,6 +56,8 @@ function PasswordInput({
         minLength={minLength}
         autoComplete={autoComplete}
         className="pr-10"
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
       />
       <button
         type="button"
@@ -69,6 +75,13 @@ function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [signupPassword, setSignupPassword] = useState("");
+
+  const generateSignupPassword = () => {
+    const value = `Pallazium${Math.floor(1000 + Math.random() * 9000)}`;
+    setSignupPassword(value);
+    toast.success("Senha simples gerada. Você pode usar essa ou ajustar como preferir.");
+  };
 
   const handleResetPassword = async (email: FormDataEntryValue | null) => {
     const parsed = resetSchema.safeParse({ email });
@@ -118,7 +131,12 @@ function LoginPage() {
     });
     setLoading(false);
 
-    if (error) return toast.error(friendlyAuthError(error.message));
+    if (error) {
+      if (error.message.toLowerCase().includes("password is known to be weak")) {
+        generateSignupPassword();
+      }
+      return toast.error(friendlyAuthError(error.message));
+    }
     toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
   };
 
@@ -249,10 +267,21 @@ function LoginPage() {
                     name="password"
                     minLength={6}
                     autoComplete="new-password"
+                    value={signupPassword}
+                    onChange={setSignupPassword}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use pelo menos 6 caracteres. Ex.: Pallazium12 ou Festa2026.
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Use pelo menos 6 caracteres. Evite palavras muito comuns.
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-gold underline-offset-4 hover:underline"
+                      onClick={generateSignupPassword}
+                    >
+                      Gerar senha simples
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Criando…" : "Criar conta"}
