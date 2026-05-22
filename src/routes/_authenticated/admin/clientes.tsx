@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Link2, Pencil, Plus } from "lucide-react";
+import { Link2, Pencil, Plus, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -104,6 +104,13 @@ function Page() {
     });
     if (error) return toast.error(error.message);
     toast.success("Conta vinculada pelo e-mail");
+    load();
+  };
+
+  const updateStatus = async (clientId: string, status: ClientStatus) => {
+    const { error } = await supabase.from("clients").update({ status }).eq("id", clientId);
+    if (error) return toast.error(error.message);
+    toast.success("Status do cliente atualizado");
     load();
   };
 
@@ -212,6 +219,26 @@ function Page() {
                   <Pencil className="h-3 w-3 mr-1" />
                   Editar
                 </Button>
+                {c.status === "ativo" ? (
+                  <Button variant="ghost" size="sm" onClick={() => updateStatus(c.id, "inativo")}>
+                    <UserX className="h-3 w-3 mr-1" />
+                    Inativar
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => updateStatus(c.id, "ativo")}>
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Ativar
+                  </Button>
+                )}
+                {c.status !== "evento_concluido" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateStatus(c.id, "evento_concluido")}
+                  >
+                    Concluir
+                  </Button>
+                )}
               </div>
             </div>
           ))}

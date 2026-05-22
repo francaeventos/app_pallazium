@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, ListChecks, Pencil } from "lucide-react";
+import { Ban, CheckCircle2, ListChecks, Pencil, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -154,6 +154,13 @@ function Page() {
     if (error) return toast.error(error.message);
     toast.success("Evento atualizado");
     setEditing(null);
+    load();
+  };
+
+  const updateEventStatus = async (eventId: string, status: EventStatus) => {
+    const { error } = await supabase.from("events").update({ status }).eq("id", eventId);
+    if (error) return toast.error(error.message);
+    toast.success("Status do evento atualizado");
     load();
   };
 
@@ -294,6 +301,37 @@ function Page() {
                   <Pencil className="h-3 w-3 mr-1" />
                   Editar
                 </Button>
+                {e.status !== "concluido" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateEventStatus(e.id, "concluido")}
+                  >
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Concluir
+                  </Button>
+                )}
+                {e.status !== "cancelado" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose"
+                    onClick={() => updateEventStatus(e.id, "cancelado")}
+                  >
+                    <Ban className="h-3 w-3 mr-1" />
+                    Cancelar
+                  </Button>
+                )}
+                {(e.status === "cancelado" || e.status === "concluido") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateEventStatus(e.id, "em_organizacao")}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Reabrir
+                  </Button>
+                )}
                 <Link to="/admin/checklist/$eventId" params={{ eventId: e.id }}>
                   <Button variant="outline" size="sm">
                     <ListChecks className="h-3 w-3 mr-1" />

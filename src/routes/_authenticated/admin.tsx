@@ -11,6 +11,7 @@ import {
   Bell,
   Sparkles,
   UtensilsCrossed,
+  Shield,
   Users,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ const nav: NavItem[] = [
   { to: "/admin/dicas", label: "Dicas", icon: Lightbulb },
   { to: "/admin/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
   { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
+  { to: "/admin/acessos", label: "Acessos", icon: Shield },
 ];
 
 function Layout() {

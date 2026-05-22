@@ -12,6 +12,7 @@ import {
   Images,
   Lightbulb,
   ListChecks,
+  Shield,
   Sparkles,
   UtensilsCrossed,
   Users,
@@ -161,6 +162,12 @@ function Dashboard() {
           icon={Bell}
           title="Notificações"
           text="Enviar avisos para clientes."
+        />
+        <AdminAction
+          to="/admin/acessos"
+          icon={Shield}
+          title="Acessos"
+          text="Gerenciar permissões e perfis."
         />
       </div>
 

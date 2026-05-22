@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -78,6 +80,20 @@ function Page() {
     }
   };
 
+  const removeUpgradeInterest = async (id: string) => {
+    const { error } = await supabase.from("upgrade_interests").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Interesse removido");
+    load();
+  };
+
+  const removeMenuInterest = async (id: string) => {
+    const { error } = await supabase.from("menu_interests").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Interesse removido");
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div>
@@ -110,17 +126,27 @@ function Page() {
                   {format(new Date(i.created_at), "dd/MM/yyyy")}
                 </p>
               </div>
-              <Select value={i.status} onValueChange={(v) => updateStatus(i.id, v)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="novo">Novo</SelectItem>
-                  <SelectItem value="em_contato">Em contato</SelectItem>
-                  <SelectItem value="vendido">Vendido</SelectItem>
-                  <SelectItem value="perdido">Perdido</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={i.status} onValueChange={(v) => updateStatus(i.id, v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="novo">Novo</SelectItem>
+                    <SelectItem value="em_contato">Em contato</SelectItem>
+                    <SelectItem value="vendido">Vendido</SelectItem>
+                    <SelectItem value="perdido">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-rose"
+                  onClick={() => removeUpgradeInterest(i.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
@@ -154,17 +180,27 @@ function Page() {
                   {format(new Date(i.created_at), "dd/MM/yyyy")}
                 </p>
               </div>
-              <Select value={i.status} onValueChange={(v) => updateMenuStatus(i.id, v)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="novo">Novo</SelectItem>
-                  <SelectItem value="em_contato">Em contato</SelectItem>
-                  <SelectItem value="vendido">Vendido</SelectItem>
-                  <SelectItem value="perdido">Perdido</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={i.status} onValueChange={(v) => updateMenuStatus(i.id, v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="novo">Novo</SelectItem>
+                    <SelectItem value="em_contato">Em contato</SelectItem>
+                    <SelectItem value="vendido">Vendido</SelectItem>
+                    <SelectItem value="perdido">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-rose"
+                  onClick={() => removeMenuInterest(i.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
