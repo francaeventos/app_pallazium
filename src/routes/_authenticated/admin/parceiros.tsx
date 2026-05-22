@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -13,26 +11,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
-export const Route = createFileRoute("/_authenticated/admin/cardapios")({ component: Page });
+export const Route = createFileRoute("/_authenticated/admin/parceiros")({ component: Page });
 
-type Menu = Database["public"]["Tables"]["menus"]["Row"];
+type Partner = Database["public"]["Tables"]["partners"]["Row"];
 
 function Page() {
-  const [menus, setMenus] = useState<Menu[]>([]);
+  const [items, setItems] = useState<Partner[]>([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Menu | null>(null);
+  const [editing, setEditing] = useState<Partner | null>(null);
 
   const load = async () => {
     const { data } = await supabase
-      .from("menus")
+      .from("partners")
       .select("*")
       .order("created_at", { ascending: false });
-    setMenus(data ?? []);
+    setItems(data ?? []);
   };
 
   useEffect(() => {
@@ -46,25 +46,26 @@ function Page() {
       name: String(fd.get("name")),
       category: String(fd.get("category")),
       description: String(fd.get("description") || "") || null,
-      items: String(fd.get("items") || "") || null,
+      phone: String(fd.get("phone") || "") || null,
+      whatsapp: String(fd.get("whatsapp") || "") || null,
+      instagram: String(fd.get("instagram") || "") || null,
       image_url: String(fd.get("image_url") || "") || null,
-      notes: String(fd.get("notes") || "") || null,
       active: fd.get("active") === "on",
     };
     const { error } = editing
-      ? await supabase.from("menus").update(payload).eq("id", editing.id)
-      : await supabase.from("menus").insert(payload);
+      ? await supabase.from("partners").update(payload).eq("id", editing.id)
+      : await supabase.from("partners").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success(editing ? "Cardápio atualizado" : "Cardápio criado");
+    toast.success(editing ? "Parceiro atualizado" : "Parceiro criado");
     setOpen(false);
     setEditing(null);
     load();
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("menus").delete().eq("id", id);
+    const { error } = await supabase.from("partners").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Cardápio excluído");
+    toast.success("Parceiro excluído");
     load();
   };
 
@@ -72,8 +73,8 @@ function Page() {
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Gastronomia</p>
-          <h1 className="font-serif text-4xl mt-2">Cardápios</h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Conteúdo</p>
+          <h1 className="font-serif text-4xl mt-2">Parceiros</h1>
         </div>
         <Dialog
           open={open}
@@ -91,7 +92,7 @@ function Page() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
-                {editing ? "Editar cardápio" : "Novo cardápio"}
+                {editing ? "Editar parceiro" : "Novo parceiro"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={save} className="space-y-3">
@@ -101,28 +102,25 @@ function Page() {
               </div>
               <div>
                 <Label>Categoria</Label>
-                <Input
-                  name="category"
-                  required
-                  placeholder="Entrada, Prato principal, ..."
-                  defaultValue={editing?.category ?? ""}
-                />
+                <Input name="category" required defaultValue={editing?.category ?? ""} />
               </div>
               <div>
                 <Label>Descrição</Label>
                 <Textarea name="description" defaultValue={editing?.description ?? ""} />
               </div>
-              <div>
-                <Label>Itens</Label>
-                <Textarea
-                  name="items"
-                  placeholder="Lista de itens inclusos"
-                  defaultValue={editing?.items ?? ""}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" defaultValue={editing?.phone ?? ""} />
+                </div>
+                <div>
+                  <Label>WhatsApp</Label>
+                  <Input name="whatsapp" defaultValue={editing?.whatsapp ?? ""} />
+                </div>
               </div>
               <div>
-                <Label>Observações internas</Label>
-                <Textarea name="notes" defaultValue={editing?.notes ?? ""} />
+                <Label>Instagram</Label>
+                <Input name="instagram" defaultValue={editing?.instagram ?? ""} />
               </div>
               <div>
                 <Label>Imagem (URL)</Label>
@@ -140,34 +138,31 @@ function Page() {
         </Dialog>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {menus.map((menu) => (
-          <Card key={menu.id} className={!menu.active ? "opacity-70" : undefined}>
-            {menu.image_url && (
+        {items.map((item) => (
+          <Card key={item.id} className={!item.active ? "opacity-70" : undefined}>
+            {item.image_url && (
               <div
                 className="h-36 bg-muted bg-cover bg-center"
-                style={{ backgroundImage: `url(${menu.image_url})` }}
+                style={{ backgroundImage: `url(${item.image_url})` }}
               />
             )}
             <CardContent className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-serif text-xl">{menu.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{menu.category}</p>
+                  <p className="font-serif text-xl">{item.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
                 </div>
-                <Badge variant={menu.active ? "default" : "outline"}>
-                  {menu.active ? "Ativo" : "Oculto"}
+                <Badge variant={item.active ? "default" : "outline"}>
+                  {item.active ? "Ativo" : "Oculto"}
                 </Badge>
               </div>
-              {menu.description && <p className="text-sm">{menu.description}</p>}
-              {menu.items && (
-                <p className="text-xs text-muted-foreground whitespace-pre-line">{menu.items}</p>
-              )}
+              {item.description && <p className="text-sm">{item.description}</p>}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setEditing(menu);
+                    setEditing(item);
                     setOpen(true);
                   }}
                 >
@@ -178,7 +173,7 @@ function Page() {
                   variant="ghost"
                   size="sm"
                   className="text-rose"
-                  onClick={() => remove(menu.id)}
+                  onClick={() => remove(item.id)}
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Excluir

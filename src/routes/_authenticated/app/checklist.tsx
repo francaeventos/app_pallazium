@@ -4,17 +4,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ExternalLink } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/checklist")({ component: ChecklistPage });
+
+type ChecklistItem = Pick<
+  Database["public"]["Tables"]["checklist_items"]["Row"],
+  | "id"
+  | "title"
+  | "description"
+  | "status"
+  | "priority"
+  | "due_date"
+  | "client_notes"
+  | "attachment_url"
+>;
+type ChecklistStatus = Database["public"]["Enums"]["checklist_status"];
 
 function ChecklistPage() {
   const { data, loading, reload } = useMyEvent();
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
-  if (!data?.event) return <div className="p-8 text-muted-foreground">Nenhum evento vinculado.</div>;
+  if (!data?.event)
+    return <div className="p-8 text-muted-foreground">Nenhum evento vinculado.</div>;
 
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-5xl mx-auto">
@@ -23,7 +45,11 @@ function ChecklistPage() {
         <h1 className="font-serif text-4xl mt-2">Tudo que precisa estar pronto</h1>
       </div>
       {data.checklist.length === 0 && (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">Nosso time ainda vai montar seu checklist personalizado.</CardContent></Card>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nosso time ainda vai montar seu checklist personalizado.
+          </CardContent>
+        </Card>
       )}
       <div className="space-y-3">
         {data.checklist.map((item) => (
@@ -34,9 +60,9 @@ function ChecklistPage() {
   );
 }
 
-function ChecklistRow({ item, onChange }: { item: any; onChange: () => void }) {
+function ChecklistRow({ item, onChange }: { item: ChecklistItem; onChange: () => void }) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState(item.status);
+  const [status, setStatus] = useState<ChecklistStatus>(item.status);
   const [notes, setNotes] = useState(item.client_notes ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -61,14 +87,21 @@ function ChecklistRow({ item, onChange }: { item: any; onChange: () => void }) {
 
   return (
     <Card className="overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full text-left p-4 hover:bg-muted/40 transition-colors">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full text-left p-4 hover:bg-muted/40 transition-colors"
+      >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="font-medium">{item.title}</p>
-            {item.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{item.description}</p>}
+            {item.description && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{item.description}</p>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Badge variant="outline" className="capitalize text-xs">{item.priority}</Badge>
+            <Badge variant="outline" className="capitalize text-xs">
+              {item.priority}
+            </Badge>
             <Badge variant="outline" className={`capitalize text-xs ${statusColor[item.status]}`}>
               {item.status.replace("_", " ")}
             </Badge>
@@ -79,11 +112,24 @@ function ChecklistRow({ item, onChange }: { item: any; onChange: () => void }) {
         <CardContent className="border-t pt-4 space-y-4">
           {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
           {item.due_date && <p className="text-xs text-muted-foreground">Prazo: {item.due_date}</p>}
+          {item.attachment_url && (
+            <a
+              href={item.attachment_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gold transition hover:bg-muted"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Ver anexo ou referência da equipe
+            </a>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium mb-1.5 block">Status</label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={status} onValueChange={(value) => setStatus(value as ChecklistStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pendente">Pendente</SelectItem>
                   <SelectItem value="em_analise">Em análise</SelectItem>
@@ -94,15 +140,16 @@ function ChecklistRow({ item, onChange }: { item: any; onChange: () => void }) {
           </div>
           <div>
             <label className="text-xs font-medium mb-1.5 block">Suas observações</label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={1000} />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              maxLength={1000}
+            />
           </div>
-          {item.internal_notes && (
-            <div className="rounded-lg bg-muted/50 p-3 text-sm">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Observações da equipe</p>
-              {item.internal_notes}
-            </div>
-          )}
-          <Button onClick={save} disabled={saving} size="sm">{saving ? "Salvando…" : "Salvar"}</Button>
+          <Button onClick={save} disabled={saving} size="sm">
+            {saving ? "Salvando…" : "Salvar"}
+          </Button>
         </CardContent>
       )}
     </Card>

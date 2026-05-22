@@ -18,7 +18,10 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="font-serif text-7xl text-foreground">404</h1>
         <p className="mt-3 text-muted-foreground">Página não encontrada.</p>
-        <Link to="/" className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
+        <Link
+          to="/"
+          className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
+        >
           Voltar
         </Link>
       </div>
@@ -35,9 +38,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="font-serif text-2xl">Algo deu errado</h1>
         <p className="mt-2 text-sm text-muted-foreground">Tente novamente em alguns instantes.</p>
         <button
-          onClick={() => { router.invalidate(); reset(); }}
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
           className="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        >Tentar novamente</button>
+        >
+          Tentar novamente
+        </button>
       </div>
     </div>
   );
@@ -62,8 +70,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }

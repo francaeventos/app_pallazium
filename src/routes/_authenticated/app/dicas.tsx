@@ -1,13 +1,88 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Lightbulb } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/dicas")({ component: Page });
 
+type Tip = Database["public"]["Tables"]["tips"]["Row"];
+
 function Page() {
+  const [items, setItems] = useState<Tip[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("tips")
+      .select("*")
+      .eq("active", true)
+      .order("category")
+      .then(({ data }) => {
+        setItems(data ?? []);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
+
+  const byCategory: Record<string, Tip[]> = {};
+  items.forEach((item) => {
+    (byCategory[item.category] ||= []).push(item);
+  });
+
   return (
-    <div className="p-6 lg:p-10 max-w-4xl mx-auto">
-      <h1 className="font-serif text-4xl">Dicas</h1>
-      <Card className="mt-6"><CardContent className="p-10 text-center text-muted-foreground">Em breve.</CardContent></Card>
+    <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-8">
+      <div>
+        <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Curadoria</p>
+        <h1 className="font-serif text-4xl mt-2">Dicas para o seu evento</h1>
+        <p className="text-muted-foreground mt-2">
+          Orientações práticas para deixar cada decisão mais simples.
+        </p>
+      </div>
+
+      {items.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nenhuma dica publicada no momento.
+          </CardContent>
+        </Card>
+      )}
+
+      {Object.entries(byCategory).map(([category, tips]) => (
+        <section key={category} className="space-y-4">
+          <h2 className="font-serif text-2xl capitalize">{category}</h2>
+          <div className="grid lg:grid-cols-2 gap-4">
+            {tips.map((tip) => (
+              <Card key={tip.id} className="overflow-hidden">
+                <div className="grid sm:grid-cols-[180px_1fr]">
+                  {tip.image_url ? (
+                    <div
+                      className="min-h-44 bg-muted bg-cover bg-center"
+                      style={{ backgroundImage: `url(${tip.image_url})` }}
+                    />
+                  ) : (
+                    <div className="min-h-44 bg-muted flex items-center justify-center">
+                      <Lightbulb className="h-8 w-8 text-gold" />
+                    </div>
+                  )}
+                  <CardContent className="p-5">
+                    <Badge variant="outline" className="text-xs capitalize mb-3">
+                      {tip.category}
+                    </Badge>
+                    <h3 className="font-serif text-xl">{tip.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-3 whitespace-pre-line">
+                      {tip.content}
+                    </p>
+                  </CardContent>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

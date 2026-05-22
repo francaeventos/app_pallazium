@@ -21,15 +21,28 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Headphones, Menu, LogOut, Moon, Pencil, Sun, type LucideIcon } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  Headphones,
+  Menu,
+  LogOut,
+  Moon,
+  Pencil,
+  Sun,
+  type LucideIcon,
+} from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
 }
+
+type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
 export function AppShell({
   title,
@@ -48,6 +61,7 @@ export function AppShell({
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileAvatar, setProfileAvatar] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("pallazium-theme") === "dark";
@@ -68,6 +82,21 @@ export function AppShell({
     return () => window.clearInterval(timer);
   }, []);
 
+  const loadNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    setNotifications(data ?? []);
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [user?.id]);
+
   const displayName =
     typeof user?.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
       ? user.user_metadata.full_name
@@ -77,6 +106,7 @@ export function AppShell({
   const timeLabel = now
     ? now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : "--:--";
+  const unreadCount = notifications.filter((item) => !item.read).length;
 
   useEffect(() => {
     setProfileName(displayName);
@@ -105,6 +135,14 @@ export function AppShell({
     if (error) return toast.error(error.message);
     toast.success("Perfil atualizado.");
     setProfileOpen(false);
+  };
+
+  const markNotificationRead = async (id: string) => {
+    const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+    if (error) return toast.error(error.message);
+    setNotifications((items) =>
+      items.map((item) => (item.id === id ? { ...item, read: true } : item)),
+    );
   };
 
   const SideNav = () => (
@@ -200,6 +238,58 @@ export function AppShell({
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="relative rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+              aria-label="Abrir notificações"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-sidebar" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length === 0 && (
+              <div className="px-3 py-4 text-sm text-muted-foreground">
+                Nenhuma notificação por enquanto.
+              </div>
+            )}
+            {notifications.map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                className="items-start gap-3"
+                onSelect={(event) => event.preventDefault()}
+              >
+                <span
+                  className={`mt-1 h-2 w-2 rounded-full ${item.read ? "bg-muted" : "bg-gold"}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{item.title}</p>
+                  {item.message && (
+                    <p className="mt-1 text-xs text-muted-foreground">{item.message}</p>
+                  )}
+                </div>
+                {!item.read && (
+                  <button
+                    type="button"
+                    className="mt-0.5 text-muted-foreground transition hover:text-foreground"
+                    onClick={() => markNotificationRead(item.id)}
+                    aria-label="Marcar como lida"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </button>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

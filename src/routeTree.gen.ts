@@ -18,14 +18,19 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenticated/app/upgrades'
 import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
+import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
 import { Route as AuthenticatedAppPendenciasRouteImport } from './routes/_authenticated/app/pendencias'
 import { Route as AuthenticatedAppParceirosRouteImport } from './routes/_authenticated/app/parceiros'
 import { Route as AuthenticatedAppDicasRouteImport } from './routes/_authenticated/app/dicas'
 import { Route as AuthenticatedAppChecklistRouteImport } from './routes/_authenticated/app/checklist'
 import { Route as AuthenticatedAppCardapiosRouteImport } from './routes/_authenticated/app/cardapios'
 import { Route as AuthenticatedAdminUpgradesRouteImport } from './routes/_authenticated/admin/upgrades'
+import { Route as AuthenticatedAdminReferenciasRouteImport } from './routes/_authenticated/admin/referencias'
+import { Route as AuthenticatedAdminPortfolioRouteImport } from './routes/_authenticated/admin/portfolio'
+import { Route as AuthenticatedAdminParceirosRouteImport } from './routes/_authenticated/admin/parceiros'
 import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_authenticated/admin/interesses'
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
+import { Route as AuthenticatedAdminDicasRouteImport } from './routes/_authenticated/admin/dicas'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
@@ -77,6 +82,12 @@ const AuthenticatedAppReferenciasRoute =
     path: '/referencias',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppPortfolioRoute =
+  AuthenticatedAppPortfolioRouteImport.update({
+    id: '/portfolio',
+    path: '/portfolio',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppPendenciasRoute =
   AuthenticatedAppPendenciasRouteImport.update({
     id: '/pendencias',
@@ -112,6 +123,24 @@ const AuthenticatedAdminUpgradesRoute =
     path: '/upgrades',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminReferenciasRoute =
+  AuthenticatedAdminReferenciasRouteImport.update({
+    id: '/referencias',
+    path: '/referencias',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPortfolioRoute =
+  AuthenticatedAdminPortfolioRouteImport.update({
+    id: '/portfolio',
+    path: '/portfolio',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminParceirosRoute =
+  AuthenticatedAdminParceirosRouteImport.update({
+    id: '/parceiros',
+    path: '/parceiros',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminInteressesRoute =
   AuthenticatedAdminInteressesRouteImport.update({
     id: '/interesses',
@@ -124,6 +153,11 @@ const AuthenticatedAdminEventosRoute =
     path: '/eventos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminDicasRoute = AuthenticatedAdminDicasRouteImport.update({
+  id: '/dicas',
+  path: '/dicas',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/clientes',
@@ -156,14 +190,19 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
+  '/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
+  '/admin/referencias': typeof AuthenticatedAdminReferenciasRoute
   '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -176,14 +215,19 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
+  '/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
+  '/admin/referencias': typeof AuthenticatedAdminReferenciasRoute
   '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -200,14 +244,19 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/_authenticated/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/_authenticated/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
+  '/_authenticated/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
+  '/_authenticated/admin/referencias': typeof AuthenticatedAdminReferenciasRoute
   '/_authenticated/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
   '/_authenticated/app/cardapios': typeof AuthenticatedAppCardapiosRoute
   '/_authenticated/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/_authenticated/app/dicas': typeof AuthenticatedAppDicasRoute
   '/_authenticated/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/_authenticated/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/_authenticated/app/upgrades': typeof AuthenticatedAppUpgradesRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -224,14 +273,19 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/dicas'
     | '/admin/eventos'
     | '/admin/interesses'
+    | '/admin/parceiros'
+    | '/admin/portfolio'
+    | '/admin/referencias'
     | '/admin/upgrades'
     | '/app/cardapios'
     | '/app/checklist'
     | '/app/dicas'
     | '/app/parceiros'
     | '/app/pendencias'
+    | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
     | '/admin/'
@@ -244,14 +298,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/dicas'
     | '/admin/eventos'
     | '/admin/interesses'
+    | '/admin/parceiros'
+    | '/admin/portfolio'
+    | '/admin/referencias'
     | '/admin/upgrades'
     | '/app/cardapios'
     | '/app/checklist'
     | '/app/dicas'
     | '/app/parceiros'
     | '/app/pendencias'
+    | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
     | '/admin'
@@ -267,14 +326,19 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/_authenticated/admin/cardapios'
     | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/dicas'
     | '/_authenticated/admin/eventos'
     | '/_authenticated/admin/interesses'
+    | '/_authenticated/admin/parceiros'
+    | '/_authenticated/admin/portfolio'
+    | '/_authenticated/admin/referencias'
     | '/_authenticated/admin/upgrades'
     | '/_authenticated/app/cardapios'
     | '/_authenticated/app/checklist'
     | '/_authenticated/app/dicas'
     | '/_authenticated/app/parceiros'
     | '/_authenticated/app/pendencias'
+    | '/_authenticated/app/portfolio'
     | '/_authenticated/app/referencias'
     | '/_authenticated/app/upgrades'
     | '/_authenticated/admin/'
@@ -354,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppReferenciasRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/portfolio': {
+      id: '/_authenticated/app/portfolio'
+      path: '/portfolio'
+      fullPath: '/app/portfolio'
+      preLoaderRoute: typeof AuthenticatedAppPortfolioRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/pendencias': {
       id: '/_authenticated/app/pendencias'
       path: '/pendencias'
@@ -396,6 +467,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUpgradesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/referencias': {
+      id: '/_authenticated/admin/referencias'
+      path: '/referencias'
+      fullPath: '/admin/referencias'
+      preLoaderRoute: typeof AuthenticatedAdminReferenciasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/portfolio': {
+      id: '/_authenticated/admin/portfolio'
+      path: '/portfolio'
+      fullPath: '/admin/portfolio'
+      preLoaderRoute: typeof AuthenticatedAdminPortfolioRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/parceiros': {
+      id: '/_authenticated/admin/parceiros'
+      path: '/parceiros'
+      fullPath: '/admin/parceiros'
+      preLoaderRoute: typeof AuthenticatedAdminParceirosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/interesses': {
       id: '/_authenticated/admin/interesses'
       path: '/interesses'
@@ -408,6 +500,13 @@ declare module '@tanstack/react-router' {
       path: '/eventos'
       fullPath: '/admin/eventos'
       preLoaderRoute: typeof AuthenticatedAdminEventosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/dicas': {
+      id: '/_authenticated/admin/dicas'
+      path: '/dicas'
+      fullPath: '/admin/dicas'
+      preLoaderRoute: typeof AuthenticatedAdminDicasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/clientes': {
@@ -444,8 +543,12 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminDicasRoute: typeof AuthenticatedAdminDicasRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
   AuthenticatedAdminInteressesRoute: typeof AuthenticatedAdminInteressesRoute
+  AuthenticatedAdminParceirosRoute: typeof AuthenticatedAdminParceirosRoute
+  AuthenticatedAdminPortfolioRoute: typeof AuthenticatedAdminPortfolioRoute
+  AuthenticatedAdminReferenciasRoute: typeof AuthenticatedAdminReferenciasRoute
   AuthenticatedAdminUpgradesRoute: typeof AuthenticatedAdminUpgradesRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminChecklistEventIdRoute: typeof AuthenticatedAdminChecklistEventIdRoute
@@ -455,8 +558,12 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCardapiosRoute: AuthenticatedAdminCardapiosRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminDicasRoute: AuthenticatedAdminDicasRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
   AuthenticatedAdminInteressesRoute: AuthenticatedAdminInteressesRoute,
+  AuthenticatedAdminParceirosRoute: AuthenticatedAdminParceirosRoute,
+  AuthenticatedAdminPortfolioRoute: AuthenticatedAdminPortfolioRoute,
+  AuthenticatedAdminReferenciasRoute: AuthenticatedAdminReferenciasRoute,
   AuthenticatedAdminUpgradesRoute: AuthenticatedAdminUpgradesRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminChecklistEventIdRoute:
@@ -473,6 +580,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppDicasRoute: typeof AuthenticatedAppDicasRoute
   AuthenticatedAppParceirosRoute: typeof AuthenticatedAppParceirosRoute
   AuthenticatedAppPendenciasRoute: typeof AuthenticatedAppPendenciasRoute
+  AuthenticatedAppPortfolioRoute: typeof AuthenticatedAppPortfolioRoute
   AuthenticatedAppReferenciasRoute: typeof AuthenticatedAppReferenciasRoute
   AuthenticatedAppUpgradesRoute: typeof AuthenticatedAppUpgradesRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
@@ -484,6 +592,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppDicasRoute: AuthenticatedAppDicasRoute,
   AuthenticatedAppParceirosRoute: AuthenticatedAppParceirosRoute,
   AuthenticatedAppPendenciasRoute: AuthenticatedAppPendenciasRoute,
+  AuthenticatedAppPortfolioRoute: AuthenticatedAppPortfolioRoute,
   AuthenticatedAppReferenciasRoute: AuthenticatedAppReferenciasRoute,
   AuthenticatedAppUpgradesRoute: AuthenticatedAppUpgradesRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,

@@ -1,11 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -13,27 +10,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
-export const Route = createFileRoute("/_authenticated/admin/upgrades")({ component: Page });
+export const Route = createFileRoute("/_authenticated/admin/portfolio")({ component: Page });
 
-type Upgrade = Database["public"]["Tables"]["upgrades"]["Row"];
+type PortfolioItem = Database["public"]["Tables"]["portfolio_items"]["Row"];
 
 function Page() {
-  const [items, setItems] = useState<Upgrade[]>([]);
+  const [items, setItems] = useState<PortfolioItem[]>([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Upgrade | null>(null);
+  const [editing, setEditing] = useState<PortfolioItem | null>(null);
 
   const load = async () => {
     const { data } = await supabase
-      .from("upgrades")
+      .from("portfolio_items")
       .select("*")
       .order("created_at", { ascending: false });
     setItems(data ?? []);
   };
+
   useEffect(() => {
     load();
   }, []);
@@ -42,27 +42,27 @@ function Page() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const payload = {
-      name: String(fd.get("name")),
+      event_name: String(fd.get("event_name")),
+      event_type: String(fd.get("event_type")),
       category: String(fd.get("category")),
       description: String(fd.get("description") || "") || null,
-      price_text: String(fd.get("price_text") || "") || null,
-      image_url: String(fd.get("image_url") || "") || null,
-      active: fd.get("active") === "on",
+      highlights: String(fd.get("highlights") || "") || null,
+      images: splitLines(String(fd.get("images") || "")),
     };
     const { error } = editing
-      ? await supabase.from("upgrades").update(payload).eq("id", editing.id)
-      : await supabase.from("upgrades").insert(payload);
+      ? await supabase.from("portfolio_items").update(payload).eq("id", editing.id)
+      : await supabase.from("portfolio_items").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success(editing ? "Upgrade atualizado" : "Upgrade criado");
+    toast.success(editing ? "Portfólio atualizado" : "Item publicado");
     setOpen(false);
     setEditing(null);
     load();
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("upgrades").delete().eq("id", id);
+    const { error } = await supabase.from("portfolio_items").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Upgrade excluído");
+    toast.success("Item removido");
     load();
   };
 
@@ -70,8 +70,8 @@ function Page() {
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Comercial</p>
-          <h1 className="font-serif text-4xl mt-2">Upgrades</h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Conteúdo</p>
+          <h1 className="font-serif text-4xl mt-2">Portfólio</h1>
         </div>
         <Dialog
           open={open}
@@ -89,38 +89,40 @@ function Page() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
-                {editing ? "Editar upgrade" : "Novo upgrade"}
+                {editing ? "Editar portfólio" : "Novo item"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={save} className="space-y-3">
               <div>
-                <Label>Nome</Label>
-                <Input name="name" required defaultValue={editing?.name ?? ""} />
+                <Label>Nome do evento</Label>
+                <Input name="event_name" required defaultValue={editing?.event_name ?? ""} />
               </div>
-              <div>
-                <Label>Categoria</Label>
-                <Input name="category" required defaultValue={editing?.category ?? ""} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Tipo</Label>
+                  <Input name="event_type" required defaultValue={editing?.event_type ?? ""} />
+                </div>
+                <div>
+                  <Label>Categoria</Label>
+                  <Input name="category" required defaultValue={editing?.category ?? ""} />
+                </div>
               </div>
               <div>
                 <Label>Descrição</Label>
                 <Textarea name="description" defaultValue={editing?.description ?? ""} />
               </div>
               <div>
-                <Label>Valor / texto</Label>
-                <Input
-                  name="price_text"
-                  placeholder="A partir de R$ ..."
-                  defaultValue={editing?.price_text ?? ""}
-                />
+                <Label>Destaques</Label>
+                <Textarea name="highlights" defaultValue={editing?.highlights ?? ""} />
               </div>
               <div>
-                <Label>Imagem (URL)</Label>
-                <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
+                <Label>Imagens (uma URL por linha)</Label>
+                <Textarea
+                  name="images"
+                  rows={5}
+                  defaultValue={(editing?.images ?? []).join("\n")}
+                />
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />
-                Visível para clientes
-              </label>
               <Button type="submit" className="w-full">
                 Salvar
               </Button>
@@ -129,32 +131,28 @@ function Page() {
         </Dialog>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((m) => (
-          <Card key={m.id} className={!m.active ? "opacity-70" : undefined}>
-            {m.image_url && (
+        {items.map((item) => (
+          <Card key={item.id}>
+            {item.images?.[0] && (
               <div
                 className="h-36 bg-muted bg-cover bg-center"
-                style={{ backgroundImage: `url(${m.image_url})` }}
+                style={{ backgroundImage: `url(${item.images[0]})` }}
               />
             )}
             <CardContent className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-serif text-xl">{m.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{m.category}</p>
-                </div>
-                <Badge variant={m.active ? "default" : "outline"}>
-                  {m.active ? "Ativo" : "Oculto"}
-                </Badge>
+              <div>
+                <p className="font-serif text-xl">{item.event_name}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {item.event_type} • {item.category}
+                </p>
               </div>
-              {m.description && <p className="text-sm mt-2">{m.description}</p>}
-              {m.price_text && <p className="text-sm text-gold mt-2">{m.price_text}</p>}
+              {item.description && <p className="text-sm">{item.description}</p>}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setEditing(m);
+                    setEditing(item);
                     setOpen(true);
                   }}
                 >
@@ -165,7 +163,7 @@ function Page() {
                   variant="ghost"
                   size="sm"
                   className="text-rose"
-                  onClick={() => remove(m.id)}
+                  onClick={() => remove(item.id)}
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Excluir
@@ -177,4 +175,12 @@ function Page() {
       </div>
     </div>
   );
+}
+
+function splitLines(value: string) {
+  const items = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : null;
 }

@@ -26,7 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (s?.user) {
         setTimeout(async () => {
@@ -35,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select("role")
             .eq("user_id", s.user.id);
           const roles = (data ?? []).map((r) => r.role as Role);
-          setRole(roles.includes("admin") ? "admin" : roles[0] ?? "client");
+          setRole(roles.includes("admin") ? "admin" : (roles[0] ?? "client"));
         }, 0);
       } else {
         setRole(null);
@@ -62,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         role,
         loading,
-        signOut: async () => { await supabase.auth.signOut(); },
+        signOut: async () => {
+          await supabase.auth.signOut();
+        },
       }}
     >
       {children}

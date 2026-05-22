@@ -1,7 +1,17 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { AppShell, type NavItem } from "@/components/AppShell";
-import { LayoutDashboard, Users, Calendar, ListChecks, Sparkles, UtensilsCrossed } from "lucide-react";
+import {
+  Calendar,
+  GalleryHorizontalEnd,
+  Images,
+  LayoutDashboard,
+  Lightbulb,
+  ListChecks,
+  Sparkles,
+  UtensilsCrossed,
+  Users,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Layout });
 
@@ -13,6 +23,10 @@ const nav: NavItem[] = [
   { to: "/admin/cardapios", label: "Cardápios", icon: UtensilsCrossed },
   { to: "/admin/upgrades", label: "Upgrades", icon: Sparkles },
   { to: "/admin/interesses", label: "Interesses", icon: Sparkles },
+  { to: "/admin/referencias", label: "Referências", icon: Images },
+  { to: "/admin/parceiros", label: "Parceiros", icon: Users },
+  { to: "/admin/dicas", label: "Dicas", icon: Lightbulb },
+  { to: "/admin/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
 ];
 
 function Layout() {
