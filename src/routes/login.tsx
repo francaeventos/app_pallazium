@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -18,22 +19,51 @@ const resetSchema = z.object({
 });
 const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
-  password: z
-    .string()
-    .min(10, "Use pelo menos 10 caracteres")
-    .regex(/[a-z]/, "Use pelo menos uma letra minúscula")
-    .regex(/[A-Z]/, "Use pelo menos uma letra maiúscula")
-    .regex(/[0-9]/, "Use pelo menos um número")
-    .regex(/[^A-Za-z0-9]/, "Use pelo menos um símbolo, como @, # ou !")
-    .max(72),
+  password: z.string().min(6, "Use pelo menos 6 caracteres").max(72),
 });
 
 const friendlyAuthError = (message: string) => {
   if (message.toLowerCase().includes("password is known to be weak")) {
-    return "Senha muito fraca. Use uma senha mais forte, com maiúscula, minúscula, número e símbolo.";
+    return "Senha muito fraca. Use pelo menos 6 caracteres e evite senhas óbvias, como 123456.";
   }
   return message;
 };
+
+function PasswordInput({
+  id,
+  name,
+  autoComplete,
+  minLength,
+}: {
+  id: string;
+  name: string;
+  autoComplete: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        required
+        minLength={minLength}
+        autoComplete={autoComplete}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition hover:text-foreground"
+        onClick={() => setVisible((current) => !current)}
+        aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -162,13 +192,7 @@ function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                  />
+                  <PasswordInput id="password" name="password" autoComplete="current-password" />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Entrando…" : "Entrar"}
@@ -220,17 +244,14 @@ function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
                     name="password"
-                    type="password"
-                    required
-                    minLength={10}
+                    minLength={6}
                     autoComplete="new-password"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use 10+ caracteres com maiúscula, minúscula, número e símbolo. Exemplo:
-                    Pallazium2026!
+                    Use pelo menos 6 caracteres. Evite senhas óbvias como 123456.
                   </p>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
