@@ -38,6 +38,7 @@ function Page() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [open, setOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
 
   const load = async () => {
     const [{ data: notificationRows }, { data: clientRows }] = await Promise.all([
@@ -58,7 +59,7 @@ function Page() {
   const create = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const client = clients.find((item) => item.id === String(fd.get("client_id")));
+    const client = clients.find((item) => item.id === selectedClientId);
     if (!client?.user_id) {
       return toast.error("Este cliente ainda não está vinculado a uma conta de acesso.");
     }
@@ -72,6 +73,7 @@ function Page() {
     if (error) return toast.error(error.message);
     toast.success("Notificação enviada");
     setOpen(false);
+    setSelectedClientId("");
     load();
   };
 
@@ -96,7 +98,13 @@ function Page() {
             Envie avisos para clientes vinculados e acompanhe o que já foi lido.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
+            if (!value) setSelectedClientId("");
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="lg">
               <Plus className="mr-2 h-4 w-4" />
@@ -110,7 +118,7 @@ function Page() {
             <form onSubmit={create} className="space-y-4">
               <div>
                 <Label>Cliente</Label>
-                <Select name="client_id" required>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um cliente vinculado" />
                   </SelectTrigger>

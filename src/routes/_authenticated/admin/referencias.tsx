@@ -46,6 +46,7 @@ function Page() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Reference | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState("");
 
   const load = async () => {
     const [{ data: refs }, { data: eventRows }] = await Promise.all([
@@ -66,11 +67,17 @@ function Page() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!editing) return;
+    setSelectedEventId(editing.event_id);
+  }, [editing]);
+
   const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    if (!selectedEventId) return toast.error("Selecione um evento.");
     const payload = {
-      event_id: String(fd.get("event_id")),
+      event_id: selectedEventId,
       title: String(fd.get("title")),
       category: String(fd.get("category")),
       image_url: String(fd.get("image_url") || "") || null,
@@ -84,6 +91,7 @@ function Page() {
     toast.success(editing ? "Referência atualizada" : "Referência criada");
     setOpen(false);
     setEditing(null);
+    setSelectedEventId("");
     load();
   };
 
@@ -105,7 +113,10 @@ function Page() {
           open={open}
           onOpenChange={(value) => {
             setOpen(value);
-            if (!value) setEditing(null);
+            if (!value) {
+              setEditing(null);
+              setSelectedEventId("");
+            }
           }}
         >
           <DialogTrigger asChild>
@@ -123,7 +134,7 @@ function Page() {
             <form onSubmit={save} className="space-y-3">
               <div>
                 <Label>Evento</Label>
-                <Select name="event_id" defaultValue={editing?.event_id}>
+                <Select value={selectedEventId} onValueChange={setSelectedEventId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -203,6 +214,7 @@ function Page() {
                   size="sm"
                   onClick={() => {
                     setEditing(item);
+                    setSelectedEventId(item.event_id);
                     setOpen(true);
                   }}
                 >

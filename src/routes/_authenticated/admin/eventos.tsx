@@ -64,6 +64,10 @@ function Page() {
   const [clients, setClients] = useState<Client[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EventWithClient | null>(null);
+  const [createClientId, setCreateClientId] = useState("");
+  const [createStatus, setCreateStatus] = useState<EventStatus>("novo");
+  const [editClientId, setEditClientId] = useState("");
+  const [editStatus, setEditStatus] = useState<EventStatus>("novo");
 
   const load = async () => {
     const [{ data: evs }, { data: cls }] = await Promise.all([
@@ -80,14 +84,20 @@ function Page() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!editing) return;
+    setEditClientId(editing.client_id);
+    setEditStatus(editing.status);
+  }, [editing]);
+
   const create = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const clientId = String(fd.get("client_id"));
+    if (!createClientId) return toast.error("Selecione um cliente.");
     const { data, error } = await supabase
       .from("events")
       .insert({
-        client_id: clientId,
+        client_id: createClientId,
         event_type: String(fd.get("event_type")),
         event_date: String(fd.get("event_date") || "") || null,
         start_time: String(fd.get("start_time") || "") || null,
@@ -96,7 +106,7 @@ function Page() {
         estimated_guests: Number(fd.get("estimated_guests")) || null,
         contracted_value: Number(fd.get("contracted_value")) || null,
         financial_status: String(fd.get("financial_status") || "") || null,
-        status: String(fd.get("status") || "novo") as EventStatus,
+        status: createStatus,
         client_notes: String(fd.get("client_notes") || "") || null,
         internal_notes: String(fd.get("internal_notes") || "") || null,
       })
@@ -114,6 +124,8 @@ function Page() {
 
     toast.success("Evento criado com checklist padrão");
     setOpen(false);
+    setCreateClientId("");
+    setCreateStatus("novo");
     load();
   };
 
@@ -121,10 +133,11 @@ function Page() {
     e.preventDefault();
     if (!editing) return;
     const fd = new FormData(e.currentTarget);
+    if (!editClientId) return toast.error("Selecione um cliente.");
     const { error } = await supabase
       .from("events")
       .update({
-        client_id: String(fd.get("client_id")),
+        client_id: editClientId,
         event_type: String(fd.get("event_type")),
         event_date: String(fd.get("event_date") || "") || null,
         start_time: String(fd.get("start_time") || "") || null,
@@ -133,7 +146,7 @@ function Page() {
         estimated_guests: Number(fd.get("estimated_guests")) || null,
         contracted_value: Number(fd.get("contracted_value")) || null,
         financial_status: String(fd.get("financial_status") || "") || null,
-        status: String(fd.get("status") || "novo") as EventStatus,
+        status: editStatus,
         client_notes: String(fd.get("client_notes") || "") || null,
         internal_notes: String(fd.get("internal_notes") || "") || null,
       })
@@ -148,7 +161,16 @@ function Page() {
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-serif text-4xl">Eventos</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
+            if (!value) {
+              setCreateClientId("");
+              setCreateStatus("novo");
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-1" />
@@ -162,7 +184,7 @@ function Page() {
             <form onSubmit={create} className="space-y-4">
               <div>
                 <Label>Cliente</Label>
-                <Select name="client_id" required>
+                <Select value={createClientId} onValueChange={setCreateClientId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -215,7 +237,10 @@ function Page() {
               </div>
               <div>
                 <Label>Status do evento</Label>
-                <Select name="status" defaultValue="novo">
+                <Select
+                  value={createStatus}
+                  onValueChange={(value) => setCreateStatus(value as EventStatus)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -290,7 +315,7 @@ function Page() {
             <form onSubmit={update} className="space-y-4">
               <div>
                 <Label>Cliente</Label>
-                <Select name="client_id" defaultValue={editing.client_id}>
+                <Select value={editClientId} onValueChange={setEditClientId}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -353,7 +378,10 @@ function Page() {
               </div>
               <div>
                 <Label>Status do evento</Label>
-                <Select name="status" defaultValue={editing.status}>
+                <Select
+                  value={editStatus}
+                  onValueChange={(value) => setEditStatus(value as EventStatus)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

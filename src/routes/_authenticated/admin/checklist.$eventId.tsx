@@ -41,6 +41,7 @@ function Page() {
   const [event, setEvent] = useState<EventWithClient | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [open, setOpen] = useState(false);
+  const [newPriority, setNewPriority] = useState<PriorityLevel>("media");
 
   const load = async () => {
     const [{ data: ev }, { data: its }] = await Promise.all([
@@ -54,22 +55,11 @@ function Page() {
     load();
   }, [eventId]);
 
-  const updateFromForm = async (id: string, e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const { error } = await supabase
-      .from("checklist_items")
-      .update({
-        title: String(fd.get("title")),
-        description: String(fd.get("description") || "") || null,
-        status: String(fd.get("status")) as ChecklistStatus,
-        priority: String(fd.get("priority")) as PriorityLevel,
-        due_date: String(fd.get("due_date") || "") || null,
-        attachment_url: String(fd.get("attachment_url") || "") || null,
-        internal_notes: String(fd.get("internal_notes") || "") || null,
-        sort_order: Number(fd.get("sort_order")) || 0,
-      })
-      .eq("id", id);
+  const updateItem = async (
+    id: string,
+    patch: Database["public"]["Tables"]["checklist_items"]["Update"],
+  ) => {
+    const { error } = await supabase.from("checklist_items").update(patch).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Item atualizado");
     load();
@@ -82,7 +72,7 @@ function Page() {
       event_id: eventId,
       title: String(fd.get("title")),
       description: String(fd.get("description") || "") || null,
-      priority: String(fd.get("priority")) as PriorityLevel,
+      priority: newPriority,
       due_date: String(fd.get("due_date") || "") || null,
       attachment_url: String(fd.get("attachment_url") || "") || null,
       internal_notes: String(fd.get("internal_notes") || "") || null,
@@ -91,6 +81,7 @@ function Page() {
     if (error) return toast.error(error.message);
     toast.success("Item adicionado");
     setOpen(false);
+    setNewPriority("media");
     load();
   };
 
@@ -114,7 +105,13 @@ function Page() {
             {event?.event_type} • {event?.event_date}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
+            if (!value) setNewPriority("media");
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="h-3 w-3 mr-1" />
@@ -146,7 +143,10 @@ function Page() {
               </div>
               <div>
                 <Label>Prioridade</Label>
-                <Select name="priority" defaultValue="media">
+                <Select
+                  value={newPriority}
+                  onValueChange={(value) => setNewPriority(value as PriorityLevel)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -171,94 +171,128 @@ function Page() {
 
       <div className="space-y-2">
         {items.map((it) => (
-          <Card key={it.id}>
-            <CardContent className="p-4">
-              <form onSubmit={(e) => updateFromForm(it.id, e)} className="space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">#{it.sort_order + 1}</Badge>
-                    {it.attachment_url && (
-                      <Button asChild variant="ghost" size="sm">
-                        <a href={it.attachment_url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Anexo
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" type="button" onClick={() => remove(it.id)}>
-                    <Trash2 className="h-4 w-4 text-rose" />
-                  </Button>
-                </div>
-                <div className="grid lg:grid-cols-[1fr_170px_140px] gap-3">
-                  <div>
-                    <Label>Título</Label>
-                    <Input name="title" defaultValue={it.title} required />
-                  </div>
-                  <div>
-                    <Label>Status</Label>
-                    <Select name="status" defaultValue={it.status}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendente">Pendente</SelectItem>
-                        <SelectItem value="em_analise">Em análise</SelectItem>
-                        <SelectItem value="concluido">Concluído</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Prioridade</Label>
-                    <Select name="priority" defaultValue={it.priority}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Textarea name="description" defaultValue={it.description ?? ""} />
-                </div>
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label>Prazo</Label>
-                    <Input name="due_date" type="date" defaultValue={it.due_date ?? ""} />
-                  </div>
-                  <div>
-                    <Label>Ordem</Label>
-                    <Input name="sort_order" type="number" defaultValue={it.sort_order} />
-                  </div>
-                  <div>
-                    <Label>Anexo (URL)</Label>
-                    <Input
-                      name="attachment_url"
-                      type="url"
-                      defaultValue={it.attachment_url ?? ""}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Notas internas</Label>
-                  <Textarea name="internal_notes" defaultValue={it.internal_notes ?? ""} />
-                </div>
-                <div className="flex justify-end">
-                  <Button size="sm" type="submit">
-                    <Save className="h-3 w-3 mr-1" />
-                    Salvar item
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <ChecklistItemCard key={it.id} item={it} onSave={updateItem} onRemove={remove} />
         ))}
       </div>
     </div>
+  );
+}
+
+function ChecklistItemCard({
+  item,
+  onSave,
+  onRemove,
+}: {
+  item: ChecklistItem;
+  onSave: (
+    id: string,
+    patch: Database["public"]["Tables"]["checklist_items"]["Update"],
+  ) => Promise<void>;
+  onRemove: (id: string) => void;
+}) {
+  const [status, setStatus] = useState<ChecklistStatus>(item.status);
+  const [priority, setPriority] = useState<PriorityLevel>(item.priority);
+
+  const submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    onSave(item.id, {
+      title: String(fd.get("title")),
+      description: String(fd.get("description") || "") || null,
+      status,
+      priority,
+      due_date: String(fd.get("due_date") || "") || null,
+      attachment_url: String(fd.get("attachment_url") || "") || null,
+      internal_notes: String(fd.get("internal_notes") || "") || null,
+      sort_order: Number(fd.get("sort_order")) || 0,
+    });
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <form onSubmit={submit} className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">#{item.sort_order + 1}</Badge>
+              {item.attachment_url && (
+                <Button asChild variant="ghost" size="sm">
+                  <a href={item.attachment_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Anexo
+                  </a>
+                </Button>
+              )}
+            </div>
+            <Button variant="ghost" size="icon" type="button" onClick={() => onRemove(item.id)}>
+              <Trash2 className="h-4 w-4 text-rose" />
+            </Button>
+          </div>
+          <div className="grid lg:grid-cols-[1fr_170px_140px] gap-3">
+            <div>
+              <Label>Título</Label>
+              <Input name="title" defaultValue={item.title} required />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={status} onValueChange={(value) => setStatus(value as ChecklistStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="em_analise">Em análise</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Prioridade</Label>
+              <Select
+                value={priority}
+                onValueChange={(value) => setPriority(value as PriorityLevel)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Média</SelectItem>
+                  <SelectItem value="baixa">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label>Descrição</Label>
+            <Textarea name="description" defaultValue={item.description ?? ""} />
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Prazo</Label>
+              <Input name="due_date" type="date" defaultValue={item.due_date ?? ""} />
+            </div>
+            <div>
+              <Label>Ordem</Label>
+              <Input name="sort_order" type="number" defaultValue={item.sort_order} />
+            </div>
+            <div>
+              <Label>Anexo (URL)</Label>
+              <Input name="attachment_url" type="url" defaultValue={item.attachment_url ?? ""} />
+            </div>
+          </div>
+          <div>
+            <Label>Notas internas</Label>
+            <Textarea name="internal_notes" defaultValue={item.internal_notes ?? ""} />
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" type="submit">
+              <Save className="h-3 w-3 mr-1" />
+              Salvar item
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

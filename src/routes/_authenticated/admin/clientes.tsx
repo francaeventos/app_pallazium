@@ -37,6 +37,8 @@ function Page() {
   const [clients, setClients] = useState<Client[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [createStatus, setCreateStatus] = useState<ClientStatus>("ativo");
+  const [editStatus, setEditStatus] = useState<ClientStatus>("ativo");
 
   const load = async () => {
     const { data } = await supabase
@@ -49,6 +51,11 @@ function Page() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!editing) return;
+    setEditStatus(editing.status);
+  }, [editing]);
+
   const create = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -59,11 +66,12 @@ function Page() {
       whatsapp: String(fd.get("whatsapp") || "") || null,
       document: String(fd.get("document") || "") || null,
       notes: String(fd.get("notes") || "") || null,
-      status: String(fd.get("status") || "ativo") as ClientStatus,
+      status: createStatus,
     });
     if (error) return toast.error(error.message);
     toast.success("Cliente cadastrado");
     setOpen(false);
+    setCreateStatus("ativo");
     load();
   };
 
@@ -80,7 +88,7 @@ function Page() {
         whatsapp: String(fd.get("whatsapp") || "") || null,
         document: String(fd.get("document") || "") || null,
         notes: String(fd.get("notes") || "") || null,
-        status: String(fd.get("status") || "ativo") as ClientStatus,
+        status: editStatus,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
@@ -103,7 +111,13 @@ function Page() {
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-serif text-4xl">Clientes</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
+            if (!value) setCreateStatus("ativo");
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-1" />
@@ -140,7 +154,10 @@ function Page() {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <Select name="status" defaultValue="ativo">
+                  <Select
+                    value={createStatus}
+                    onValueChange={(value) => setCreateStatus(value as ClientStatus)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -239,7 +256,10 @@ function Page() {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <Select name="status" defaultValue={editing.status}>
+                  <Select
+                    value={editStatus}
+                    onValueChange={(value) => setEditStatus(value as ClientStatus)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

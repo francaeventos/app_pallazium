@@ -107,6 +107,10 @@ export function AppShell({
     ? now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : "--:--";
   const unreadCount = notifications.filter((item) => !item.read).length;
+  const supportNumber = String(import.meta.env.VITE_WHATSAPP_SUPPORT ?? "").replace(/\D/g, "");
+  const supportHref = supportNumber
+    ? `https://wa.me/${supportNumber}`
+    : "https://wa.me/5511999999999";
 
   useEffect(() => {
     setProfileName(displayName);
@@ -130,6 +134,12 @@ export function AppShell({
         avatar_url: avatar || null,
       },
     });
+    if (!error && user) {
+      await supabase.from("profiles").upsert({
+        id: user.id,
+        full_name: fullName,
+      });
+    }
     setSavingProfile(false);
 
     if (error) return toast.error(error.message);
@@ -185,7 +195,7 @@ export function AppShell({
 
       <div className="pallazium-sidebar-brand border-t p-4">
         <a
-          href="https://wa.me/"
+          href={supportHref}
           target="_blank"
           rel="noreferrer"
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm font-medium text-white/80 transition hover:border-gold hover:bg-white/10 hover:text-white"

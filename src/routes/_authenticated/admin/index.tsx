@@ -43,6 +43,7 @@ function Dashboard() {
         { count: completed },
         { data: evs },
         { data: ints },
+        { data: menuInts },
         { count: critical },
       ] = await Promise.all([
         supabase
@@ -60,6 +61,7 @@ function Dashboard() {
           .order("event_date", { ascending: true })
           .limit(20),
         supabase.from("upgrade_interests").select("*").eq("status", "novo"),
+        supabase.from("menu_interests").select("*").eq("status", "novo"),
         supabase
           .from("checklist_items")
           .select("*", { count: "exact", head: true })
@@ -77,7 +79,7 @@ function Dashboard() {
         upcoming,
         critical: critical ?? 0,
         completed: completed ?? 0,
-        interests: ints?.length ?? 0,
+        interests: (ints?.length ?? 0) + (menuInts?.length ?? 0),
       });
       setEvents(evs ?? []);
     })();
