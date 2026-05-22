@@ -1,12 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEvent } from "@/hooks/use-my-event";
-import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, ChefHat, Plus, UtensilsCrossed } from "lucide-react";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
+import { Check, ChefHat, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -20,7 +20,6 @@ type MenuInterest = Pick<
 
 function Page() {
   const { data } = useMyEvent();
-  const { role } = useAuth();
   const [menus, setMenus] = useState<Menu[]>([]);
   const [interests, setInterests] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -87,27 +86,11 @@ function Page() {
       </div>
 
       {menus.length === 0 && (
-        <Card className="border-gold/30 bg-card">
-          <CardContent className="grid gap-6 p-6 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-champagne text-gold">
-              <ChefHat className="h-7 w-7" />
-            </div>
-            <div>
-              <h2 className="font-serif text-2xl">Nenhum cardápio cadastrado ainda</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Os cardápios publicados pelo admin aparecem aqui para o cliente registrar interesse.
-              </p>
-            </div>
-            {role === "admin" && (
-              <Button asChild>
-                <Link to="/admin/cardapios">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Cadastrar cardápio
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={ChefHat}
+          title="Cardápios em preparação"
+          description="A equipe Pallazium publica as opções gastronômicas conforme a curadoria do evento. Assim que houver cardápios ativos, você poderá visualizar os detalhes e registrar interesse por aqui."
+        />
       )}
 
       {Object.entries(byCat).map(([cat, items]) => (

@@ -5,6 +5,7 @@ import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -76,11 +77,11 @@ function Page() {
       </div>
 
       {upgrades.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Em breve teremos opções de upgrades.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Sparkles}
+          title="Experiências em curadoria"
+          description="As opções extras do Pallazium são publicadas pela equipe conforme o perfil do evento. Quando houver upgrades ativos, eles aparecerão aqui para você registrar interesse com um clique."
+        />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

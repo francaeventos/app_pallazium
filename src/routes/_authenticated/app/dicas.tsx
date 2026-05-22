@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Lightbulb } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -44,11 +45,11 @@ function Page() {
       </div>
 
       {items.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Nenhuma dica publicada no momento.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Lightbulb}
+          title="Dicas em organização"
+          description="As orientações da equipe serão publicadas aqui para apoiar suas próximas decisões e manter o planejamento do evento bem alinhado."
+        />
       )}
 
       {Object.entries(byCategory).map(([category, tips]) => (

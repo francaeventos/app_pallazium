@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
+import { Calendar, ExternalLink, ListChecks } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/checklist")({ component: ChecklistPage });
@@ -36,7 +37,15 @@ function ChecklistPage() {
   const { data, loading, reload } = useMyEvent();
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
   if (!data?.event)
-    return <div className="p-8 text-muted-foreground">Nenhum evento vinculado.</div>;
+    return (
+      <div className="p-6 lg:p-10 max-w-5xl mx-auto">
+        <ClientEmptyState
+          icon={Calendar}
+          title="Evento em configuração"
+          description="Sua conta já está ativa. Quando a equipe vincular o evento, seu checklist personalizado aparecerá aqui automaticamente."
+        />
+      </div>
+    );
 
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-5xl mx-auto">
@@ -45,11 +54,11 @@ function ChecklistPage() {
         <h1 className="font-serif text-4xl mt-2">Tudo que precisa estar pronto</h1>
       </div>
       {data.checklist.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Nosso time ainda vai montar seu checklist personalizado.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={ListChecks}
+          title="Checklist em montagem"
+          description="A equipe Pallazium está preparando os itens do seu evento. Quando o checklist for publicado, você poderá acompanhar status, prazos e observações por aqui."
+        />
       )}
       <div className="space-y-3">
         {data.checklist.map((item) => (

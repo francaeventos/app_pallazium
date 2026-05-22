@@ -2,7 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Circle, AlertTriangle, type LucideIcon } from "lucide-react";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Circle,
+  AlertTriangle,
+  type LucideIcon,
+} from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/pendencias")({ component: Page });
@@ -11,7 +19,15 @@ function Page() {
   const { data, loading } = useMyEvent();
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
   if (!data?.event)
-    return <div className="p-8 text-muted-foreground">Nenhum evento vinculado.</div>;
+    return (
+      <div className="p-6 lg:p-10 max-w-5xl mx-auto">
+        <ClientEmptyState
+          icon={Calendar}
+          title="Evento em configuração"
+          description="Assim que seu evento for vinculado à conta, esta página mostrará as decisões pendentes, prioridades e recomendações da equipe."
+        />
+      </div>
+    );
 
   const critical = data.checklist.filter((c) => c.priority === "alta" && c.status !== "concluido");
   const important = data.checklist.filter(

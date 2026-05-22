@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Images } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -38,11 +39,11 @@ function Page() {
       </div>
 
       {items.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Nenhum evento publicado no portfólio ainda.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Images}
+          title="Portfólio em curadoria"
+          description="A seleção de eventos realizados será publicada aqui para inspirar escolhas de estilo, decoração, gastronomia e experiência."
+        />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

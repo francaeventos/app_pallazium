@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import {
   Dialog,
   DialogContent,
@@ -149,19 +150,19 @@ function Page() {
       </div>
 
       {!data?.event && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Seu evento precisa estar vinculado para salvar referências.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Images}
+          title="Evento em configuração"
+          description="Assim que a equipe vincular seu evento à sua conta, você poderá salvar referências, links e ideias para orientar a curadoria Pallazium."
+        />
       )}
 
       {data?.event && items.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Nenhuma referência salva ainda.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Images}
+          title="Comece sua pasta de inspirações"
+          description="Use o botão “Nova referência” para guardar imagens, links e observações que ajudem a equipe a entender o estilo desejado para o evento."
+        />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

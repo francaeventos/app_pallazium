@@ -4,6 +4,7 @@ import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import {
   Calendar,
   MapPin,
@@ -37,18 +38,11 @@ function Dashboard() {
   if (!data?.client || !data?.event) {
     return (
       <div className="p-6 lg:p-12">
-        <Card className="max-w-2xl mx-auto bg-gradient-luxe border-0 shadow-luxe">
-          <CardContent className="p-10 text-center">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-gold mb-4">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <h2 className="font-serif text-3xl">Em breve, sua festa!</h2>
-            <p className="mt-3 text-muted-foreground">
-              Sua conta foi criada com sucesso. Nossa equipe está vinculando seu evento — você
-              receberá um aviso assim que estiver tudo pronto.
-            </p>
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Sparkles}
+          title="Sua área está em configuração"
+          description="Sua conta foi criada com sucesso. A equipe Pallazium está vinculando os dados do evento para liberar checklist, cardápios, referências e acompanhamento em um só lugar."
+        />
       </div>
     );
   }

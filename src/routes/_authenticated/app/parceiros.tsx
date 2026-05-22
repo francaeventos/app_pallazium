@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Instagram, MessageCircle, Phone, Users } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -45,11 +46,11 @@ function Page() {
       </div>
 
       {items.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Nenhum parceiro disponível no momento.
-          </CardContent>
-        </Card>
+        <ClientEmptyState
+          icon={Users}
+          title="Rede de parceiros em curadoria"
+          description="Os fornecedores recomendados serão exibidos aqui quando a equipe Pallazium publicar indicações alinhadas ao padrão do seu evento."
+        />
       )}
 
       {Object.entries(byCategory).map(([category, partners]) => (
