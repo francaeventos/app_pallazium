@@ -5,21 +5,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Link2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/clientes")({ component: Page });
 
+type Client = Database["public"]["Tables"]["clients"]["Row"];
+type ClientStatus = Database["public"]["Enums"]["client_status"];
+type LinkClientRpc = (
+  fn: "link_client_to_auth_user_by_email",
+  args: { _client_id: string },
+) => Promise<{ error: { message: string } | null }>;
+
 function Page() {
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Client | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false });
     setClients(data ?? []);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const create = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,10 +57,45 @@ function Page() {
       email: String(fd.get("email")),
       phone: String(fd.get("phone") || "") || null,
       whatsapp: String(fd.get("whatsapp") || "") || null,
+      document: String(fd.get("document") || "") || null,
+      notes: String(fd.get("notes") || "") || null,
+      status: String(fd.get("status") || "ativo") as ClientStatus,
     });
     if (error) return toast.error(error.message);
     toast.success("Cliente cadastrado");
     setOpen(false);
+    load();
+  };
+
+  const update = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editing) return;
+    const fd = new FormData(e.currentTarget);
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        full_name: String(fd.get("full_name")),
+        email: String(fd.get("email")),
+        phone: String(fd.get("phone") || "") || null,
+        whatsapp: String(fd.get("whatsapp") || "") || null,
+        document: String(fd.get("document") || "") || null,
+        notes: String(fd.get("notes") || "") || null,
+        status: String(fd.get("status") || "ativo") as ClientStatus,
+      })
+      .eq("id", editing.id);
+    if (error) return toast.error(error.message);
+    toast.success("Cliente atualizado");
+    setEditing(null);
+    load();
+  };
+
+  const linkByEmail = async (clientId: string) => {
+    const linkClient = supabase.rpc as unknown as LinkClientRpc;
+    const { error } = await linkClient("link_client_to_auth_user_by_email", {
+      _client_id: clientId,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Conta vinculada pelo e-mail");
     load();
   };
 
@@ -41,42 +104,171 @@ function Page() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-serif text-4xl">Clientes</h1>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo cliente</Button></DialogTrigger>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-1" />
+              Novo cliente
+            </Button>
+          </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle className="font-serif text-2xl">Novo cliente</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle className="font-serif text-2xl">Novo cliente</DialogTitle>
+            </DialogHeader>
             <form onSubmit={create} className="space-y-4">
-              <div><Label>Nome completo</Label><Input name="full_name" required maxLength={120} /></div>
-              <div><Label>E-mail</Label><Input name="email" type="email" required maxLength={255} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Telefone</Label><Input name="phone" maxLength={30} /></div>
-                <div><Label>WhatsApp</Label><Input name="whatsapp" maxLength={30} /></div>
+              <div>
+                <Label>Nome completo</Label>
+                <Input name="full_name" required maxLength={120} />
               </div>
-              <Button type="submit" className="w-full">Salvar</Button>
+              <div>
+                <Label>E-mail</Label>
+                <Input name="email" type="email" required maxLength={255} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" maxLength={30} />
+                </div>
+                <div>
+                  <Label>WhatsApp</Label>
+                  <Input name="whatsapp" maxLength={30} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>CPF/CNPJ</Label>
+                  <Input name="document" maxLength={30} />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select name="status" defaultValue="ativo">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                      <SelectItem value="evento_concluido">Evento concluído</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" maxLength={1000} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="font-serif text-xl">Lista</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="font-serif text-xl">Lista</CardTitle>
+        </CardHeader>
         <CardContent className="divide-y">
-          {clients.length === 0 && <p className="text-sm text-muted-foreground py-2">Nenhum cliente cadastrado.</p>}
+          {clients.length === 0 && (
+            <p className="text-sm text-muted-foreground py-2">Nenhum cliente cadastrado.</p>
+          )}
           {clients.map((c) => (
-            <div key={c.id} className="py-3 flex items-center justify-between">
+            <div key={c.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-medium">{c.full_name}</p>
-                <p className="text-xs text-muted-foreground">{c.email} {c.phone && `• ${c.phone}`}</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.email} {c.phone && `• ${c.phone}`}
+                </p>
                 {!c.user_id && <p className="text-xs text-rose mt-0.5">Sem conta vinculada</p>}
               </div>
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">{c.status.replace("_", " ")}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  {c.status.replace("_", " ")}
+                </span>
+                {!c.user_id && (
+                  <Button variant="outline" size="sm" onClick={() => linkByEmail(c.id)}>
+                    <Link2 className="h-3 w-3 mr-1" />
+                    Vincular
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => setEditing(c)}>
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Editar
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
       </Card>
 
+      <Dialog open={!!editing} onOpenChange={(value) => !value && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar cliente</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <form onSubmit={update} className="space-y-4">
+              <div>
+                <Label>Nome completo</Label>
+                <Input name="full_name" required maxLength={120} defaultValue={editing.full_name} />
+              </div>
+              <div>
+                <Label>E-mail</Label>
+                <Input
+                  name="email"
+                  type="email"
+                  required
+                  maxLength={255}
+                  defaultValue={editing.email}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" maxLength={30} defaultValue={editing.phone ?? ""} />
+                </div>
+                <div>
+                  <Label>WhatsApp</Label>
+                  <Input name="whatsapp" maxLength={30} defaultValue={editing.whatsapp ?? ""} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>CPF/CNPJ</Label>
+                  <Input name="document" maxLength={30} defaultValue={editing.document ?? ""} />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select name="status" defaultValue={editing.status}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                      <SelectItem value="evento_concluido">Evento concluído</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" maxLength={1000} defaultValue={editing.notes ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar alterações
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card className="bg-champagne/30 border-gold/30">
         <CardContent className="p-5 text-sm text-muted-foreground">
-          <p><strong className="text-foreground">Dica:</strong> peça ao cliente para criar a conta com o mesmo e-mail. Depois, vá em <em>Eventos</em> e edite o cliente para vincular o usuário usando o ID (em breve, vínculo automático por e-mail).</p>
+          <p>
+            <strong className="text-foreground">Dica:</strong> após liberar a conta no Supabase
+            Auth, cadastre o cliente com o mesmo e-mail e use o botão <em>Vincular</em>.
+          </p>
         </CardContent>
       </Card>
     </div>

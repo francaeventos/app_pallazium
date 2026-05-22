@@ -1,11 +1,49 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import type { Database } from "@/integrations/supabase/types";
+
+type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type ChecklistRow = Database["public"]["Tables"]["checklist_items"]["Row"];
+
+type ClientSummary = Pick<
+  ClientRow,
+  "id" | "full_name" | "email" | "phone" | "whatsapp" | "status"
+>;
+type EventSummary = Pick<
+  EventRow,
+  | "id"
+  | "client_id"
+  | "event_type"
+  | "event_date"
+  | "start_time"
+  | "end_time"
+  | "location"
+  | "estimated_guests"
+  | "status"
+  | "client_notes"
+>;
+type ChecklistSummary = Pick<
+  ChecklistRow,
+  | "id"
+  | "event_id"
+  | "title"
+  | "description"
+  | "status"
+  | "priority"
+  | "due_date"
+  | "client_notes"
+  | "attachment_url"
+  | "sort_order"
+  | "created_at"
+  | "updated_at"
+>;
 
 export interface EventBundle {
-  event: any | null;
-  client: any | null;
-  checklist: any[];
+  event: EventSummary | null;
+  client: ClientSummary | null;
+  checklist: ChecklistSummary[];
 }
 
 export function useMyEvent(): { data: EventBundle | null; loading: boolean; reload: () => void } {
@@ -21,33 +59,46 @@ export function useMyEvent(): { data: EventBundle | null; loading: boolean; relo
       setLoading(true);
       const { data: clients } = await supabase
         .from("clients")
-        .select("*")
+        .select("id, full_name, email, phone, whatsapp, status")
         .eq("user_id", user.id)
         .limit(1);
-      const client = clients?.[0] ?? null;
+      const client: ClientSummary | null = clients?.[0] ?? null;
       if (!client) {
-        if (!cancelled) { setData({ event: null, client: null, checklist: [] }); setLoading(false); }
+        if (!cancelled) {
+          setData({ event: null, client: null, checklist: [] });
+          setLoading(false);
+        }
         return;
       }
       const { data: events } = await supabase
         .from("events")
-        .select("*")
+        .select(
+          "id, client_id, event_type, event_date, start_time, end_time, location, estimated_guests, status, client_notes",
+        )
         .eq("client_id", client.id)
+        .neq("status", "cancelado")
         .order("event_date", { ascending: true })
         .limit(1);
-      const event = events?.[0] ?? null;
-      let checklist: any[] = [];
+      const event: EventSummary | null = events?.[0] ?? null;
+      let checklist: ChecklistSummary[] = [];
       if (event) {
         const { data: items } = await supabase
           .from("checklist_items")
-          .select("*")
+          .select(
+            "id, event_id, title, description, status, priority, due_date, client_notes, attachment_url, sort_order, created_at, updated_at",
+          )
           .eq("event_id", event.id)
           .order("sort_order");
         checklist = items ?? [];
       }
-      if (!cancelled) { setData({ event, client, checklist }); setLoading(false); }
+      if (!cancelled) {
+        setData({ event, client, checklist });
+        setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user, tick]);
 
   return { data, loading, reload: () => setTick((t) => t + 1) };

@@ -2,30 +2,66 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
+import { Calendar, AlertCircle, Sparkles, CheckCircle2, type LucideIcon } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/")({ component: Dashboard });
 
+type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type EventListItem = EventRow & {
+  clients: { full_name: string } | null;
+};
+
 function Dashboard() {
-  const [stats, setStats] = useState({ active: 0, upcoming: 0, critical: 0, completed: 0, interests: 0 });
-  const [events, setEvents] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    active: 0,
+    upcoming: 0,
+    critical: 0,
+    completed: 0,
+    interests: 0,
+  });
+  const [events, setEvents] = useState<EventListItem[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [{ count: active }, { count: completed }, { data: evs }, { data: ints }] = await Promise.all([
-        supabase.from("events").select("*", { count: "exact", head: true }).neq("status", "concluido").neq("status", "cancelado"),
-        supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "concluido"),
-        supabase.from("events").select("*, clients(full_name)").order("event_date", { ascending: true }).limit(20),
+      const [
+        { count: active },
+        { count: completed },
+        { data: evs },
+        { data: ints },
+        { count: critical },
+      ] = await Promise.all([
+        supabase
+          .from("events")
+          .select("*", { count: "exact", head: true })
+          .neq("status", "concluido")
+          .neq("status", "cancelado"),
+        supabase
+          .from("events")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "concluido"),
+        supabase
+          .from("events")
+          .select("*, clients(full_name)")
+          .order("event_date", { ascending: true })
+          .limit(20),
         supabase.from("upgrade_interests").select("*").eq("status", "novo"),
+        supabase
+          .from("checklist_items")
+          .select("*", { count: "exact", head: true })
+          .eq("priority", "alta")
+          .neq("status", "concluido"),
       ]);
 
       const today = new Date();
-      const upcoming = (evs ?? []).filter((e) => e.event_date && new Date(e.event_date) >= today).length;
+      const upcoming = (evs ?? []).filter(
+        (e) => e.event_date && new Date(e.event_date) >= today,
+      ).length;
 
       setStats({
         active: active ?? 0,
         upcoming,
-        critical: 0,
+        critical: critical ?? 0,
         completed: completed ?? 0,
         interests: ints?.length ?? 0,
       });
@@ -40,25 +76,34 @@ function Dashboard() {
         <h1 className="font-serif text-4xl mt-2">Visão geral</h1>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat icon={Calendar} label="Eventos ativos" value={stats.active} />
         <Stat icon={Calendar} label="Próximos" value={stats.upcoming} />
+        <Stat icon={AlertCircle} label="Pendências críticas" value={stats.critical} />
         <Stat icon={Sparkles} label="Novos interesses" value={stats.interests} />
         <Stat icon={CheckCircle2} label="Concluídos" value={stats.completed} />
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="font-serif text-2xl">Eventos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="font-serif text-2xl">Eventos</CardTitle>
+        </CardHeader>
         <CardContent>
-          {events.length === 0 && <p className="text-sm text-muted-foreground">Nenhum evento cadastrado.</p>}
+          {events.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum evento cadastrado.</p>
+          )}
           <div className="divide-y">
             {events.map((e) => (
               <div key={e.id} className="py-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium">{e.clients?.full_name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{e.event_type} • {e.event_date ?? "sem data"}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {e.event_type} • {e.event_date ?? "sem data"}
+                  </p>
                 </div>
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">{e.status.replace("_", " ")}</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  {e.status.replace("_", " ")}
+                </span>
               </div>
             ))}
           </div>
@@ -68,7 +113,7 @@ function Dashboard() {
   );
 }
 
-function Stat({ icon: Icon, label, value }: any) {
+function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
   return (
     <Card>
       <CardContent className="p-5">
