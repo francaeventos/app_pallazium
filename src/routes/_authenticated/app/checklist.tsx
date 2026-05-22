@@ -1,0 +1,110 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMyEvent } from "@/hooks/use-my-event";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/app/checklist")({ component: ChecklistPage });
+
+function ChecklistPage() {
+  const { data, loading, reload } = useMyEvent();
+  if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
+  if (!data?.event) return <div className="p-8 text-muted-foreground">Nenhum evento vinculado.</div>;
+
+  return (
+    <div className="p-6 lg:p-10 space-y-6 max-w-5xl mx-auto">
+      <div>
+        <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Checklist</p>
+        <h1 className="font-serif text-4xl mt-2">Tudo que precisa estar pronto</h1>
+      </div>
+      {data.checklist.length === 0 && (
+        <Card><CardContent className="p-8 text-center text-muted-foreground">Nosso time ainda vai montar seu checklist personalizado.</CardContent></Card>
+      )}
+      <div className="space-y-3">
+        {data.checklist.map((item) => (
+          <ChecklistRow key={item.id} item={item} onChange={reload} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChecklistRow({ item, onChange }: { item: any; onChange: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState(item.status);
+  const [notes, setNotes] = useState(item.client_notes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("checklist_items")
+      .update({ status, client_notes: notes })
+      .eq("id", item.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Atualizado");
+    onChange();
+    setOpen(false);
+  };
+
+  const statusColor: Record<string, string> = {
+    pendente: "bg-rose/10 text-rose border-rose/30",
+    em_analise: "bg-champagne text-ink border-gold/40",
+    concluido: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full text-left p-4 hover:bg-muted/40 transition-colors">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-medium">{item.title}</p>
+            {item.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{item.description}</p>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge variant="outline" className="capitalize text-xs">{item.priority}</Badge>
+            <Badge variant="outline" className={`capitalize text-xs ${statusColor[item.status]}`}>
+              {item.status.replace("_", " ")}
+            </Badge>
+          </div>
+        </div>
+      </button>
+      {open && (
+        <CardContent className="border-t pt-4 space-y-4">
+          {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
+          {item.due_date && <p className="text-xs text-muted-foreground">Prazo: {item.due_date}</p>}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium mb-1.5 block">Status</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="em_analise">Em análise</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1.5 block">Suas observações</label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={1000} />
+          </div>
+          {item.internal_notes && (
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Observações da equipe</p>
+              {item.internal_notes}
+            </div>
+          )}
+          <Button onClick={save} disabled={saving} size="sm">{saving ? "Salvando…" : "Salvar"}</Button>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
