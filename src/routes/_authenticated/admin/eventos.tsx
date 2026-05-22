@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { BRIDE_CHECKLIST, checklistTemplateForEvent } from "@/lib/checklist-templates";
 import {
   Select,
   SelectContent,
@@ -44,31 +45,6 @@ type EventWithClient = EventRow & {
   clients: { full_name: string; email: string } | null;
 };
 
-const DEFAULT_CHECKLIST = [
-  "Contrato fechado",
-  "Data confirmada",
-  "Local confirmado",
-  "Quantidade de convidados",
-  "Horário de início",
-  "Horário de encerramento",
-  "Cardápio escolhido",
-  "Bebidas definidas",
-  "Decoração definida",
-  "Mesa principal definida",
-  "Bolo escolhido",
-  "Doces definidos",
-  "Música ou DJ definido",
-  "Som e iluminação definidos",
-  "Fotógrafo definido",
-  "Filmagem definida",
-  "Cerimonial ou assessoria",
-  "Recepção",
-  "Segurança",
-  "Lembrancinhas",
-  "Cronograma do evento",
-  "Observações especiais",
-];
-
 function Page() {
   const [events, setEvents] = useState<EventWithClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -104,11 +80,12 @@ function Page() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     if (!createClientId) return toast.error("Selecione um cliente.");
+    const eventType = String(fd.get("event_type"));
     const { data, error } = await supabase
       .from("events")
       .insert({
         client_id: createClientId,
-        event_type: String(fd.get("event_type")),
+        event_type: eventType,
         event_date: String(fd.get("event_date") || "") || null,
         start_time: String(fd.get("start_time") || "") || null,
         end_time: String(fd.get("end_time") || "") || null,
@@ -124,15 +101,22 @@ function Page() {
       .single();
     if (error || !data) return toast.error(error?.message ?? "Erro");
 
-    const items = DEFAULT_CHECKLIST.map((title, i) => ({
+    const template = checklistTemplateForEvent(eventType);
+    const isBrideChecklist = template === BRIDE_CHECKLIST;
+    const items = template.map((item, i) => ({
       event_id: data.id,
-      title,
+      title: item.title,
+      description: item.description ?? null,
       sort_order: i,
-      priority: (i < 6 ? "alta" : i < 16 ? "media" : "baixa") as PriorityLevel,
+      priority: item.priority as PriorityLevel,
     }));
     await supabase.from("checklist_items").insert(items);
 
-    toast.success("Evento criado com checklist padrão");
+    toast.success(
+      isBrideChecklist
+        ? "Evento criado com checklist da noiva"
+        : "Evento criado com checklist padrão",
+    );
     setOpen(false);
     setCreateClientId("");
     setCreateStatus("novo");

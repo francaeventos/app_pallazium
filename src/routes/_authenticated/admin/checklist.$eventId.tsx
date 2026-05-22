@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { BRIDE_CHECKLIST } from "@/lib/checklist-templates";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, ListChecks, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, ListChecks, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -76,6 +77,7 @@ function Page() {
       priority: newPriority,
       due_date: String(fd.get("due_date") || "") || null,
       attachment_url: String(fd.get("attachment_url") || "") || null,
+      client_notes: String(fd.get("client_notes") || "") || null,
       internal_notes: String(fd.get("internal_notes") || "") || null,
       sort_order: items.length,
     });
@@ -83,6 +85,32 @@ function Page() {
     toast.success("Item adicionado");
     setOpen(false);
     setNewPriority("media");
+    load();
+  };
+
+  const applyBrideChecklist = async () => {
+    const existingTitles = new Set(items.map((item) => item.title.toLowerCase()));
+    const missingItems = BRIDE_CHECKLIST.filter(
+      (templateItem) => !existingTitles.has(templateItem.title.toLowerCase()),
+    );
+
+    if (missingItems.length === 0) {
+      return toast.info("Checklist da noiva já aplicado neste evento.");
+    }
+
+    const startOrder = items.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1;
+    const { error } = await supabase.from("checklist_items").insert(
+      missingItems.map((item, index) => ({
+        event_id: eventId,
+        title: item.title,
+        description: item.description ?? null,
+        priority: item.priority,
+        sort_order: startOrder + index,
+      })),
+    );
+
+    if (error) return toast.error(error.message);
+    toast.success("Checklist da noiva aplicado");
     load();
   };
 
@@ -103,75 +131,85 @@ function Page() {
       >
         <ArrowLeft className="h-3 w-3 mr-1" /> Eventos
       </Link>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl">{event?.clients?.full_name}</h1>
           <p className="text-sm text-muted-foreground capitalize">
             {event?.event_type} • {event?.event_date}
           </p>
         </div>
-        <Dialog
-          open={open}
-          onOpenChange={(value) => {
-            setOpen(value);
-            if (!value) setNewPriority("media");
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-3 w-3 mr-1" />
-              Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="font-serif text-2xl">Novo item</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={add} className="space-y-3">
-              <div>
-                <Label>Título</Label>
-                <Input name="title" required />
-              </div>
-              <div>
-                <Label>Descrição</Label>
-                <Textarea name="description" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Prazo</Label>
-                  <Input name="due_date" type="date" />
-                </div>
-                <div>
-                  <Label>Anexo (URL)</Label>
-                  <Input name="attachment_url" type="url" />
-                </div>
-              </div>
-              <div>
-                <Label>Prioridade</Label>
-                <Select
-                  value={newPriority}
-                  onValueChange={(value) => setNewPriority(value as PriorityLevel)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Média</SelectItem>
-                    <SelectItem value="baixa">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Notas internas</Label>
-                <Textarea name="internal_notes" />
-              </div>
-              <Button type="submit" className="w-full">
-                Adicionar
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={applyBrideChecklist}>
+            <Sparkles className="h-3 w-3 mr-1" />
+            Checklist da noiva
+          </Button>
+          <Dialog
+            open={open}
+            onOpenChange={(value) => {
+              setOpen(value);
+              if (!value) setNewPriority("media");
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-3 w-3 mr-1" />
+                Item
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-serif text-2xl">Novo item</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={add} className="space-y-3">
+                <div>
+                  <Label>Título</Label>
+                  <Input name="title" required />
+                </div>
+                <div>
+                  <Label>Descrição</Label>
+                  <Textarea name="description" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Prazo</Label>
+                    <Input name="due_date" type="date" />
+                  </div>
+                  <div>
+                    <Label>Anexo (URL)</Label>
+                    <Input name="attachment_url" type="url" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Prioridade</Label>
+                  <Select
+                    value={newPriority}
+                    onValueChange={(value) => setNewPriority(value as PriorityLevel)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alta">Alta</SelectItem>
+                      <SelectItem value="media">Média</SelectItem>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Observações da cliente</Label>
+                  <Textarea name="client_notes" />
+                </div>
+                <div>
+                  <Label>Notas internas</Label>
+                  <Textarea name="internal_notes" />
+                </div>
+                <Button type="submit" className="w-full">
+                  Adicionar
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -217,6 +255,7 @@ function ChecklistItemCard({
       priority,
       due_date: String(fd.get("due_date") || "") || null,
       attachment_url: String(fd.get("attachment_url") || "") || null,
+      client_notes: String(fd.get("client_notes") || "") || null,
       internal_notes: String(fd.get("internal_notes") || "") || null,
       sort_order: Number(fd.get("sort_order")) || 0,
     });
@@ -294,6 +333,10 @@ function ChecklistItemCard({
               <Label>Anexo (URL)</Label>
               <Input name="attachment_url" type="url" defaultValue={item.attachment_url ?? ""} />
             </div>
+          </div>
+          <div>
+            <Label>Observações da cliente</Label>
+            <Textarea name="client_notes" defaultValue={item.client_notes ?? ""} />
           </div>
           <div>
             <Label>Notas internas</Label>
