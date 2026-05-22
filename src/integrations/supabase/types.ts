@@ -14,16 +14,533 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      checklist_items: {
+        Row: {
+          attachment_url: string | null
+          client_notes: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          event_id: string
+          id: string
+          internal_notes: string | null
+          priority: Database["public"]["Enums"]["priority_level"]
+          sort_order: number
+          status: Database["public"]["Enums"]["checklist_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          client_notes?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          event_id: string
+          id?: string
+          internal_notes?: string | null
+          priority?: Database["public"]["Enums"]["priority_level"]
+          sort_order?: number
+          status?: Database["public"]["Enums"]["checklist_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          client_notes?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          event_id?: string
+          id?: string
+          internal_notes?: string | null
+          priority?: Database["public"]["Enums"]["priority_level"]
+          sort_order?: number
+          status?: Database["public"]["Enums"]["checklist_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          document: string | null
+          email: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["client_status"]
+          updated_at: string
+          user_id: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          document?: string | null
+          email: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
+          user_id?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          document?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
+          user_id?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      event_references: {
+        Row: {
+          category: string
+          created_at: string
+          event_id: string
+          id: string
+          image_url: string | null
+          inspiration_link: string | null
+          notes: string | null
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          event_id: string
+          id?: string
+          image_url?: string | null
+          inspiration_link?: string | null
+          notes?: string | null
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          image_url?: string | null
+          inspiration_link?: string | null
+          notes?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_references_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          client_id: string
+          client_notes: string | null
+          contracted_value: number | null
+          created_at: string
+          end_time: string | null
+          estimated_guests: number | null
+          event_date: string | null
+          event_type: string
+          financial_status: string | null
+          id: string
+          internal_notes: string | null
+          location: string | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["event_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          client_notes?: string | null
+          contracted_value?: number | null
+          created_at?: string
+          end_time?: string | null
+          estimated_guests?: number | null
+          event_date?: string | null
+          event_type: string
+          financial_status?: string | null
+          id?: string
+          internal_notes?: string | null
+          location?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["event_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          client_notes?: string | null
+          contracted_value?: number | null
+          created_at?: string
+          end_time?: string | null
+          estimated_guests?: number | null
+          event_date?: string | null
+          event_type?: string
+          financial_status?: string | null
+          id?: string
+          internal_notes?: string | null
+          location?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["event_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menus: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          items: string | null
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          items?: string | null
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          items?: string | null
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          instagram: string | null
+          name: string
+          phone: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          instagram?: string | null
+          name: string
+          phone?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          instagram?: string | null
+          name?: string
+          phone?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      portfolio_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          event_name: string
+          event_type: string
+          highlights: string | null
+          id: string
+          images: string[] | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          event_name: string
+          event_type: string
+          highlights?: string | null
+          id?: string
+          images?: string[] | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          event_name?: string
+          event_type?: string
+          highlights?: string | null
+          id?: string
+          images?: string[] | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          document: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          document?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          document?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      tips: {
+        Row: {
+          active: boolean
+          category: string
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          title: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      upgrade_interests: {
+        Row: {
+          client_id: string
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["interest_status"]
+          upgrade_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["interest_status"]
+          upgrade_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["interest_status"]
+          upgrade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrade_interests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_interests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_interests_upgrade_id_fkey"
+            columns: ["upgrade_id"]
+            isOneToOne: false
+            referencedRelation: "upgrades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upgrades: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price_text: string | null
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price_text?: string | null
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price_text?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "client"
+      checklist_status: "pendente" | "em_analise" | "concluido"
+      client_status: "ativo" | "inativo" | "evento_concluido"
+      event_status:
+        | "novo"
+        | "em_organizacao"
+        | "proximo"
+        | "concluido"
+        | "cancelado"
+      interest_status: "novo" | "em_contato" | "vendido" | "perdido"
+      priority_level: "baixa" | "media" | "alta"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +667,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "client"],
+      checklist_status: ["pendente", "em_analise", "concluido"],
+      client_status: ["ativo", "inativo", "evento_concluido"],
+      event_status: [
+        "novo",
+        "em_organizacao",
+        "proximo",
+        "concluido",
+        "cancelado",
+      ],
+      interest_status: ["novo", "em_contato", "vendido", "perdido"],
+      priority_level: ["baixa", "media", "alta"],
+    },
   },
 } as const
