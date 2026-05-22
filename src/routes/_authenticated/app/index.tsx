@@ -1,9 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Users, Clock, ChevronRight, Sparkles, ListChecks, UtensilsCrossed, Images, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  ChevronRight,
+  Sparkles,
+  ListChecks,
+  UtensilsCrossed,
+  Images,
+  AlertCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -32,7 +44,8 @@ function Dashboard() {
             </div>
             <h2 className="font-serif text-3xl">Em breve, sua festa!</h2>
             <p className="mt-3 text-muted-foreground">
-              Sua conta foi criada com sucesso. Nossa equipe está vinculando seu evento — você receberá um aviso assim que estiver tudo pronto.
+              Sua conta foi criada com sucesso. Nossa equipe está vinculando seu evento — você
+              receberá um aviso assim que estiver tudo pronto.
             </p>
           </CardContent>
         </Card>
@@ -47,16 +60,18 @@ function Dashboard() {
   const upcoming = checklist
     .filter((c) => c.status !== "concluido")
     .sort((a, b) => {
-      const p = { alta: 0, media: 1, baixa: 2 } as any;
+      const p: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
       return p[a.priority] - p[b.priority];
     })
     .slice(0, 4);
 
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
+    <div className="w-full space-y-6 p-4 sm:p-6 lg:p-7">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Olá, {client.full_name.split(" ")[0]}</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            Olá, {client.full_name.split(" ")[0]}
+          </p>
           <h1 className="font-serif text-4xl lg:text-5xl mt-2">Sua festa em detalhes</h1>
         </div>
         <Badge variant="outline" className="border-gold text-gold w-fit">
@@ -64,16 +79,34 @@ function Dashboard() {
         </Badge>
       </div>
 
-      <Card className="bg-gradient-luxe border-0 shadow-luxe overflow-hidden">
-        <CardContent className="p-8 lg:p-10">
+      <Card className="pallazium-feature-card shadow-luxe overflow-hidden">
+        <CardContent className="p-6 lg:p-8">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Info icon={<Sparkles className="h-4 w-4" />} label="Tipo" value={event.event_type} />
-            <Info icon={<Calendar className="h-4 w-4" />} label="Data" value={event.event_date ? format(new Date(event.event_date + "T00:00:00"), "dd 'de' MMM, yyyy", { locale: ptBR }) : "—"} />
-            <Info icon={<MapPin className="h-4 w-4" />} label="Local" value={event.location ?? "—"} />
-            <Info icon={<Users className="h-4 w-4" />} label="Convidados" value={event.estimated_guests ?? "—"} />
+            <Info
+              icon={<Calendar className="h-4 w-4" />}
+              label="Data"
+              value={
+                event.event_date
+                  ? format(new Date(event.event_date + "T00:00:00"), "dd 'de' MMM, yyyy", {
+                      locale: ptBR,
+                    })
+                  : "—"
+              }
+            />
+            <Info
+              icon={<MapPin className="h-4 w-4" />}
+              label="Local"
+              value={event.location ?? "—"}
+            />
+            <Info
+              icon={<Users className="h-4 w-4" />}
+              label="Convidados"
+              value={event.estimated_guests ?? "—"}
+            />
           </div>
           {(event.start_time || event.end_time) && (
-            <div className="mt-6 pt-6 border-t border-foreground/10 flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="pallazium-feature-muted mt-6 flex items-center gap-2 border-t border-white/10 pt-6 text-sm">
               <Clock className="h-4 w-4" />
               {event.start_time} {event.end_time && `— ${event.end_time}`}
             </div>
@@ -102,7 +135,9 @@ function Dashboard() {
             <CardTitle className="font-serif text-2xl">Próximas pendências</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {upcoming.length === 0 && <p className="text-sm text-muted-foreground">Tudo em ordem! 🥂</p>}
+            {upcoming.length === 0 && (
+              <p className="text-sm text-muted-foreground">Tudo em ordem! 🥂</p>
+            )}
             {upcoming.map((item) => (
               <Link
                 key={item.id}
@@ -111,7 +146,9 @@ function Dashboard() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{item.title}</p>
-                  <p className="text-xs text-muted-foreground capitalize">Prioridade {item.priority}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    Prioridade {item.priority}
+                  </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </Link>
@@ -120,12 +157,18 @@ function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="font-serif text-2xl">Acessos rápidos</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="font-serif text-2xl">Acessos rápidos</CardTitle>
+          </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             {quickLinks.map((q) => {
               const Icon = q.icon;
               return (
-                <Link key={q.to} to={q.to} className="group rounded-xl border p-4 hover:border-gold hover:shadow-soft transition-all">
+                <Link
+                  key={q.to}
+                  to={q.to}
+                  className="group rounded-xl border p-4 hover:border-gold hover:shadow-soft transition-all"
+                >
                   <Icon className="h-5 w-5 text-gold mb-2" />
                   <p className="text-sm font-medium">{q.label}</p>
                 </Link>
@@ -138,13 +181,13 @@ function Dashboard() {
   );
 }
 
-function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: any }) {
+function Info({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
     <div>
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+      <p className="pallazium-feature-muted flex items-center gap-1.5 text-xs uppercase tracking-wider">
         {icon} {label}
       </p>
-      <p className="mt-1.5 font-serif text-xl text-foreground capitalize">{value}</p>
+      <p className="pallazium-feature-value mt-1.5 font-serif text-xl capitalize">{value}</p>
     </div>
   );
 }

@@ -80,10 +80,13 @@ function LoginPage() {
       <div className="hidden lg:flex relative bg-gradient-luxe items-center justify-center p-12 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.78_0.12_85/0.25),transparent_60%)]" />
         <div className="relative max-w-md text-center">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-gold shadow-luxe mb-6">
-            <span className="font-serif text-3xl text-white">P</span>
+          <div className="mb-8 rounded-2xl border border-white/10 bg-black/75 p-6 shadow-luxe">
+            <img
+              src="/logo-pallazium.png"
+              alt="Espaço Pallazium"
+              className="mx-auto h-auto w-full object-contain"
+            />
           </div>
-          <h1 className="font-serif text-5xl text-ink leading-tight">Espaço Pallazium</h1>
           <p className="mt-3 text-sm uppercase tracking-[0.3em] text-muted-foreground">
             Área do Cliente
           </p>
@@ -96,10 +99,13 @@ function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 text-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-gold shadow-luxe mb-3">
-              <span className="font-serif text-2xl text-white">P</span>
+            <div className="mx-auto mb-3 max-w-56 rounded-xl bg-black p-3 shadow-luxe">
+              <img
+                src="/logo-pallazium.png"
+                alt="Espaço Pallazium"
+                className="h-auto w-full object-contain"
+              />
             </div>
-            <h1 className="font-serif text-3xl">Espaço Pallazium</h1>
           </div>
 
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">

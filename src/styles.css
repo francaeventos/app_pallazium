@@ -93,18 +93,8 @@
   --sidebar-border: oklch(0.36 0.08 325);
   --sidebar-ring: oklch(0.67 0.12 78);
 
-  --gradient-luxe: linear-gradient(
-    135deg,
-    oklch(0.34 0.12 325) 0%,
-    oklch(0.48 0.12 338) 45%,
-    oklch(0.73 0.12 78) 100%
-  );
-  --gradient-gold: linear-gradient(
-    135deg,
-    oklch(0.76 0.14 78) 0%,
-    oklch(0.52 0.13 70) 42%,
-    oklch(0.35 0.13 325) 100%
-  );
+  --gradient-luxe: oklch(0.93 0.035 66);
+  --gradient-gold: oklch(0.68 0.12 78);
   --shadow-luxe: 0 14px 42px -18px oklch(0.33 0.11 325 / 0.32);
   --shadow-soft: 0 3px 16px -7px oklch(0.25 0.07 325 / 0.16);
 }
@@ -170,11 +160,31 @@
 }
 
 .pallazium-sidebar {
-  background:
-    radial-gradient(circle at 20% 0%, oklch(0.42 0.13 325 / 0.45), transparent 34%),
-    linear-gradient(180deg, oklch(0.24 0.085 325) 0%, oklch(0.18 0.06 325) 100%);
+  background: oklch(0.19 0.065 325);
+  border-color: oklch(0.58 0.11 78 / 0.35);
+  box-shadow: inset -1px 0 0 oklch(0.58 0.11 78 / 0.22);
+  color: oklch(0.96 0.025 75);
+}
+
+.pallazium-topbar {
+  background: oklch(0.19 0.065 325);
   border-color: oklch(0.58 0.11 78 / 0.35);
   color: oklch(0.96 0.025 75);
+}
+
+.pallazium-logo-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.pallazium-logo-card::after {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  height: 0.45rem;
+  content: "";
+  background: #000;
 }
 
 .pallazium-sidebar-brand {
@@ -191,11 +201,25 @@
 }
 
 .pallazium-sidebar-link-active {
-  background: linear-gradient(135deg, oklch(0.75 0.13 78) 0%, oklch(0.62 0.11 70) 100%);
+  background: oklch(0.72 0.12 78);
   color: oklch(0.17 0.045 325);
   box-shadow: 0 10px 24px -18px oklch(0.9 0.12 78 / 0.75);
 }
 
 .pallazium-sidebar-muted {
   color: oklch(0.96 0.025 75 / 0.6);
+}
+
+.pallazium-feature-card {
+  background: oklch(0.22 0.075 325);
+  border: 1px solid oklch(0.63 0.11 78 / 0.45);
+  color: oklch(0.96 0.025 75);
+}
+
+.pallazium-feature-muted {
+  color: oklch(0.96 0.025 75 / 0.64);
+}
+
+.pallazium-feature-value {
+  color: oklch(0.98 0.018 75);
 }
