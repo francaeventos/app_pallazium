@@ -9,38 +9,302 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenticated/app/upgrades'
+import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
+import { Route as AuthenticatedAppPendenciasRouteImport } from './routes/_authenticated/app/pendencias'
+import { Route as AuthenticatedAppParceirosRouteImport } from './routes/_authenticated/app/parceiros'
+import { Route as AuthenticatedAppDicasRouteImport } from './routes/_authenticated/app/dicas'
+import { Route as AuthenticatedAppChecklistRouteImport } from './routes/_authenticated/app/checklist'
+import { Route as AuthenticatedAppCardapiosRouteImport } from './routes/_authenticated/app/cardapios'
+import { Route as AuthenticatedAdminUpgradesRouteImport } from './routes/_authenticated/admin/upgrades'
+import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_authenticated/admin/interesses'
+import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
+import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
+import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
+import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
+import { Route as AuthenticatedAdminChecklistEventIdRouteImport } from './routes/_authenticated/admin/checklist.$eventId'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAppUpgradesRoute =
+  AuthenticatedAppUpgradesRouteImport.update({
+    id: '/upgrades',
+    path: '/upgrades',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppReferenciasRoute =
+  AuthenticatedAppReferenciasRouteImport.update({
+    id: '/referencias',
+    path: '/referencias',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppPendenciasRoute =
+  AuthenticatedAppPendenciasRouteImport.update({
+    id: '/pendencias',
+    path: '/pendencias',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppParceirosRoute =
+  AuthenticatedAppParceirosRouteImport.update({
+    id: '/parceiros',
+    path: '/parceiros',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppDicasRoute = AuthenticatedAppDicasRouteImport.update({
+  id: '/dicas',
+  path: '/dicas',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppChecklistRoute =
+  AuthenticatedAppChecklistRouteImport.update({
+    id: '/checklist',
+    path: '/checklist',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppCardapiosRoute =
+  AuthenticatedAppCardapiosRouteImport.update({
+    id: '/cardapios',
+    path: '/cardapios',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAdminUpgradesRoute =
+  AuthenticatedAdminUpgradesRouteImport.update({
+    id: '/upgrades',
+    path: '/upgrades',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminInteressesRoute =
+  AuthenticatedAdminInteressesRouteImport.update({
+    id: '/interesses',
+    path: '/interesses',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminEventosRoute =
+  AuthenticatedAdminEventosRouteImport.update({
+    id: '/eventos',
+    path: '/eventos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminClientesRoute =
+  AuthenticatedAdminClientesRouteImport.update({
+    id: '/clientes',
+    path: '/clientes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCardapiosRoute =
+  AuthenticatedAdminCardapiosRouteImport.update({
+    id: '/cardapios',
+    path: '/cardapios',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminChecklistIndexRoute =
+  AuthenticatedAdminChecklistIndexRouteImport.update({
+    id: '/checklist/',
+    path: '/checklist/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminChecklistEventIdRoute =
+  AuthenticatedAdminChecklistEventIdRouteImport.update({
+    id: '/checklist/$eventId',
+    path: '/checklist/$eventId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/app': typeof AuthenticatedAppRouteWithChildren
+  '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
+  '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/eventos': typeof AuthenticatedAdminEventosRoute
+  '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
+  '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
+  '/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/app/parceiros': typeof AuthenticatedAppParceirosRoute
+  '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/app/referencias': typeof AuthenticatedAppReferenciasRoute
+  '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
+  '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
+  '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/eventos': typeof AuthenticatedAdminEventosRoute
+  '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
+  '/app/cardapios': typeof AuthenticatedAppCardapiosRoute
+  '/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/app/parceiros': typeof AuthenticatedAppParceirosRoute
+  '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/app/referencias': typeof AuthenticatedAppReferenciasRoute
+  '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/app': typeof AuthenticatedAppIndexRoute
+  '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
+  '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
+  '/_authenticated/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/_authenticated/admin/upgrades': typeof AuthenticatedAdminUpgradesRoute
+  '/_authenticated/app/cardapios': typeof AuthenticatedAppCardapiosRoute
+  '/_authenticated/app/checklist': typeof AuthenticatedAppChecklistRoute
+  '/_authenticated/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/_authenticated/app/parceiros': typeof AuthenticatedAppParceirosRoute
+  '/_authenticated/app/pendencias': typeof AuthenticatedAppPendenciasRoute
+  '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
+  '/_authenticated/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/app'
+    | '/admin/cardapios'
+    | '/admin/clientes'
+    | '/admin/eventos'
+    | '/admin/interesses'
+    | '/admin/upgrades'
+    | '/app/cardapios'
+    | '/app/checklist'
+    | '/app/dicas'
+    | '/app/parceiros'
+    | '/app/pendencias'
+    | '/app/referencias'
+    | '/app/upgrades'
+    | '/admin/'
+    | '/app/'
+    | '/admin/checklist/$eventId'
+    | '/admin/checklist/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/admin/cardapios'
+    | '/admin/clientes'
+    | '/admin/eventos'
+    | '/admin/interesses'
+    | '/admin/upgrades'
+    | '/app/cardapios'
+    | '/app/checklist'
+    | '/app/dicas'
+    | '/app/parceiros'
+    | '/app/pendencias'
+    | '/app/referencias'
+    | '/app/upgrades'
+    | '/admin'
+    | '/app'
+    | '/admin/checklist/$eventId'
+    | '/admin/checklist'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/admin'
+    | '/_authenticated/app'
+    | '/_authenticated/admin/cardapios'
+    | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/eventos'
+    | '/_authenticated/admin/interesses'
+    | '/_authenticated/admin/upgrades'
+    | '/_authenticated/app/cardapios'
+    | '/_authenticated/app/checklist'
+    | '/_authenticated/app/dicas'
+    | '/_authenticated/app/parceiros'
+    | '/_authenticated/app/pendencias'
+    | '/_authenticated/app/referencias'
+    | '/_authenticated/app/upgrades'
+    | '/_authenticated/admin/'
+    | '/_authenticated/app/'
+    | '/_authenticated/admin/checklist/$eventId'
+    | '/_authenticated/admin/checklist/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +312,204 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/app/upgrades': {
+      id: '/_authenticated/app/upgrades'
+      path: '/upgrades'
+      fullPath: '/app/upgrades'
+      preLoaderRoute: typeof AuthenticatedAppUpgradesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/referencias': {
+      id: '/_authenticated/app/referencias'
+      path: '/referencias'
+      fullPath: '/app/referencias'
+      preLoaderRoute: typeof AuthenticatedAppReferenciasRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/pendencias': {
+      id: '/_authenticated/app/pendencias'
+      path: '/pendencias'
+      fullPath: '/app/pendencias'
+      preLoaderRoute: typeof AuthenticatedAppPendenciasRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/parceiros': {
+      id: '/_authenticated/app/parceiros'
+      path: '/parceiros'
+      fullPath: '/app/parceiros'
+      preLoaderRoute: typeof AuthenticatedAppParceirosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/dicas': {
+      id: '/_authenticated/app/dicas'
+      path: '/dicas'
+      fullPath: '/app/dicas'
+      preLoaderRoute: typeof AuthenticatedAppDicasRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/checklist': {
+      id: '/_authenticated/app/checklist'
+      path: '/checklist'
+      fullPath: '/app/checklist'
+      preLoaderRoute: typeof AuthenticatedAppChecklistRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/cardapios': {
+      id: '/_authenticated/app/cardapios'
+      path: '/cardapios'
+      fullPath: '/app/cardapios'
+      preLoaderRoute: typeof AuthenticatedAppCardapiosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/admin/upgrades': {
+      id: '/_authenticated/admin/upgrades'
+      path: '/upgrades'
+      fullPath: '/admin/upgrades'
+      preLoaderRoute: typeof AuthenticatedAdminUpgradesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/interesses': {
+      id: '/_authenticated/admin/interesses'
+      path: '/interesses'
+      fullPath: '/admin/interesses'
+      preLoaderRoute: typeof AuthenticatedAdminInteressesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/eventos': {
+      id: '/_authenticated/admin/eventos'
+      path: '/eventos'
+      fullPath: '/admin/eventos'
+      preLoaderRoute: typeof AuthenticatedAdminEventosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/clientes': {
+      id: '/_authenticated/admin/clientes'
+      path: '/clientes'
+      fullPath: '/admin/clientes'
+      preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/cardapios': {
+      id: '/_authenticated/admin/cardapios'
+      path: '/cardapios'
+      fullPath: '/admin/cardapios'
+      preLoaderRoute: typeof AuthenticatedAdminCardapiosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/checklist/': {
+      id: '/_authenticated/admin/checklist/'
+      path: '/checklist'
+      fullPath: '/admin/checklist/'
+      preLoaderRoute: typeof AuthenticatedAdminChecklistIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/checklist/$eventId': {
+      id: '/_authenticated/admin/checklist/$eventId'
+      path: '/checklist/$eventId'
+      fullPath: '/admin/checklist/$eventId'
+      preLoaderRoute: typeof AuthenticatedAdminChecklistEventIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
+  AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
+  AuthenticatedAdminInteressesRoute: typeof AuthenticatedAdminInteressesRoute
+  AuthenticatedAdminUpgradesRoute: typeof AuthenticatedAdminUpgradesRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminChecklistEventIdRoute: typeof AuthenticatedAdminChecklistEventIdRoute
+  AuthenticatedAdminChecklistIndexRoute: typeof AuthenticatedAdminChecklistIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminCardapiosRoute: AuthenticatedAdminCardapiosRoute,
+  AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
+  AuthenticatedAdminInteressesRoute: AuthenticatedAdminInteressesRoute,
+  AuthenticatedAdminUpgradesRoute: AuthenticatedAdminUpgradesRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminChecklistEventIdRoute:
+    AuthenticatedAdminChecklistEventIdRoute,
+  AuthenticatedAdminChecklistIndexRoute: AuthenticatedAdminChecklistIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppCardapiosRoute: typeof AuthenticatedAppCardapiosRoute
+  AuthenticatedAppChecklistRoute: typeof AuthenticatedAppChecklistRoute
+  AuthenticatedAppDicasRoute: typeof AuthenticatedAppDicasRoute
+  AuthenticatedAppParceirosRoute: typeof AuthenticatedAppParceirosRoute
+  AuthenticatedAppPendenciasRoute: typeof AuthenticatedAppPendenciasRoute
+  AuthenticatedAppReferenciasRoute: typeof AuthenticatedAppReferenciasRoute
+  AuthenticatedAppUpgradesRoute: typeof AuthenticatedAppUpgradesRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+}
+
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppCardapiosRoute: AuthenticatedAppCardapiosRoute,
+  AuthenticatedAppChecklistRoute: AuthenticatedAppChecklistRoute,
+  AuthenticatedAppDicasRoute: AuthenticatedAppDicasRoute,
+  AuthenticatedAppParceirosRoute: AuthenticatedAppParceirosRoute,
+  AuthenticatedAppPendenciasRoute: AuthenticatedAppPendenciasRoute,
+  AuthenticatedAppReferenciasRoute: AuthenticatedAppReferenciasRoute,
+  AuthenticatedAppUpgradesRoute: AuthenticatedAppUpgradesRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+}
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
