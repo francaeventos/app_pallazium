@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { Images, Pencil, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, EyeOff, Images, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -49,6 +50,7 @@ function Page() {
       description: String(fd.get("description") || "") || null,
       highlights: String(fd.get("highlights") || "") || null,
       images: splitLines(String(fd.get("images") || "")),
+      active: fd.get("active") === "on",
     };
     const { error } = editing
       ? await supabase.from("portfolio_items").update(payload).eq("id", editing.id)
@@ -64,6 +66,16 @@ function Page() {
     const { error } = await supabase.from("portfolio_items").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Item removido");
+    load();
+  };
+
+  const toggleActive = async (item: PortfolioItem) => {
+    const { error } = await supabase
+      .from("portfolio_items")
+      .update({ active: !item.active })
+      .eq("id", item.id);
+    if (error) return toast.error(error.message);
+    toast.success(item.active ? "Item ocultado" : "Item publicado");
     load();
   };
 
@@ -129,6 +141,10 @@ function Page() {
                   defaultValue={(editing?.images ?? []).join("\n")}
                 />
               </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />
+                Visível para clientes
+              </label>
               <Button type="submit" className="w-full">
                 Salvar
               </Button>
@@ -147,7 +163,7 @@ function Page() {
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
-          <Card key={item.id}>
+          <Card key={item.id} className={!item.active ? "opacity-70" : undefined}>
             {item.images?.[0] && (
               <div
                 className="h-36 bg-muted bg-cover bg-center"
@@ -156,7 +172,12 @@ function Page() {
             )}
             <CardContent className="p-4 space-y-3">
               <div>
-                <p className="font-serif text-xl">{item.event_name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-serif text-xl">{item.event_name}</p>
+                  <Badge variant={item.active ? "default" : "outline"}>
+                    {item.active ? "Publicado" : "Oculto"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground capitalize">
                   {item.event_type} • {item.category}
                 </p>
@@ -173,6 +194,19 @@ function Page() {
                 >
                   <Pencil className="h-3 w-3 mr-1" />
                   Editar
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => toggleActive(item)}>
+                  {item.active ? (
+                    <>
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Ocultar
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3 mr-1" />
+                      Publicar
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"

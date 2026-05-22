@@ -19,6 +19,7 @@ function Page() {
     supabase
       .from("portfolio_items")
       .select("*")
+      .eq("active", true)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setItems(data ?? []);

@@ -365,6 +365,7 @@ export type Database = {
       };
       portfolio_items: {
         Row: {
+          active: boolean;
           category: string;
           created_at: string;
           description: string | null;
@@ -375,6 +376,7 @@ export type Database = {
           images: string[] | null;
         };
         Insert: {
+          active?: boolean;
           category: string;
           created_at?: string;
           description?: string | null;
@@ -385,6 +387,7 @@ export type Database = {
           images?: string[] | null;
         };
         Update: {
+          active?: boolean;
           category?: string;
           created_at?: string;
           description?: string | null;

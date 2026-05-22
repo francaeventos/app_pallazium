@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { Lightbulb, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Lightbulb, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -64,6 +64,16 @@ function Page() {
     const { error } = await supabase.from("tips").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Dica excluída");
+    load();
+  };
+
+  const toggleActive = async (item: Tip) => {
+    const { error } = await supabase
+      .from("tips")
+      .update({ active: !item.active })
+      .eq("id", item.id);
+    if (error) return toast.error(error.message);
+    toast.success(item.active ? "Dica ocultada" : "Dica publicada");
     load();
   };
 
@@ -160,6 +170,19 @@ function Page() {
                 >
                   <Pencil className="h-3 w-3 mr-1" />
                   Editar
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => toggleActive(item)}>
+                  {item.active ? (
+                    <>
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Ocultar
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3 mr-1" />
+                      Publicar
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
