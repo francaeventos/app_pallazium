@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Link2, Pencil, Plus, UserCheck, UserX } from "lucide-react";
+import { Link2, Pencil, Plus, Trash2, UserCheck, Users, UserX } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -114,6 +115,17 @@ function Page() {
     load();
   };
 
+  const remove = async (client: Client) => {
+    const confirmed = window.confirm(
+      `Excluir ${client.full_name}? Isso também remove eventos, checklists e interesses vinculados a este cliente.`,
+    );
+    if (!confirmed) return;
+    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    if (error) return toast.error(error.message);
+    toast.success("Cliente excluído");
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4">
@@ -194,7 +206,13 @@ function Page() {
         </CardHeader>
         <CardContent className="divide-y">
           {clients.length === 0 && (
-            <p className="text-sm text-muted-foreground py-2">Nenhum cliente cadastrado.</p>
+            <AdminEmptyState
+              icon={Users}
+              title="Cadastre o primeiro cliente"
+              description="Clientes são a base para vincular acesso, criar eventos, checklists, interesses e notificações."
+              actionLabel="Novo cliente"
+              onAction={() => setOpen(true)}
+            />
           )}
           {clients.map((c) => (
             <div key={c.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
@@ -239,6 +257,10 @@ function Page() {
                     Concluir
                   </Button>
                 )}
+                <Button variant="ghost" size="sm" className="text-rose" onClick={() => remove(c)}>
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Excluir
+                </Button>
               </div>
             </div>
           ))}

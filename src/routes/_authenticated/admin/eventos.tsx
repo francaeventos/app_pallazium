@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Ban, CheckCircle2, ListChecks, Pencil, Plus, RotateCcw } from "lucide-react";
+import {
+  Ban,
+  Calendar,
+  CheckCircle2,
+  ListChecks,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -164,6 +174,17 @@ function Page() {
     load();
   };
 
+  const remove = async (event: EventWithClient) => {
+    const confirmed = window.confirm(
+      `Excluir o evento de ${event.clients?.full_name ?? "cliente"}? Isso também remove checklist, referências e interesses vinculados.`,
+    );
+    if (!confirmed) return;
+    const { error } = await supabase.from("events").delete().eq("id", event.id);
+    if (error) return toast.error(error.message);
+    toast.success("Evento excluído");
+    load();
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4">
@@ -282,7 +303,13 @@ function Page() {
         </CardHeader>
         <CardContent className="divide-y">
           {events.length === 0 && (
-            <p className="text-sm text-muted-foreground py-2">Nenhum evento.</p>
+            <AdminEmptyState
+              icon={Calendar}
+              title="Crie o primeiro evento"
+              description="Eventos conectam o cliente ao checklist, referências, cardápios, upgrades e painel de acompanhamento."
+              actionLabel="Novo evento"
+              onAction={() => setOpen(true)}
+            />
           )}
           {events.map((e) => (
             <div key={e.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
@@ -338,6 +365,10 @@ function Page() {
                     Checklist
                   </Button>
                 </Link>
+                <Button variant="ghost" size="sm" className="text-rose" onClick={() => remove(e)}>
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Excluir
+                </Button>
               </div>
             </div>
           ))}

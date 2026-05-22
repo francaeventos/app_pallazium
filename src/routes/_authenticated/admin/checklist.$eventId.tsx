@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, ListChecks, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -86,7 +87,11 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    await supabase.from("checklist_items").delete().eq("id", id);
+    const confirmed = window.confirm("Excluir este item do checklist?");
+    if (!confirmed) return;
+    const { error } = await supabase.from("checklist_items").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Item removido");
     load();
   };
 
@@ -170,6 +175,15 @@ function Page() {
       </div>
 
       <div className="space-y-2">
+        {items.length === 0 && (
+          <AdminEmptyState
+            icon={ListChecks}
+            title="Adicione o primeiro item"
+            description="Este evento ainda não tem checklist. Crie tarefas para acompanhar decisões, prazos, anexos e notas internas."
+            actionLabel="Novo item"
+            onAction={() => setOpen(true)}
+          />
+        )}
         {items.map((it) => (
           <ChecklistItemCard key={it.id} item={it} onSave={updateItem} onRemove={remove} />
         ))}
