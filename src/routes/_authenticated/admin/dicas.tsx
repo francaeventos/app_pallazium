@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { Lightbulb, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -66,6 +67,11 @@ function Page() {
     load();
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
@@ -81,7 +87,7 @@ function Page() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-1" />
               Nova
             </Button>
@@ -120,6 +126,15 @@ function Page() {
           </DialogContent>
         </Dialog>
       </div>
+      {items.length === 0 && (
+        <AdminEmptyState
+          icon={Lightbulb}
+          title="Crie a primeira dica"
+          description="Use este espaço para orientar os clientes com prazos, decisões importantes e recomendações para o evento."
+          actionLabel="Nova dica"
+          onAction={openCreate}
+        />
+      )}
       <div className="grid lg:grid-cols-2 gap-4">
         {items.map((item) => (
           <Card key={item.id} className={!item.active ? "opacity-70" : undefined}>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -66,6 +67,11 @@ function Page() {
     load();
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
@@ -81,7 +87,7 @@ function Page() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-1" />
               Novo
             </Button>
@@ -128,6 +134,15 @@ function Page() {
           </DialogContent>
         </Dialog>
       </div>
+      {items.length === 0 && (
+        <AdminEmptyState
+          icon={Sparkles}
+          title="Cadastre o primeiro upgrade"
+          description="Publique experiências extras, serviços premium e adicionais comerciais para o cliente demonstrar interesse."
+          actionLabel="Novo upgrade"
+          onAction={openCreate}
+        />
+      )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((m) => (
           <Card key={m.id} className={!m.active ? "opacity-70" : undefined}>

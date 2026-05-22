@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { ExternalLink, GalleryHorizontalEnd, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -102,6 +103,15 @@ function Page() {
     load();
   };
 
+  const openCreate = () => {
+    if (events.length === 0) {
+      return toast.error("Cadastre um evento antes de criar referências.");
+    }
+    setEditing(null);
+    setSelectedEventId("");
+    setOpen(true);
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
@@ -120,7 +130,7 @@ function Page() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-1" />
               Nova
             </Button>
@@ -179,6 +189,15 @@ function Page() {
           </DialogContent>
         </Dialog>
       </div>
+      {items.length === 0 && (
+        <AdminEmptyState
+          icon={GalleryHorizontalEnd}
+          title="Adicione a primeira referência"
+          description="Vincule inspirações ao evento do cliente para organizar estética, links e observações em um só lugar."
+          actionLabel="Nova referência"
+          onAction={openCreate}
+        />
+      )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
           <Card key={item.id}>

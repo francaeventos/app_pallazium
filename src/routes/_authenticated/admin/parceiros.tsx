@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { Handshake, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -69,6 +70,11 @@ function Page() {
     load();
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
@@ -84,7 +90,7 @@ function Page() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreate}>
               <Plus className="h-4 w-4 mr-1" />
               Novo
             </Button>
@@ -137,6 +143,15 @@ function Page() {
           </DialogContent>
         </Dialog>
       </div>
+      {items.length === 0 && (
+        <AdminEmptyState
+          icon={Handshake}
+          title="Cadastre o primeiro parceiro"
+          description="Monte uma vitrine de fornecedores recomendados para facilitar as próximas decisões do cliente."
+          actionLabel="Novo parceiro"
+          onAction={openCreate}
+        />
+      )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
           <Card key={item.id} className={!item.active ? "opacity-70" : undefined}>
