@@ -12,19 +12,18 @@ export const Route = createFileRoute("/login")({ component: LoginPage });
 
 const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
-  password: z.string().min(6, "Mínimo 6 caracteres").max(72),
+  password: z.string().min(1, "Informe a senha").max(72),
 });
 const resetSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
 });
 const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
-  password: z.string().min(6, "Use pelo menos 6 caracteres").max(72),
 });
 
 const friendlyAuthError = (message: string) => {
   if (message.toLowerCase().includes("password is known to be weak")) {
-    return "Essa senha é comum e foi bloqueada pelo login. Tente uma senha simples, mas menos óbvia, como Pallazium12 ou Festa2026.";
+    return "O login bloqueou essa senha por configuração do Auth. Para aceitar qualquer senha, desative a proteção de senha fraca no Lovable/Supabase Auth.";
   }
   return message;
 };
@@ -33,14 +32,12 @@ function PasswordInput({
   id,
   name,
   autoComplete,
-  minLength,
   value,
   onChange,
 }: {
   id: string;
   name: string;
   autoComplete: string;
-  minLength?: number;
   value?: string;
   onChange?: (value: string) => void;
 }) {
@@ -53,7 +50,6 @@ function PasswordInput({
         name={name}
         type={visible ? "text" : "password"}
         required
-        minLength={minLength}
         autoComplete={autoComplete}
         className="pr-10"
         value={value}
@@ -76,12 +72,6 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [signupPassword, setSignupPassword] = useState("");
-
-  const generateSignupPassword = () => {
-    const value = `Pallazium${Math.floor(1000 + Math.random() * 9000)}`;
-    setSignupPassword(value);
-    toast.success("Senha simples gerada. Você pode usar essa ou ajustar como preferir.");
-  };
 
   const handleResetPassword = async (email: FormDataEntryValue | null) => {
     const parsed = resetSchema.safeParse({ email });
@@ -131,12 +121,7 @@ function LoginPage() {
     });
     setLoading(false);
 
-    if (error) {
-      if (error.message.toLowerCase().includes("password is known to be weak")) {
-        generateSignupPassword();
-      }
-      return toast.error(friendlyAuthError(error.message));
-    }
+    if (error) return toast.error(friendlyAuthError(error.message));
     toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
   };
 
@@ -265,23 +250,11 @@ function LoginPage() {
                   <PasswordInput
                     id="signup-password"
                     name="password"
-                    minLength={6}
                     autoComplete="new-password"
                     value={signupPassword}
                     onChange={setSignupPassword}
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      Use pelo menos 6 caracteres. Evite palavras muito comuns.
-                    </p>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-gold underline-offset-4 hover:underline"
-                      onClick={generateSignupPassword}
-                    >
-                      Gerar senha simples
-                    </button>
-                  </div>
+                  <p className="text-xs text-muted-foreground">Pode usar a senha que preferir.</p>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Criando…" : "Criar conta"}
