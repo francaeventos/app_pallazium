@@ -1,8 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, AlertCircle, Sparkles, CheckCircle2, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertCircle,
+  Bell,
+  Calendar,
+  CheckCircle2,
+  GalleryHorizontalEnd,
+  Images,
+  Lightbulb,
+  ListChecks,
+  Sparkles,
+  UtensilsCrossed,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/")({ component: Dashboard });
@@ -74,6 +88,78 @@ function Dashboard() {
       <div>
         <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Equipe</p>
         <h1 className="font-serif text-4xl mt-2">Visão geral</h1>
+        <p className="mt-2 text-muted-foreground">
+          Central administrativa para gerenciar clientes, eventos e conteúdos da Área do Cliente.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminAction
+          to="/admin/clientes"
+          icon={Users}
+          title="Clientes"
+          text="Cadastrar, editar e vincular acesso."
+        />
+        <AdminAction
+          to="/admin/eventos"
+          icon={Calendar}
+          title="Eventos"
+          text="Criar eventos e dados do contrato."
+        />
+        <AdminAction
+          to="/admin/checklist"
+          icon={ListChecks}
+          title="Checklists"
+          text="Controlar pendências por evento."
+        />
+        <AdminAction
+          to="/admin/cardapios"
+          icon={UtensilsCrossed}
+          title="Cardápios"
+          text="Adicionar, editar e publicar menus."
+        />
+        <AdminAction
+          to="/admin/upgrades"
+          icon={Sparkles}
+          title="Upgrades"
+          text="Gerenciar ofertas comerciais."
+        />
+        <AdminAction
+          to="/admin/referencias"
+          icon={Images}
+          title="Referências"
+          text="Acompanhar inspirações dos clientes."
+        />
+        <AdminAction
+          to="/admin/parceiros"
+          icon={Users}
+          title="Parceiros"
+          text="Cadastrar fornecedores recomendados."
+        />
+        <AdminAction
+          to="/admin/dicas"
+          icon={Lightbulb}
+          title="Dicas"
+          text="Publicar orientações para clientes."
+        />
+        <AdminAction
+          to="/admin/portfolio"
+          icon={GalleryHorizontalEnd}
+          title="Portfólio"
+          text="Publicar eventos realizados."
+        />
+        <AdminAction
+          to="/admin/interesses"
+          icon={Sparkles}
+          title="Interesses"
+          text="Acompanhar cardápios e upgrades."
+        />
+        <AdminAction
+          to="/admin/notificacoes"
+          icon={Bell}
+          title="Notificações"
+          text="Enviar avisos para clientes."
+        />
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -122,6 +208,35 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
         </div>
         <p className="font-serif text-4xl mt-3">{value}</p>
         <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminAction({
+  to,
+  icon: Icon,
+  title,
+  text,
+}: {
+  to: string;
+  icon: LucideIcon;
+  title: string;
+  text: string;
+}) {
+  return (
+    <Card className="border-gold/20">
+      <CardContent className="flex h-full flex-col gap-4 p-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-champagne text-gold">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-serif text-xl">{title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+        </div>
+        <Button asChild variant="outline" size="sm" className="mt-auto w-fit">
+          <Link to={to}>Gerenciar</Link>
+        </Button>
       </CardContent>
     </Card>
   );

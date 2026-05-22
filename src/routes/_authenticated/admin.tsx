@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   ListChecks,
+  Bell,
   Sparkles,
   UtensilsCrossed,
   Users,
@@ -27,6 +28,7 @@ const nav: NavItem[] = [
   { to: "/admin/parceiros", label: "Parceiros", icon: Users },
   { to: "/admin/dicas", label: "Dicas", icon: Lightbulb },
   { to: "/admin/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
+  { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
 ];
 
 function Layout() {
