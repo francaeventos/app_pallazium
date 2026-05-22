@@ -29,22 +29,22 @@ export function AppShell({
     to === "/app" || to === "/admin" ? location.pathname === to : location.pathname.startsWith(to);
 
   const SideNav = () => (
-    <div className="flex h-full flex-col text-sidebar-foreground">
-      <div className="p-6 border-b border-sidebar-border">
+    <div className="pallazium-sidebar flex h-full flex-col">
+      <div className="pallazium-sidebar-brand border-b p-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center shadow-luxe">
-            <span className="font-serif text-lg text-white">P</span>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-gold shadow-luxe">
+            <span className="font-serif text-xl text-white">P</span>
           </div>
           <div>
-            <p className="font-serif text-lg leading-none text-sidebar-foreground">Pallazium</p>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-sidebar-foreground/65 mt-1">
+            <p className="font-serif text-xl leading-none text-white">Pallazium</p>
+            <p className="pallazium-sidebar-muted mt-1 text-[10px] uppercase tracking-[0.28em]">
               {title}
             </p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {nav.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.to);
@@ -53,10 +53,8 @@ export function AppShell({
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all ${
+                active ? "pallazium-sidebar-link-active font-semibold" : "pallazium-sidebar-link"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -66,8 +64,8 @@ export function AppShell({
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-sidebar-foreground/65 mb-2 truncate">{user?.email}</p>
+      <div className="pallazium-sidebar-brand border-t p-4">
+        <p className="pallazium-sidebar-muted mb-2 truncate text-xs">{user?.email}</p>
         <Button
           variant="ghost"
           size="sm"
@@ -75,7 +73,7 @@ export function AppShell({
             await signOut();
             navigate({ to: "/login" });
           }}
-          className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
+          className="w-full justify-start text-white/75 hover:bg-white/10 hover:text-white"
         >
           <LogOut className="h-4 w-4 mr-2" /> Sair
         </Button>
@@ -85,7 +83,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex w-64 border-r border-sidebar-border bg-sidebar">
+      <aside className="hidden w-72 border-r lg:flex">
         <SideNav />
       </aside>
 
@@ -103,7 +101,7 @@ export function AppShell({
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 bg-sidebar">
+            <SheetContent side="left" className="w-72 p-0">
               <SideNav />
             </SheetContent>
           </Sheet>
