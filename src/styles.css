@@ -223,3 +223,64 @@
 .pallazium-feature-value {
   color: oklch(0.98 0.018 75);
 }
+
+main {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+main > div[class*="max-w-"] {
+  width: 100%;
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+main p,
+main a,
+main span {
+  overflow-wrap: anywhere;
+}
+
+main .grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  main > div {
+    padding: 1.25rem !important;
+  }
+
+  main .lg\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main .lg\:grid-cols-2,
+  main .lg\:grid-cols-\[1fr_170px_140px\] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  main > div {
+    padding: 1rem !important;
+  }
+
+  main h1.font-serif {
+    font-size: 2rem;
+    line-height: 2.25rem;
+  }
+
+  main .sm\:grid-cols-2,
+  main .sm\:grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  main > div[class*="max-w-"] {
+    max-width: 80rem;
+    margin-right: auto;
+    margin-left: auto;
+  }
+}

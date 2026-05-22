@@ -210,7 +210,7 @@ export function AppShell({
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
+          <SheetContent side="left" className="w-[82vw] max-w-72 p-0">
             <SideNav />
           </SheetContent>
         </Sheet>
@@ -253,7 +253,7 @@ export function AppShell({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80">
             <DropdownMenuLabel>Notificações</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {notifications.length === 0 && (

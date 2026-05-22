@@ -42,7 +42,16 @@ CREATE POLICY "Client creates menu interests"
 ON public.menu_interests
 FOR INSERT
 TO authenticated
-WITH CHECK (public.client_owns_event(client_id, event_id, auth.uid()));
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.clients c ON c.id = e.client_id
+    WHERE e.id = menu_interests.event_id
+      AND c.id = menu_interests.client_id
+      AND c.user_id = auth.uid()
+  )
+);
 
 DROP POLICY IF EXISTS "Client updates refs" ON public.event_references;
 CREATE POLICY "Client updates refs"
