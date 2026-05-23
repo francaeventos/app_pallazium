@@ -146,6 +146,7 @@ function Page() {
                   label="Imagem"
                   defaultValue={editing?.image_url ?? ""}
                   folder="parceiros"
+                  publicBucket={false}
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">
