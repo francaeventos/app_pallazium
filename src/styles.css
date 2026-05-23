@@ -51,71 +51,71 @@
 :root {
   --radius: 0.75rem;
 
-  /* Pallazium LP — roxo magenta, champagne, dourado e oliva */
-  --background: #f4e2d7;
-  --foreground: #211321;
-  --ink: #211321;
+  /* Espaço Pallazium — Pantone 7554 C, Pantone 872 C e tons quentes do salão */
+  --background: #f4efe8;
+  --foreground: #2b241c;
+  --ink: #2b241c;
 
-  --card: #fffaf5;
-  --card-foreground: #211321;
-  --popover: #fffaf5;
-  --popover-foreground: #211321;
+  --card: #fffaf7;
+  --card-foreground: #2b241c;
+  --popover: #fffaf7;
+  --popover-foreground: #2b241c;
 
-  --primary: #7a006d;
-  --primary-foreground: #fff7ec;
+  --primary: #4a3c2e;
+  --primary-foreground: #fffaf7;
 
-  --secondary: #6d5a28;
-  --secondary-foreground: #fff7ec;
+  --secondary: #907554;
+  --secondary-foreground: #fffaf7;
 
-  --muted: #ead7c7;
-  --muted-foreground: #6f5b62;
+  --muted: #e8ded1;
+  --muted-foreground: #6f6254;
 
-  --accent: #a00082;
-  --accent-foreground: #fff7ec;
+  --accent: #907554;
+  --accent-foreground: #fffaf7;
 
-  --gold: #c4a24f;
-  --rose: #97006f;
-  --champagne: #ead2b7;
+  --gold: #907554;
+  --rose: #7a4b3a;
+  --champagne: #e8dcc7;
 
   --destructive: #b02a2a;
-  --destructive-foreground: #fff7ec;
+  --destructive-foreground: #fffaf7;
 
-  --border: #d7bfa8;
-  --input: #ead7c7;
-  --ring: #c4a24f;
+  --border: #d7c7b4;
+  --input: #e8ded1;
+  --ring: #907554;
 
-  --sidebar: #260022;
-  --sidebar-foreground: #fff7ec;
-  --sidebar-primary: #7a006d;
-  --sidebar-primary-foreground: #fff7ec;
-  --sidebar-accent: #c4a24f;
-  --sidebar-accent-foreground: #211321;
-  --sidebar-border: #6d4d35;
-  --sidebar-ring: #c4a24f;
+  --sidebar: #2b241c;
+  --sidebar-foreground: #fffaf7;
+  --sidebar-primary: #4a3c2e;
+  --sidebar-primary-foreground: #fffaf7;
+  --sidebar-accent: #907554;
+  --sidebar-accent-foreground: #fffaf7;
+  --sidebar-border: #907554;
+  --sidebar-ring: #907554;
 
-  --gradient-luxe: #ead2b7;
-  --gradient-gold: #c4a24f;
-  --shadow-luxe: 0 18px 46px -20px rgb(38 0 34 / 0.38);
-  --shadow-soft: 0 8px 24px -16px rgb(38 0 34 / 0.22);
+  --gradient-luxe: #e8dcc7;
+  --gradient-gold: #907554;
+  --shadow-luxe: 0 18px 46px -20px rgb(43 36 28 / 0.42);
+  --shadow-soft: 0 8px 24px -16px rgb(43 36 28 / 0.24);
 }
 
 .dark {
-  --background: #160015;
-  --foreground: #fff7ec;
-  --card: #23101e;
-  --card-foreground: #fff7ec;
-  --popover: #23101e;
-  --popover-foreground: #fff7ec;
-  --primary: #c4a24f;
-  --primary-foreground: #211321;
-  --secondary: #3f351f;
-  --secondary-foreground: #fff7ec;
-  --muted: #2e1a28;
-  --muted-foreground: #d9c2ba;
-  --accent: #7a006d;
-  --accent-foreground: #fff7ec;
-  --border: rgb(255 247 236 / 0.14);
-  --input: rgb(255 247 236 / 0.16);
+  --background: #17120e;
+  --foreground: #fffaf7;
+  --card: #241d16;
+  --card-foreground: #fffaf7;
+  --popover: #241d16;
+  --popover-foreground: #fffaf7;
+  --primary: #907554;
+  --primary-foreground: #fffaf7;
+  --secondary: #4a3c2e;
+  --secondary-foreground: #fffaf7;
+  --muted: #30271f;
+  --muted-foreground: #d9cab8;
+  --accent: #907554;
+  --accent-foreground: #fffaf7;
+  --border: rgb(255 250 247 / 0.14);
+  --input: rgb(255 250 247 / 0.16);
 }
 
 @layer base {
@@ -161,16 +161,16 @@
 }
 
 .pallazium-sidebar {
-  background: #260022;
-  border-color: rgb(196 162 79 / 0.36);
-  box-shadow: inset -1px 0 0 rgb(196 162 79 / 0.26);
-  color: #fff7ec;
+  background: #2b241c;
+  border-color: rgb(144 117 84 / 0.42);
+  box-shadow: inset -1px 0 0 rgb(144 117 84 / 0.3);
+  color: #fffaf7;
 }
 
 .pallazium-topbar {
-  background: #700064;
-  border-color: rgb(196 162 79 / 0.36);
-  color: #fff7ec;
+  background: #4a3c2e;
+  border-color: rgb(144 117 84 / 0.42);
+  color: #fffaf7;
 }
 
 .pallazium-logo-card {
@@ -179,40 +179,93 @@
 }
 
 .pallazium-sidebar-brand {
-  border-color: rgb(196 162 79 / 0.32);
+  border-color: rgb(144 117 84 / 0.36);
 }
 
 .pallazium-sidebar-link {
-  color: rgb(255 247 236 / 0.72);
+  color: rgb(255 250 247 / 0.72);
 }
 
 .pallazium-sidebar-link:hover {
-  background: rgb(255 247 236 / 0.08);
-  color: #fff7ec;
+  background: rgb(255 250 247 / 0.08);
+  color: #fffaf7;
 }
 
 .pallazium-sidebar-link-active {
-  background: #c4a24f;
-  color: #211321;
-  box-shadow: 0 10px 24px -18px rgb(196 162 79 / 0.82);
+  background: #907554;
+  color: #fffaf7;
+  box-shadow: 0 10px 24px -18px rgb(144 117 84 / 0.82);
 }
 
 .pallazium-sidebar-muted {
-  color: rgb(255 247 236 / 0.62);
+  color: rgb(255 250 247 / 0.62);
 }
 
 .pallazium-feature-card {
-  background: #504320;
-  border: 1px solid rgb(196 162 79 / 0.5);
-  color: #fff7ec;
+  background: #4a3c2e;
+  border: 1px solid rgb(144 117 84 / 0.55);
+  color: #fffaf7;
 }
 
 .pallazium-feature-muted {
-  color: rgb(255 247 236 / 0.68);
+  color: rgb(255 250 247 / 0.68);
 }
 
 .pallazium-feature-value {
-  color: #fff7ec;
+  color: #fffaf7;
+}
+
+.pallazium-wordmark {
+  display: grid;
+  place-items: center;
+  min-height: 4.8rem;
+  border: 1px solid rgb(144 117 84 / 0.5);
+  background:
+    linear-gradient(90deg, transparent 8%, rgb(144 117 84 / 0.8) 8% 92%, transparent 92%) top
+      1.15rem center / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 12%, rgb(144 117 84 / 0.8) 12% 88%, transparent 88%) bottom
+      1.05rem center / 100% 1px no-repeat,
+    #f8f1e8;
+  color: #4a3c2e;
+}
+
+.pallazium-wordmark-space {
+  display: block;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  color: #907554;
+}
+
+.pallazium-wordmark-name {
+  display: block;
+  margin-top: 0.1rem;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: clamp(1.45rem, 8vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.pallazium-invitation-shell {
+  background:
+    radial-gradient(circle at 18% 10%, rgb(144 117 84 / 0.18), transparent 26rem),
+    linear-gradient(180deg, #f7f1e8 0%, #efe3d6 100%);
+}
+
+.pallazium-invitation-hero {
+  background:
+    linear-gradient(180deg, rgb(43 36 28 / 0.9), rgb(43 36 28 / 0.64)),
+    linear-gradient(135deg, #4a3c2e 0%, #907554 100%);
+}
+
+.pallazium-invitation-card {
+  border: 1px solid rgb(144 117 84 / 0.32);
+  background: rgb(255 250 247 / 0.94);
+  box-shadow: 0 24px 70px -40px rgb(43 36 28 / 0.55);
 }
 
 main {

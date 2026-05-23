@@ -160,13 +160,7 @@ export function AppShell({
     <div className="pallazium-sidebar flex h-full flex-col">
       <div className="pallazium-sidebar-brand border-b p-4">
         <div className="space-y-4">
-          <div className="pallazium-logo-card rounded-lg border border-white/10 bg-black">
-            <img
-              src="/logo-pallazium.png"
-              alt="Espaço Pallazium"
-              className="block h-auto w-full object-contain"
-            />
-          </div>
+          <LogoMark />
         </div>
       </div>
 
@@ -225,11 +219,9 @@ export function AppShell({
             <SideNav />
           </SheetContent>
         </Sheet>
-        <img
-          src="/logo-pallazium.png"
-          alt="Espaço Pallazium"
-          className="h-8 w-auto rounded bg-black px-1 lg:hidden"
-        />
+        <div className="lg:hidden">
+          <LogoMark compact />
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-3">
@@ -386,6 +378,22 @@ export function AppShell({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function LogoMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={`pallazium-wordmark rounded-lg px-3 ${compact ? "min-h-0 py-1.5" : "py-3"}`}
+      aria-label="Espaço Pallazium"
+    >
+      <div>
+        <span className={`pallazium-wordmark-space ${compact ? "text-[0.45rem]" : ""}`}>
+          ESPAÇO
+        </span>
+        <span className={`pallazium-wordmark-name ${compact ? "text-lg" : ""}`}>PALLAZIUM</span>
+      </div>
     </div>
   );
 }

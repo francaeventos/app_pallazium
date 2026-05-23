@@ -120,18 +120,24 @@ function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <section className="relative overflow-hidden">
+    <main className="pallazium-invitation-shell min-h-screen">
+      <section className="pallazium-invitation-hero relative overflow-hidden">
         {invitation.cover_image_url && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-35"
+            className="absolute inset-0 bg-cover bg-center opacity-45"
             style={{ backgroundImage: `url(${invitation.cover_image_url})` }}
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,13,28,0.92),rgba(20,13,28,0.78))]" />
-        <div className="relative mx-auto max-w-4xl px-6 py-20 text-center text-white">
-          <p className="text-xs uppercase tracking-[0.35em] text-gold">Espaço Pallazium</p>
-          <h1 className="mt-4 font-serif text-5xl lg:text-7xl">{invitation.title}</h1>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(144,117,84,0.22),transparent_34rem)]" />
+        <div className="relative mx-auto max-w-5xl px-6 py-20 text-center text-white lg:py-28">
+          <div className="mx-auto mb-8 w-fit border-y border-gold/70 px-8 py-3">
+            <p className="font-serif text-xs uppercase tracking-[0.55em] text-gold">Espaço</p>
+            <p className="mt-1 font-serif text-3xl font-bold tracking-wide text-white">PALLAZIUM</p>
+          </div>
+          <p className="text-xs uppercase tracking-[0.35em] text-gold">Convite especial</p>
+          <h1 className="mx-auto mt-4 max-w-4xl font-serif text-5xl leading-none lg:text-7xl">
+            {invitation.title}
+          </h1>
           {invitation.message && (
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/80">
               {invitation.message}
@@ -158,7 +164,7 @@ function Page() {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 py-10 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card>
+        <Card className="pallazium-invitation-card">
           <CardContent className="p-6 space-y-4">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
@@ -206,7 +212,7 @@ function Page() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="pallazium-invitation-card">
           <CardContent className="p-6 space-y-4">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">RSVP</p>
@@ -259,7 +265,7 @@ function Page() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 pb-12">
-        <Card>
+        <Card className="pallazium-invitation-card">
           <CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
             <InfoBox label="Cerimônia" value={invitation.ceremony_location} />
             <InfoBox label="Recepção" value={invitation.reception_location} />
