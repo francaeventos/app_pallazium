@@ -176,7 +176,6 @@ function Page() {
         Number(fd.get("allowed_companions")) || 0,
       ),
       rsvp_status: status,
-      dietary_restrictions: String(fd.get("dietary_restrictions") || "") || null,
       notes: String(fd.get("notes") || "") || null,
       public_token: editingGuest?.public_token || createPublicToken(),
       responded_at: status === "pendente" ? null : new Date().toISOString(),
@@ -395,13 +394,16 @@ function Page() {
                   <Input name="map_url" type="url" defaultValue={invitation?.map_url ?? ""} />
                 </div>
                 <div>
-                  <Label>Lista de presentes</Label>
+                  <Label>Lista externa de presentes</Label>
                   <Input
                     name="gift_list_url"
                     type="url"
                     placeholder="https://..."
                     defaultValue={invitation?.gift_list_url ?? ""}
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Opcional. A lista principal agora é criada pelo cliente dentro do sistema.
+                  </p>
                 </div>
                 <div>
                   <Label>Texto para WhatsApp</Label>
@@ -464,7 +466,6 @@ function Page() {
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
                       Acompanhantes: {guest.confirmed_companions}/{guest.allowed_companions}
-                      {guest.dietary_restrictions && ` • Restrições: ${guest.dietary_restrictions}`}
                     </p>
                     {invitation?.status === "publicado" && guest.public_token && (
                       <p className="mt-2 break-all rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
@@ -688,10 +689,6 @@ function GuestForm({
             <SelectItem value="recusado">Recusado</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <div>
-        <Label>Restrições alimentares</Label>
-        <Input name="dietary_restrictions" defaultValue={guest?.dietary_restrictions ?? ""} />
       </div>
       <div>
         <Label>Observações internas</Label>

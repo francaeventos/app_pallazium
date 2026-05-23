@@ -305,6 +305,63 @@ export type Database = {
           },
         ];
       };
+      event_gift_items: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          image_url: string | null;
+          name: string;
+          notes: string | null;
+          reference_links: string[];
+          reserved_at: string | null;
+          reserved_by_guest_id: string | null;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          image_url?: string | null;
+          name: string;
+          notes?: string | null;
+          reference_links?: string[];
+          reserved_at?: string | null;
+          reserved_by_guest_id?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          image_url?: string | null;
+          name?: string;
+          notes?: string | null;
+          reference_links?: string[];
+          reserved_at?: string | null;
+          reserved_by_guest_id?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_gift_items_reserved_by_guest_id_fkey";
+            columns: ["reserved_by_guest_id"];
+            isOneToOne: false;
+            referencedRelation: "event_guests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_gift_items_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       event_invitations: {
         Row: {
           ceremony_location: string | null;
@@ -804,6 +861,7 @@ export type Database = {
           cover_image_url: string | null;
           dietary_restrictions: string | null;
           dress_code: string | null;
+          event_id: string;
           event_date: string | null;
           event_location: string | null;
           event_type: string;
@@ -835,6 +893,19 @@ export type Database = {
         };
         Returns: void;
       };
+      get_public_event_gift_items_by_token: {
+        Args: {
+          _guest_token: string;
+        };
+        Returns: Database["public"]["Tables"]["event_gift_items"]["Row"][];
+      };
+      release_event_gift_item_reservation: {
+        Args: {
+          _gift_item_id: string;
+          _guest_token: string;
+        };
+        Returns: Database["public"]["Tables"]["event_gift_items"]["Row"];
+      };
       respond_invitation_guest: {
         Args: {
           _confirmed_companions?: number;
@@ -849,6 +920,7 @@ export type Database = {
           cover_image_url: string | null;
           dietary_restrictions: string | null;
           dress_code: string | null;
+          event_id: string;
           event_date: string | null;
           event_location: string | null;
           event_type: string;
@@ -866,6 +938,13 @@ export type Database = {
           start_time: string | null;
           whatsapp_text: string | null;
         }[];
+      };
+      reserve_event_gift_item: {
+        Args: {
+          _gift_item_id: string;
+          _guest_token: string;
+        };
+        Returns: Database["public"]["Tables"]["event_gift_items"]["Row"];
       };
     };
     Enums: {

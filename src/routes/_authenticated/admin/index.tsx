@@ -1,21 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertCircle,
-  Bell,
   Calendar,
   CheckCircle2,
-  GalleryHorizontalEnd,
-  Images,
-  Lightbulb,
+  Clock,
   ListChecks,
   MailCheck,
-  Shield,
   Sparkles,
-  UtensilsCrossed,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -23,237 +19,360 @@ import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/")({ component: Dashboard });
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
-type EventListItem = EventRow & {
-  clients: { full_name: string } | null;
+type EventRow = Database["public"]["Tables"]["events"]["Row"] & {
+  clients: { full_name: string; email: string; whatsapp: string | null } | null;
 };
+type ChecklistItem = Pick<
+  Database["public"]["Tables"]["checklist_items"]["Row"],
+  "id" | "event_id" | "title" | "priority" | "status" | "due_date"
+>;
+type Guest = Pick<
+  Database["public"]["Tables"]["event_guests"]["Row"],
+  "event_id" | "rsvp_status" | "confirmed_companions"
+>;
+type UpgradeInterest = Pick<
+  Database["public"]["Tables"]["upgrade_interests"]["Row"],
+  "id" | "event_id" | "status" | "created_at"
+>;
+type MenuInterest = Pick<
+  Database["public"]["Tables"]["menu_interests"]["Row"],
+  "id" | "event_id" | "status" | "created_at"
+>;
 
 function Dashboard() {
-  const [stats, setStats] = useState({
-    active: 0,
-    upcoming: 0,
-    critical: 0,
-    completed: 0,
-    interests: 0,
-  });
-  const [events, setEvents] = useState<EventListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [upgradeInterests, setUpgradeInterests] = useState<UpgradeInterest[]>([]);
+  const [menuInterests, setMenuInterests] = useState<MenuInterest[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [
-        { count: active },
-        { count: completed },
-        { data: evs },
-        { data: ints },
-        { data: menuInts },
-        { count: critical },
-      ] = await Promise.all([
-        supabase
-          .from("events")
-          .select("*", { count: "exact", head: true })
-          .neq("status", "concluido")
-          .neq("status", "cancelado"),
-        supabase
-          .from("events")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "concluido"),
-        supabase
-          .from("events")
-          .select("*, clients(full_name)")
-          .order("event_date", { ascending: true })
-          .limit(20),
-        supabase.from("upgrade_interests").select("*").eq("status", "novo"),
-        supabase.from("menu_interests").select("*").eq("status", "novo"),
-        supabase
-          .from("checklist_items")
-          .select("*", { count: "exact", head: true })
-          .eq("priority", "alta")
-          .neq("status", "concluido"),
-      ]);
+      setLoading(true);
+      const [eventResult, checklistResult, guestResult, upgradeResult, menuResult] =
+        await Promise.all([
+          supabase
+            .from("events")
+            .select("*, clients(full_name, email, whatsapp)")
+            .order("event_date"),
+          supabase
+            .from("checklist_items")
+            .select("id, event_id, title, priority, status, due_date")
+            .neq("status", "concluido"),
+          supabase.from("event_guests").select("event_id, rsvp_status, confirmed_companions"),
+          supabase.from("upgrade_interests").select("id, event_id, status, created_at"),
+          supabase.from("menu_interests").select("id, event_id, status, created_at"),
+        ]);
 
-      const today = new Date();
-      const upcoming = (evs ?? []).filter(
-        (e) => e.event_date && new Date(e.event_date) >= today,
-      ).length;
-
-      setStats({
-        active: active ?? 0,
-        upcoming,
-        critical: critical ?? 0,
-        completed: completed ?? 0,
-        interests: (ints?.length ?? 0) + (menuInts?.length ?? 0),
-      });
-      setEvents(evs ?? []);
+      setEvents((eventResult.data ?? []) as EventRow[]);
+      setChecklistItems((checklistResult.data ?? []) as ChecklistItem[]);
+      setGuests((guestResult.data ?? []) as Guest[]);
+      setUpgradeInterests((upgradeResult.data ?? []) as UpgradeInterest[]);
+      setMenuInterests((menuResult.data ?? []) as MenuInterest[]);
+      setLoading(false);
     })();
   }, []);
 
+  const today = useMemo(() => startOfToday(), []);
+  const next30Days = useMemo(() => addDays(today, 30), [today]);
+  const activeEvents = events.filter(
+    (event) => event.status !== "concluido" && event.status !== "cancelado",
+  );
+  const upcomingEvents = activeEvents
+    .filter((event) => {
+      if (!event.event_date) return false;
+      const eventDate = parseDate(event.event_date);
+      return eventDate >= today && eventDate <= next30Days;
+    })
+    .slice(0, 6);
+  const overdueChecklist = checklistItems.filter(
+    (item) => item.due_date && parseDate(item.due_date) < today,
+  );
+  const highPriorityChecklist = checklistItems.filter(
+    (item) => item.priority === "alta" && item.status !== "concluido",
+  );
+  const openInterests = [...upgradeInterests, ...menuInterests].filter(
+    (interest) => interest.status === "novo" || interest.status === "em_contato",
+  );
+
+  const guestTotals = guests.reduce(
+    (acc, guest) => {
+      acc.total += 1;
+      if (guest.rsvp_status === "confirmado") {
+        acc.confirmed += 1;
+        acc.people += 1 + guest.confirmed_companions;
+      }
+      if (guest.rsvp_status === "pendente") acc.pending += 1;
+      if (guest.rsvp_status === "recusado") acc.declined += 1;
+      return acc;
+    },
+    { total: 0, confirmed: 0, people: 0, pending: 0, declined: 0 },
+  );
+
+  const attentionItems = [
+    ...overdueChecklist.slice(0, 4).map((item) => ({
+      id: item.id,
+      title: item.title,
+      meta: `Checklist vencido • ${eventLabel(events, item.event_id)}`,
+      tone: "danger" as const,
+      to: "/admin/checklist/$eventId" as const,
+      params: { eventId: item.event_id },
+    })),
+    ...highPriorityChecklist
+      .filter((item) => !overdueChecklist.some((overdue) => overdue.id === item.id))
+      .slice(0, 4)
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        meta: `Alta prioridade • ${eventLabel(events, item.event_id)}`,
+        tone: "warning" as const,
+        to: "/admin/checklist/$eventId" as const,
+        params: { eventId: item.event_id },
+      })),
+  ].slice(0, 6);
+
+  if (loading) return <div className="p-8 text-muted-foreground">Carregando operação…</div>;
+
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
-      <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Equipe</p>
-        <h1 className="font-serif text-4xl mt-2">Visão geral</h1>
-        <p className="mt-2 text-muted-foreground">
-          Central administrativa para gerenciar clientes, eventos e conteúdos da Área do Cliente.
-        </p>
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            Operação Pallazium
+          </p>
+          <h1 className="font-serif text-4xl mt-2">Painel executivo</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Priorize próximos eventos, pendências críticas, confirmações e oportunidades comerciais.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link to="/admin/eventos">
+              <Calendar className="mr-2 h-4 w-4" />
+              Ver calendário
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/admin/interesses">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Interesses
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminAction
-          to="/admin/clientes"
-          icon={Users}
-          title="Clientes"
-          text="Cadastrar, editar e vincular acesso."
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Metric icon={Calendar} label="Eventos ativos" value={activeEvents.length} />
+        <Metric icon={Clock} label="Próximos 30 dias" value={upcomingEvents.length} />
+        <Metric
+          icon={AlertCircle}
+          label="Checklist em alerta"
+          value={highPriorityChecklist.length}
         />
-        <AdminAction
-          to="/admin/eventos"
-          icon={Calendar}
-          title="Eventos"
-          text="Criar eventos e dados do contrato."
-        />
-        <AdminAction
-          to="/admin/checklist"
-          icon={ListChecks}
-          title="Checklists"
-          text="Controlar pendências por evento."
-        />
-        <AdminAction
-          to="/admin/convites"
-          icon={MailCheck}
-          title="Convites"
-          text="RSVP, convidados e padrinhos."
-        />
-        <AdminAction
-          to="/admin/cardapios"
-          icon={UtensilsCrossed}
-          title="Cardápios"
-          text="Adicionar, editar e publicar menus."
-        />
-        <AdminAction
-          to="/admin/upgrades"
-          icon={Sparkles}
-          title="Upgrades"
-          text="Gerenciar ofertas comerciais."
-        />
-        <AdminAction
-          to="/admin/referencias"
-          icon={Images}
-          title="Referências"
-          text="Acompanhar inspirações dos clientes."
-        />
-        <AdminAction
-          to="/admin/parceiros"
-          icon={Users}
-          title="Parceiros"
-          text="Cadastrar fornecedores recomendados."
-        />
-        <AdminAction
-          to="/admin/dicas"
-          icon={Lightbulb}
-          title="Dicas"
-          text="Publicar orientações para clientes."
-        />
-        <AdminAction
-          to="/admin/portfolio"
-          icon={GalleryHorizontalEnd}
-          title="Portfólio"
-          text="Publicar eventos realizados."
-        />
-        <AdminAction
-          to="/admin/interesses"
-          icon={Sparkles}
-          title="Interesses"
-          text="Acompanhar cardápios e upgrades."
-        />
-        <AdminAction
-          to="/admin/notificacoes"
-          icon={Bell}
-          title="Notificações"
-          text="Enviar avisos para clientes."
-        />
-        <AdminAction
-          to="/admin/acessos"
-          icon={Shield}
-          title="Acessos"
-          text="Gerenciar permissões e perfis."
-        />
+        <Metric icon={MailCheck} label="RSVP pendentes" value={guestTotals.pending} />
+        <Metric icon={Sparkles} label="Interesses abertos" value={openInterests.length} />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Stat icon={Calendar} label="Eventos ativos" value={stats.active} />
-        <Stat icon={Calendar} label="Próximos" value={stats.upcoming} />
-        <Stat icon={AlertCircle} label="Pendências críticas" value={stats.critical} />
-        <Stat icon={Sparkles} label="Novos interesses" value={stats.interests} />
-        <Stat icon={CheckCircle2} label="Concluídos" value={stats.completed} />
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-serif text-2xl">Próximos eventos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingEvents.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum evento nos próximos 30 dias.</p>
+            )}
+            {upcomingEvents.map((event) => (
+              <EventRowCard
+                key={event.id}
+                event={event}
+                guests={guests}
+                checklist={checklistItems}
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-2xl">Atenção hoje</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {attentionItems.length === 0 && (
+                <div className="rounded-2xl border border-gold/20 bg-champagne/40 p-4">
+                  <p className="flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-4 w-4 text-gold" />
+                    Nenhuma pendência crítica
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Os checklists não têm itens vencidos ou de alta prioridade em aberto.
+                  </p>
+                </div>
+              )}
+              {attentionItems.map((item) => (
+                <Link
+                  key={item.id}
+                  to={item.to}
+                  params={item.params}
+                  className="block rounded-2xl border p-4 transition-colors hover:bg-muted/40"
+                >
+                  <Badge variant="outline" className={item.tone === "danger" ? "text-rose" : ""}>
+                    {item.tone === "danger" ? "Vencido" : "Alta prioridade"}
+                  </Badge>
+                  <p className="mt-2 font-medium">{item.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-2xl">RSVP geral</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              <MiniStat label="Convidados" value={guestTotals.total} />
+              <MiniStat label="Confirmados" value={guestTotals.confirmed} />
+              <MiniStat label="Pessoas" value={guestTotals.people} />
+              <MiniStat label="Recusados" value={guestTotals.declined} />
+              <Button asChild variant="outline" className="col-span-2">
+                <Link to="/admin/convites">Abrir convites e RSVP</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Eventos</CardTitle>
+          <CardTitle className="font-serif text-2xl">Atalhos de gestão</CardTitle>
         </CardHeader>
-        <CardContent>
-          {events.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum evento cadastrado.</p>
-          )}
-          <div className="divide-y">
-            {events.map((e) => (
-              <div key={e.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{e.clients?.full_name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {e.event_type} • {e.event_date ?? "sem data"}
-                  </p>
-                </div>
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {e.status.replace("_", " ")}
-                </span>
-              </div>
-            ))}
-          </div>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <QuickAction to="/admin/clientes" icon={Users} title="Clientes e acessos" />
+          <QuickAction to="/admin/checklist" icon={ListChecks} title="Checklists por evento" />
+          <QuickAction to="/admin/referencias" icon={Sparkles} title="Biblioteca de referências" />
+          <QuickAction to="/admin/notificacoes" icon={MailCheck} title="Enviar notificações" />
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
+function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <Icon className="h-5 w-5 text-gold" />
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-champagne text-gold">
+          <Icon className="h-5 w-5" />
         </div>
-        <p className="font-serif text-4xl mt-3">{value}</p>
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">{label}</p>
+        <div>
+          <p className="font-serif text-3xl leading-none">{value}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function AdminAction({
-  to,
-  icon: Icon,
-  title,
-  text,
+function EventRowCard({
+  event,
+  guests,
+  checklist,
 }: {
-  to: string;
-  icon: LucideIcon;
-  title: string;
-  text: string;
+  event: EventRow;
+  guests: Guest[];
+  checklist: ChecklistItem[];
 }) {
+  const eventGuests = guests.filter((guest) => guest.event_id === event.id);
+  const confirmed = eventGuests.filter((guest) => guest.rsvp_status === "confirmado").length;
+  const pending = eventGuests.filter((guest) => guest.rsvp_status === "pendente").length;
+  const openChecklist = checklist.filter((item) => item.event_id === event.id).length;
+
   return (
-    <Card className="border-gold/20">
-      <CardContent className="flex h-full flex-col gap-4 p-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-champagne text-gold">
-          <Icon className="h-5 w-5" />
+    <div className="grid gap-3 rounded-2xl border p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-serif text-2xl">{event.clients?.full_name ?? "Cliente"}</p>
+          <Badge variant="outline" className="capitalize">
+            {event.status.replace("_", " ")}
+          </Badge>
         </div>
-        <div>
-          <p className="font-serif text-xl">{title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {event.event_type} • {formatDate(event.event_date)} • {event.estimated_guests ?? "?"}{" "}
+          convidados
+        </p>
+        <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+          <span>RSVP confirmados: {confirmed}</span>
+          <span>Pendentes: {pending}</span>
+          <span>Checklist aberto: {openChecklist}</span>
         </div>
-        <Button asChild variant="outline" size="sm" className="mt-auto w-fit">
-          <Link to={to}>Gerenciar</Link>
+      </div>
+      <div className="flex flex-wrap gap-2 lg:justify-end">
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/checklist/$eventId" params={{ eventId: event.id }}>
+            Checklist
+          </Link>
         </Button>
-      </CardContent>
-    </Card>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/convites">RSVP</Link>
+        </Button>
+        <Button asChild size="sm">
+          <Link to="/admin/eventos">Evento</Link>
+        </Button>
+      </div>
+    </div>
   );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <p className="font-serif text-3xl">{value}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function QuickAction({ to, icon: Icon, title }: { to: string; icon: LucideIcon; title: string }) {
+  return (
+    <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
+      <Link to={to}>
+        <Icon className="h-4 w-4 text-gold" />
+        {title}
+      </Link>
+    </Button>
+  );
+}
+
+function eventLabel(events: EventRow[], eventId: string) {
+  const event = events.find((item) => item.id === eventId);
+  return event ? `${event.clients?.full_name ?? "Cliente"} • ${event.event_type}` : "Evento";
+}
+
+function startOfToday() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function parseDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "sem data";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(parseDate(value));
 }

@@ -28,6 +28,10 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  List,
   ListChecks,
   Pencil,
   Plus,
@@ -47,6 +51,13 @@ type PriorityLevel = Database["public"]["Enums"]["priority_level"];
 type FinancialStatusOption = Database["public"]["Tables"]["financial_status_options"]["Row"];
 type EventWithClient = EventRow & {
   clients: { full_name: string; email: string } | null;
+};
+type EventViewMode = "list" | "calendar";
+type CalendarDay = {
+  key: string;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  events: EventWithClient[];
 };
 
 const DEFAULT_FINANCIAL_STATUSES: FinancialStatusOption[] = [
@@ -78,6 +89,21 @@ function Page() {
   );
   const [createFinancialStatus, setCreateFinancialStatus] = useState("Em aberto");
   const [editFinancialStatus, setEditFinancialStatus] = useState("Em aberto");
+  const [viewMode, setViewMode] = useState<EventViewMode>("list");
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+
+  const calendarDays = useMemo(
+    () => buildCalendarDays(events, calendarMonth),
+    [events, calendarMonth],
+  );
+  const calendarMonthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("pt-BR", {
+        month: "long",
+        year: "numeric",
+      }).format(calendarMonth),
+    [calendarMonth],
+  );
 
   const load = async () => {
     const [{ data: evs }, { data: cls }, { data: financialOptions }] = await Promise.all([
@@ -388,9 +414,63 @@ function Page() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-xl">Todos os eventos</CardTitle>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <CardTitle className="font-serif text-xl">
+              {viewMode === "calendar" ? "Calendário de eventos" : "Todos os eventos"}
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-xl border bg-muted/30 p-1">
+                <Button
+                  type="button"
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="mr-1 h-4 w-4" />
+                  Lista
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === "calendar" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("calendar")}
+                >
+                  <Calendar className="mr-1 h-4 w-4" />
+                  Calendário
+                </Button>
+              </div>
+              {viewMode === "calendar" && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCalendarMonth(addMonths(calendarMonth, -1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-w-40 capitalize"
+                    onClick={() => setCalendarMonth(startOfMonth(new Date()))}
+                  >
+                    {calendarMonthLabel}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="divide-y">
+        <CardContent className={viewMode === "list" ? "divide-y" : ""}>
           {events.length === 0 && (
             <AdminEmptyState
               icon={Calendar}
@@ -400,67 +480,25 @@ function Page() {
               onAction={() => setOpen(true)}
             />
           )}
-          {events.map((e) => (
-            <div key={e.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium">{e.clients?.full_name ?? "—"}</p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {e.event_type} • {e.event_date ?? "sem data"} • {e.estimated_guests ?? "?"}{" "}
-                  convidados
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {e.status.replace("_", " ")}
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(e)}>
-                  <Pencil className="h-3 w-3 mr-1" />
-                  Editar
-                </Button>
-                {e.status !== "concluido" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => updateEventStatus(e.id, "concluido")}
-                  >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Concluir
-                  </Button>
-                )}
-                {e.status !== "cancelado" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-rose"
-                    onClick={() => updateEventStatus(e.id, "cancelado")}
-                  >
-                    <Ban className="h-3 w-3 mr-1" />
-                    Cancelar
-                  </Button>
-                )}
-                {(e.status === "cancelado" || e.status === "concluido") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => updateEventStatus(e.id, "em_organizacao")}
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Reabrir
-                  </Button>
-                )}
-                <Link to="/admin/checklist/$eventId" params={{ eventId: e.id }}>
-                  <Button variant="outline" size="sm">
-                    <ListChecks className="h-3 w-3 mr-1" />
-                    Checklist
-                  </Button>
-                </Link>
-                <Button variant="ghost" size="sm" className="text-rose" onClick={() => remove(e)}>
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Excluir
-                </Button>
-              </div>
-            </div>
-          ))}
+          {events.length > 0 &&
+            (viewMode === "list" ? (
+              events.map((event) => (
+                <EventListItem
+                  key={event.id}
+                  event={event}
+                  onEdit={setEditing}
+                  onRemove={remove}
+                  onUpdateStatus={updateEventStatus}
+                />
+              ))
+            ) : (
+              <EventCalendar
+                days={calendarDays}
+                onEdit={setEditing}
+                onRemove={remove}
+                onUpdateStatus={updateEventStatus}
+              />
+            ))}
         </CardContent>
       </Card>
 
@@ -576,6 +614,189 @@ function Page() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function EventListItem({
+  event,
+  onEdit,
+  onRemove,
+  onUpdateStatus,
+}: {
+  event: EventWithClient;
+  onEdit: (event: EventWithClient) => void;
+  onRemove: (event: EventWithClient) => void;
+  onUpdateStatus: (eventId: string, status: EventStatus) => void;
+}) {
+  return (
+    <div className="py-3 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="font-medium">{event.clients?.full_name ?? "—"}</p>
+        <p className="text-xs text-muted-foreground capitalize">
+          {event.event_type} • {event.event_date ?? "sem data"} • {event.estimated_guests ?? "?"}{" "}
+          convidados
+        </p>
+      </div>
+      <EventActions
+        event={event}
+        onEdit={onEdit}
+        onRemove={onRemove}
+        onUpdateStatus={onUpdateStatus}
+      />
+    </div>
+  );
+}
+
+function EventCalendar({
+  days,
+  onEdit,
+  onRemove,
+  onUpdateStatus,
+}: {
+  days: CalendarDay[];
+  onEdit: (event: EventWithClient) => void;
+  onRemove: (event: EventWithClient) => void;
+  onUpdateStatus: (eventId: string, status: EventStatus) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wider text-muted-foreground">
+        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="grid gap-1.5 lg:grid-cols-7">
+        {days.map((day) => (
+          <div
+            key={day.key}
+            className={`min-h-24 rounded-xl border p-2 ${
+              day.inCurrentMonth ? "bg-background" : "bg-muted/30 text-muted-foreground"
+            }`}
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <span className="font-serif text-sm">{day.dayNumber}</span>
+              {day.events.length > 0 && (
+                <span className="rounded-full bg-champagne px-2 py-0.5 text-[10px] text-gold">
+                  {day.events.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              {day.events.map((event) => (
+                <div key={event.id} className="rounded-lg border bg-card p-1.5 shadow-soft">
+                  <button type="button" className="w-full text-left" onClick={() => onEdit(event)}>
+                    <p className="line-clamp-1 text-xs font-medium">
+                      {event.clients?.full_name ?? "Cliente"}
+                    </p>
+                    <p className="line-clamp-1 text-[10px] text-muted-foreground">
+                      {event.event_type}
+                    </p>
+                    <div className="mt-0.5 space-y-0.5 text-[10px] text-muted-foreground">
+                      {event.start_time && (
+                        <p className="flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {event.start_time.slice(0, 5)}
+                          {event.end_time ? ` - ${event.end_time.slice(0, 5)}` : ""}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                  <div className="mt-1 flex items-center justify-between gap-1">
+                    <span className="truncate rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wider">
+                      {event.status.replace("_", " ")}
+                    </span>
+                    <EventActions
+                      event={event}
+                      compact
+                      onEdit={onEdit}
+                      onRemove={onRemove}
+                      onUpdateStatus={onUpdateStatus}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EventActions({
+  event,
+  compact = false,
+  onEdit,
+  onRemove,
+  onUpdateStatus,
+}: {
+  event: EventWithClient;
+  compact?: boolean;
+  onEdit: (event: EventWithClient) => void;
+  onRemove: (event: EventWithClient) => void;
+  onUpdateStatus: (eventId: string, status: EventStatus) => void;
+}) {
+  const buttonSize: "icon" | "sm" = compact ? "icon" : "sm";
+  const iconClassName = compact ? "h-3 w-3" : "h-3 w-3 mr-1";
+
+  return (
+    <div className={compact ? "flex items-center gap-0.5" : "flex flex-wrap items-center gap-2"}>
+      {!compact && (
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          {event.status.replace("_", " ")}
+        </span>
+      )}
+      <Button variant="ghost" size={buttonSize} onClick={() => onEdit(event)}>
+        <Pencil className={iconClassName} />
+        {!compact && "Editar"}
+      </Button>
+      {event.status !== "concluido" && (
+        <Button
+          variant="ghost"
+          size={buttonSize}
+          onClick={() => onUpdateStatus(event.id, "concluido")}
+        >
+          <CheckCircle2 className={iconClassName} />
+          {!compact && "Concluir"}
+        </Button>
+      )}
+      {event.status !== "cancelado" && (
+        <Button
+          variant="ghost"
+          size={buttonSize}
+          className="text-rose"
+          onClick={() => onUpdateStatus(event.id, "cancelado")}
+        >
+          <Ban className={iconClassName} />
+          {!compact && "Cancelar"}
+        </Button>
+      )}
+      {(event.status === "cancelado" || event.status === "concluido") && (
+        <Button
+          variant="ghost"
+          size={buttonSize}
+          onClick={() => onUpdateStatus(event.id, "em_organizacao")}
+        >
+          <RotateCcw className={iconClassName} />
+          {!compact && "Reabrir"}
+        </Button>
+      )}
+      <Link to="/admin/checklist/$eventId" params={{ eventId: event.id }}>
+        <Button variant="outline" size={buttonSize}>
+          <ListChecks className={iconClassName} />
+          {!compact && "Checklist"}
+        </Button>
+      </Link>
+      <Button
+        variant="ghost"
+        size={buttonSize}
+        className="text-rose"
+        onClick={() => onRemove(event)}
+      >
+        <Trash2 className={iconClassName} />
+        {!compact && "Excluir"}
+      </Button>
     </div>
   );
 }
@@ -777,4 +998,44 @@ function fallbackFinancialStatus(label: string, sortOrder: number): FinancialSta
     created_at: "",
     updated_at: "",
   };
+}
+
+function buildCalendarDays(events: EventWithClient[], month: Date): CalendarDay[] {
+  const firstDay = startOfMonth(month);
+  const startDate = new Date(firstDay);
+  startDate.setDate(firstDay.getDate() - firstDay.getDay());
+
+  const eventsByDate = events.reduce<Record<string, EventWithClient[]>>((acc, event) => {
+    if (!event.event_date) return acc;
+    (acc[event.event_date] ||= []).push(event);
+    return acc;
+  }, {});
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    const key = dateKey(date);
+
+    return {
+      key,
+      dayNumber: date.getDate(),
+      inCurrentMonth: date.getMonth() === month.getMonth(),
+      events: eventsByDate[key] ?? [],
+    };
+  });
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

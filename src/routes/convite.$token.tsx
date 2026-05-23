@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { rsvpStatusLabels, type RsvpStatus } from "@/lib/invitation-utils";
@@ -16,12 +16,15 @@ export const Route = createFileRoute("/convite/$token")({ component: Page });
 
 type InvitationGuest =
   Database["public"]["Functions"]["get_invitation_guest_by_token"]["Returns"][number];
+type GiftItem = Database["public"]["Tables"]["event_gift_items"]["Row"];
 
 function Page() {
   const { token } = Route.useParams();
   const [details, setDetails] = useState<InvitationGuest | null>(null);
   const [companions, setCompanions] = useState(0);
-  const [dietaryRestrictions, setDietaryRestrictions] = useState("");
+  const [giftItems, setGiftItems] = useState<GiftItem[]>([]);
+  const [selectedGiftImage, setSelectedGiftImage] = useState<GiftItem | null>(null);
+  const [reservingGiftId, setReservingGiftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -39,7 +42,10 @@ function Page() {
 
     setDetails(row);
     setCompanions(row.confirmed_companions);
-    setDietaryRestrictions(row.dietary_restrictions ?? "");
+    const { data: gifts } = await supabase.rpc("get_public_event_gift_items_by_token", {
+      _guest_token: token,
+    });
+    setGiftItems(gifts ?? []);
     setLoading(false);
   }, [token]);
 
@@ -53,15 +59,56 @@ function Page() {
       _guest_token: token,
       _rsvp_status: status as RsvpStatus,
       _confirmed_companions: status === "confirmado" ? companions : 0,
-      _dietary_restrictions: dietaryRestrictions || null,
+      _dietary_restrictions: null,
     });
     if (error) return toast.error(error.message);
     if (data?.[0]) {
       setDetails(data[0]);
       setCompanions(data[0].confirmed_companions);
-      setDietaryRestrictions(data[0].dietary_restrictions ?? "");
     }
     toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
+  };
+
+  const reserveGiftItem = async (item: GiftItem) => {
+    setReservingGiftId(item.id);
+    const { data, error } = await supabase.rpc("reserve_event_gift_item", {
+      _gift_item_id: item.id,
+      _guest_token: token,
+    });
+    setReservingGiftId(null);
+
+    if (error) {
+      await load();
+      return toast.error("Este presente acabou de ser escolhido por outro convidado.");
+    }
+
+    if (data) {
+      setGiftItems((current) =>
+        current.map((giftItem) => (giftItem.id === item.id ? data : giftItem)),
+      );
+    }
+    toast.success("Presente reservado para você");
+  };
+
+  const releaseGiftItemReservation = async (item: GiftItem) => {
+    setReservingGiftId(item.id);
+    const { data, error } = await supabase.rpc("release_event_gift_item_reservation", {
+      _gift_item_id: item.id,
+      _guest_token: token,
+    });
+    setReservingGiftId(null);
+
+    if (error) {
+      await load();
+      return toast.error("Não foi possível cancelar a reserva deste presente.");
+    }
+
+    if (data) {
+      setGiftItems((current) =>
+        current.map((giftItem) => (giftItem.id === item.id ? data : giftItem)),
+      );
+    }
+    toast.success("Reserva cancelada");
   };
 
   if (loading) {
@@ -194,14 +241,6 @@ function Page() {
                   </p>
                 </div>
               )}
-              <div>
-                <Label>Restrições alimentares</Label>
-                <Textarea
-                  value={dietaryRestrictions}
-                  onChange={(event) => setDietaryRestrictions(event.target.value)}
-                  placeholder="Vegetariano, alergias, intolerâncias..."
-                />
-              </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => respond("confirmado")}>
                   <CheckCircle2 className="mr-1 h-4 w-4" />
@@ -217,7 +256,7 @@ function Page() {
         </Card>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-12 lg:grid-cols-[1.3fr_0.7fr]">
+      <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-12">
         <Card className="pallazium-invitation-card overflow-hidden">
           <CardContent className="grid gap-0 p-0 md:grid-cols-[1fr_0.9fr]">
             <div className="space-y-4 p-6">
@@ -265,24 +304,107 @@ function Page() {
         </Card>
 
         <Card className="pallazium-invitation-card">
-          <CardContent className="space-y-4 p-6">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-champagne text-gold">
-              <Gift className="h-5 w-5" />
+          <CardContent className="space-y-6 p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                  Lista de presentes
+                </p>
+                <h2 className="mt-2 font-serif text-4xl">Presentes</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  Visualize as opções antes de decidir. Quando escolher, clique em reservar para
+                  esse presente sair da lista dos outros convidados.
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-champagne text-gold">
+                <Gift className="h-5 w-5" />
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Lista de presentes
-              </p>
-              <h2 className="mt-2 font-serif text-3xl">Presentes</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Sua presença é o mais importante. Caso queira presentear, acesse a lista oficial.
-              </p>
-            </div>
-            {details.gift_list_url ? (
+            {giftItems.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {giftItems.map((item) => {
+                  const reservedByCurrentGuest = item.reserved_by_guest_id === details.guest_id;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-5 shadow-soft ${
+                        reservedByCurrentGuest
+                          ? "border-gold/40 bg-champagne/45"
+                          : "bg-background/80"
+                      }`}
+                    >
+                      {item.image_url && (
+                        <button
+                          type="button"
+                          className="-mx-5 -mt-5 mb-5 block aspect-[4/3] w-[calc(100%+2.5rem)] overflow-hidden rounded-t-2xl border-b bg-muted text-left"
+                          onClick={() => setSelectedGiftImage(item)}
+                        >
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]"
+                          />
+                        </button>
+                      )}
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-serif text-2xl leading-tight text-[#4a3c2e]">
+                          {item.name}
+                        </p>
+                        {reservedByCurrentGuest && (
+                          <Badge variant="outline" className="border-gold/50 text-gold">
+                            Reservado por você
+                          </Badge>
+                        )}
+                      </div>
+                      {item.notes && (
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                          {item.notes}
+                        </p>
+                      )}
+                      {reservedByCurrentGuest ? (
+                        <div className="mt-4 space-y-3">
+                          <p className="rounded-xl border border-gold/30 bg-white/70 px-4 py-3 text-sm text-muted-foreground">
+                            Este presente já ficou reservado para você e não aparece para outros
+                            convidados.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={reservingGiftId === item.id}
+                            onClick={() => releaseGiftItemReservation(item)}
+                          >
+                            {reservingGiftId === item.id ? "Cancelando..." : "Cancelar reserva"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {item.reference_links.length > 0 &&
+                            item.reference_links.map((link, index) => (
+                              <Button key={link} asChild size="sm" variant="outline">
+                                <a href={link} target="_blank" rel="noreferrer">
+                                  Visualizar {index + 1}
+                                </a>
+                              </Button>
+                            ))}
+                          <Button
+                            size="sm"
+                            disabled={reservingGiftId === item.id}
+                            onClick={() => reserveGiftItem(item)}
+                          >
+                            {reservingGiftId === item.id ? "Reservando..." : "Reservar presente"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : details.gift_list_url ? (
               <Button asChild variant="outline">
                 <a href={details.gift_list_url} target="_blank" rel="noreferrer">
                   <Gift className="mr-2 h-4 w-4" />
-                  Abrir lista de presentes
+                  Abrir lista externa
                 </a>
               </Button>
             ) : (
@@ -290,11 +412,35 @@ function Page() {
                 Lista de presentes ainda não informada.
               </p>
             )}
-            <InfoBox label="Dress code" value={details.dress_code} />
           </CardContent>
         </Card>
       </section>
+
+      <GiftImageDialog item={selectedGiftImage} onClose={() => setSelectedGiftImage(null)} />
     </main>
+  );
+}
+
+function GiftImageDialog({ item, onClose }: { item: GiftItem | null; onClose: () => void }) {
+  return (
+    <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+        {item?.image_url && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-serif text-3xl">{item.name}</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-hidden rounded-2xl border bg-muted">
+              <img
+                src={item.image_url}
+                alt={item.name}
+                className="max-h-[72vh] w-full object-contain"
+              />
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

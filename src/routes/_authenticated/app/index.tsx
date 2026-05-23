@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -105,6 +105,7 @@ function Dashboard() {
               {event.start_time} {event.end_time && `— ${event.end_time}`}
             </div>
           )}
+          <Countdown eventDate={event.event_date} startTime={event.start_time} />
         </CardContent>
       </Card>
 
@@ -184,4 +185,83 @@ function Info({ icon, label, value }: { icon: ReactNode; label: string; value: R
       <p className="pallazium-feature-value mt-1.5 font-serif text-xl capitalize">{value}</p>
     </div>
   );
+}
+
+function Countdown({
+  eventDate,
+  startTime,
+}: {
+  eventDate?: string | null;
+  startTime?: string | null;
+}) {
+  const target = useMemo(() => buildEventDateTime(eventDate, startTime), [eventDate, startTime]);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  if (!target) return null;
+
+  const countdown = getCountdown(target, now);
+  const dateLabel = format(target, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const timeLabel = format(target, "HH:mm", { locale: ptBR });
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="pallazium-feature-muted flex items-center gap-2 text-xs uppercase tracking-[0.2em]">
+            <Clock className="h-4 w-4" />
+            Contagem regressiva
+          </p>
+          <p className="mt-2 font-serif text-2xl text-white">
+            {dateLabel} às {timeLabel}
+          </p>
+        </div>
+        {countdown.finished ? (
+          <p className="rounded-xl bg-white/15 px-4 py-3 font-serif text-2xl text-white">
+            O grande dia chegou
+          </p>
+        ) : (
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <CountdownUnit label="Dias" value={countdown.days} />
+            <CountdownUnit label="Horas" value={countdown.hours} />
+            <CountdownUnit label="Min" value={countdown.minutes} />
+            <CountdownUnit label="Seg" value={countdown.seconds} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CountdownUnit({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-16 rounded-xl bg-white/15 px-3 py-2">
+      <p className="font-serif text-2xl text-white">{String(value).padStart(2, "0")}</p>
+      <p className="text-[0.65rem] uppercase tracking-wider text-white/65">{label}</p>
+    </div>
+  );
+}
+
+function buildEventDateTime(eventDate?: string | null, startTime?: string | null) {
+  if (!eventDate) return null;
+  const cleanTime = startTime?.trim() || "00:00:00";
+  const date = new Date(`${eventDate}T${cleanTime}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getCountdown(target: Date, now: Date) {
+  const diff = Math.max(target.getTime() - now.getTime(), 0);
+  const totalSeconds = Math.floor(diff / 1000);
+
+  return {
+    finished: diff <= 0,
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
 }

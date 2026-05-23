@@ -117,8 +117,14 @@ function Page() {
     <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Eventos</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            Biblioteca compartilhada
+          </p>
           <h1 className="font-serif text-4xl mt-2">Referências</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Cadastre referências vinculadas a um evento modelo. Clientes verão tudo agrupado por
+            tipo/nível do evento.
+          </p>
         </div>
         <Dialog
           open={open}
@@ -199,7 +205,7 @@ function Page() {
         <AdminEmptyState
           icon={GalleryHorizontalEnd}
           title="Adicione a primeira referência"
-          description="Vincule inspirações ao evento do cliente para organizar estética, links e observações em um só lugar."
+          description="Vincule inspirações a eventos modelo para alimentar a biblioteca de referências dos clientes."
           actionLabel="Nova referência"
           onAction={openCreate}
         />

@@ -173,7 +173,7 @@ function Page() {
           <Card key={item.id} className={!item.active ? "opacity-70" : undefined}>
             {item.image_url && (
               <div
-                className="h-36 bg-muted bg-cover bg-center"
+                className="aspect-square w-full bg-muted bg-cover bg-center"
                 style={{ backgroundImage: `url(${item.image_url})` }}
               />
             )}
