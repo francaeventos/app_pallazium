@@ -167,7 +167,6 @@ function Page() {
                   label="Imagem"
                   defaultValue={editing?.image_url ?? ""}
                   folder="cardapios"
-                  publicBucket={false}
                 />
               </div>
               <label className="flex items-center gap-2 rounded-xl border p-3 text-sm">

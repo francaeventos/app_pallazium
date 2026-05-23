@@ -133,7 +133,6 @@ function Page() {
                   label="Imagem"
                   defaultValue={editing?.image_url ?? ""}
                   folder="referencias"
-                  publicBucket={false}
                 />
               </div>
               <div>

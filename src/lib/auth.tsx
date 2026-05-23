@@ -26,36 +26,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
+    const loadSession = async (nextSession: Session | null) => {
+      setSession(nextSession);
+
+      if (!nextSession?.user) {
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
+      const nextRole = await getUserRole(nextSession.user.id);
+      if (!active) return;
+
+      setRole(nextRole);
+      setLoading(false);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      loadSession(data.session);
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (s?.user) {
-        setTimeout(async () => {
-          const { data } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", s.user.id);
-          const roles = (data ?? []).map((r) => r.role as Role);
-          setRole(roles.includes("admin") ? "admin" : (roles[0] ?? "client"));
-        }, 0);
-      } else {
-        setRole(null);
-      }
+      setLoading(true);
+      loadSession(s);
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (!data.session) setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
-
-  useEffect(() => {
-    if (session && role !== null) setLoading(false);
-    if (!session) setLoading(false);
-  }, [session, role]);
 
   return (
     <Ctx.Provider
@@ -75,3 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(Ctx);
+
+async function getUserRole(userId: string): Promise<Role> {
+  const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  if (error) {
+    console.error("Erro ao carregar permissões do usuário", error);
+    return "client";
+  }
+
+  const roles = (data ?? []).map((item) => item.role as Role);
+  return roles.includes("admin") ? "admin" : (roles[0] ?? "client");
+}

@@ -365,7 +365,6 @@ export function AppShell({
                 label="Foto do perfil"
                 defaultValue={profileAvatar}
                 folder={user?.id ?? "usuarios"}
-                publicBucket={false}
                 onValueChange={setProfileAvatar}
               />
             </div>
