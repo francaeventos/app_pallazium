@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import {
   Dialog,
   DialogContent,
@@ -160,8 +161,13 @@ function Page() {
                 <Textarea name="notes" defaultValue={editing?.notes ?? ""} />
               </div>
               <div>
-                <Label>Imagem (URL)</Label>
-                <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
+                <StorageImageInput
+                  bucket="catalogos"
+                  name="image_url"
+                  label="Imagem"
+                  defaultValue={editing?.image_url ?? ""}
+                  folder="cardapios"
+                />
               </div>
               <label className="flex items-center gap-2 rounded-xl border p-3 text-sm">
                 <input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import { Eye, EyeOff, Handshake, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -139,8 +140,13 @@ function Page() {
                 <Input name="instagram" defaultValue={editing?.instagram ?? ""} />
               </div>
               <div>
-                <Label>Imagem (URL)</Label>
-                <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
+                <StorageImageInput
+                  bucket="catalogos"
+                  name="image_url"
+                  label="Imagem"
+                  defaultValue={editing?.image_url ?? ""}
+                  folder="parceiros"
+                />
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />

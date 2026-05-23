@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import {
@@ -333,11 +334,12 @@ function Page() {
                   />
                 </div>
                 <div>
-                  <Label>Imagem de capa (URL)</Label>
-                  <Input
+                  <StorageImageInput
+                    bucket="convites"
                     name="cover_image_url"
-                    type="url"
+                    label="Imagem de capa"
                     defaultValue={invitation?.cover_image_url ?? ""}
+                    folder="capas"
                   />
                 </div>
                 <div>

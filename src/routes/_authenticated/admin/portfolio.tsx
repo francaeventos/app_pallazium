@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { StorageImagesTextarea } from "@/components/StorageImageInput";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Images, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -134,11 +135,12 @@ function Page() {
                 <Textarea name="highlights" defaultValue={editing?.highlights ?? ""} />
               </div>
               <div>
-                <Label>Imagens (uma URL por linha)</Label>
-                <Textarea
+                <StorageImagesTextarea
+                  bucket="portfolio"
                   name="images"
-                  rows={5}
+                  label="Imagens"
                   defaultValue={(editing?.images ?? []).join("\n")}
+                  folder="eventos"
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">

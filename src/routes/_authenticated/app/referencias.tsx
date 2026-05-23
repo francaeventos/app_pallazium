@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import {
   Dialog,
   DialogContent,
@@ -126,8 +127,13 @@ function Page() {
                 />
               </div>
               <div>
-                <Label>Imagem (URL)</Label>
-                <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
+                <StorageImageInput
+                  bucket="catalogos"
+                  name="image_url"
+                  label="Imagem"
+                  defaultValue={editing?.image_url ?? ""}
+                  folder="referencias"
+                />
               </div>
               <div>
                 <Label>Link da inspiração</Label>

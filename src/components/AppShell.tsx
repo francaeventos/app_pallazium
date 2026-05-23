@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import {
   Bell,
   CheckCircle2,
@@ -358,13 +359,14 @@ export function AppShell({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="profile-avatar">URL da foto</Label>
-              <Input
-                id="profile-avatar"
-                value={profileAvatar}
-                onChange={(event) => setProfileAvatar(event.target.value)}
-                placeholder="https://..."
-                type="url"
+              <StorageImageInput
+                bucket="avatars"
+                name="profile_avatar"
+                label="Foto do perfil"
+                defaultValue={profileAvatar}
+                folder={user?.id ?? "usuarios"}
+                publicBucket={false}
+                onValueChange={setProfileAvatar}
               />
             </div>
           </div>

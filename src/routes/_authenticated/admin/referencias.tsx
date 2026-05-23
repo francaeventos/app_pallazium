@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
+import { StorageImageInput } from "@/components/StorageImageInput";
 import { ExternalLink, GalleryHorizontalEnd, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -167,8 +168,13 @@ function Page() {
                 <Input name="category" required defaultValue={editing?.category ?? ""} />
               </div>
               <div>
-                <Label>Imagem (URL)</Label>
-                <Input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} />
+                <StorageImageInput
+                  bucket="catalogos"
+                  name="image_url"
+                  label="Imagem"
+                  defaultValue={editing?.image_url ?? ""}
+                  folder="referencias"
+                />
               </div>
               <div>
                 <Label>Link da inspiração</Label>
