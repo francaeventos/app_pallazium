@@ -176,6 +176,9 @@
 .pallazium-logo-card {
   position: relative;
   overflow: hidden;
+  border: 1px solid rgb(144 117 84 / 0.42);
+  background: #fffaf7;
+  box-shadow: 0 12px 28px -22px rgb(43 36 28 / 0.55);
 }
 
 .pallazium-sidebar-brand {

@@ -130,9 +130,12 @@ function Page() {
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(144,117,84,0.22),transparent_34rem)]" />
         <div className="relative mx-auto max-w-5xl px-6 py-20 text-center text-white lg:py-28">
-          <div className="mx-auto mb-8 w-fit border-y border-gold/70 px-8 py-3">
-            <p className="font-serif text-xs uppercase tracking-[0.55em] text-gold">Espaço</p>
-            <p className="mt-1 font-serif text-3xl font-bold tracking-wide text-white">PALLAZIUM</p>
+          <div className="mx-auto mb-8 w-fit rounded-xl border border-gold/50 bg-white/95 px-5 py-3 shadow-luxe">
+            <img
+              src="/logo-pallazium.png"
+              alt="Espaço Pallazium"
+              className="h-auto w-64 max-w-[70vw]"
+            />
           </div>
           <p className="text-xs uppercase tracking-[0.35em] text-gold">Convite especial</p>
           <h1 className="mx-auto mt-4 max-w-4xl font-serif text-5xl leading-none lg:text-7xl">

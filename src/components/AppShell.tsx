@@ -384,16 +384,12 @@ export function AppShell({
 
 function LogoMark({ compact = false }: { compact?: boolean }) {
   return (
-    <div
-      className={`pallazium-wordmark rounded-lg px-3 ${compact ? "min-h-0 py-1.5" : "py-3"}`}
-      aria-label="Espaço Pallazium"
-    >
-      <div>
-        <span className={`pallazium-wordmark-space ${compact ? "text-[0.45rem]" : ""}`}>
-          ESPAÇO
-        </span>
-        <span className={`pallazium-wordmark-name ${compact ? "text-lg" : ""}`}>PALLAZIUM</span>
-      </div>
+    <div className={`pallazium-logo-card rounded-lg ${compact ? "px-2 py-1" : "p-3"}`}>
+      <img
+        src="/logo-pallazium.png"
+        alt="Espaço Pallazium"
+        className={`block h-auto w-full object-contain ${compact ? "max-h-10 max-w-36" : ""}`}
+      />
     </div>
   );
 }
