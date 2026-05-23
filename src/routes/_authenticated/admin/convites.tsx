@@ -221,11 +221,11 @@ function Page() {
     loadDetails(eventId);
   };
 
-  const copyLink = async () => {
-    const url = publicInvitationUrl(invitation?.public_token);
-    if (!url) return toast.error("Crie o convite primeiro.");
+  const copyGuestLink = async (guest: Guest) => {
+    const url = publicInvitationUrl(guest.public_token);
+    if (!url) return toast.error("Link individual indisponível.");
     await navigator.clipboard.writeText(url);
-    toast.success("Link do convite copiado");
+    toast.success(`Link de ${guest.name} copiado`);
   };
 
   const closeGuestDialog = () => {
@@ -289,22 +289,15 @@ function Page() {
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="font-serif text-2xl">Convite digital</CardTitle>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {invitation && (
                     <Badge variant={invitation.status === "publicado" ? "default" : "outline"}>
                       {invitationStatusLabels[invitation.status]}
                     </Badge>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={copyLink}
-                    disabled={!invitation}
-                  >
-                    <Copy className="mr-1 h-3 w-3" />
-                    Copiar link
-                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Cada convidado tem um link individual abaixo.
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -443,6 +436,15 @@ function Page() {
                       >
                         <Pencil className="mr-1 h-3 w-3" />
                         Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!invitation || invitation.status !== "publicado"}
+                        onClick={() => copyGuestLink(guest)}
+                      >
+                        <Copy className="mr-1 h-3 w-3" />
+                        Copiar link individual
                       </Button>
                       <Button
                         variant="ghost"

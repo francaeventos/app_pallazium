@@ -223,6 +223,7 @@ export type Database = {
           name: string;
           notes: string | null;
           phone: string | null;
+          public_token: string;
           responded_at: string | null;
           rsvp_status: Database["public"]["Enums"]["rsvp_status"];
           updated_at: string;
@@ -240,6 +241,7 @@ export type Database = {
           name: string;
           notes?: string | null;
           phone?: string | null;
+          public_token?: string;
           responded_at?: string | null;
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
           updated_at?: string;
@@ -257,6 +259,7 @@ export type Database = {
           name?: string;
           notes?: string | null;
           phone?: string | null;
+          public_token?: string;
           responded_at?: string | null;
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"];
           updated_at?: string;
@@ -760,6 +763,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_invitation_guest_by_token: {
+        Args: {
+          _guest_token: string;
+        };
+        Returns: {
+          allowed_companions: number;
+          ceremony_location: string | null;
+          confirmed_companions: number;
+          cover_image_url: string | null;
+          dietary_restrictions: string | null;
+          dress_code: string | null;
+          event_date: string | null;
+          event_location: string | null;
+          event_type: string;
+          guest_group_name: string | null;
+          guest_id: string;
+          guest_name: string;
+          invitation_id: string;
+          invitation_message: string | null;
+          invitation_title: string;
+          map_url: string | null;
+          reception_location: string | null;
+          responded_at: string | null;
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"];
+          start_time: string | null;
+          whatsapp_text: string | null;
+        }[];
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
@@ -772,6 +803,37 @@ export type Database = {
           _email: string;
         };
         Returns: void;
+      };
+      respond_invitation_guest: {
+        Args: {
+          _confirmed_companions?: number;
+          _dietary_restrictions?: string | null;
+          _guest_token: string;
+          _rsvp_status: Database["public"]["Enums"]["rsvp_status"];
+        };
+        Returns: {
+          allowed_companions: number;
+          ceremony_location: string | null;
+          confirmed_companions: number;
+          cover_image_url: string | null;
+          dietary_restrictions: string | null;
+          dress_code: string | null;
+          event_date: string | null;
+          event_location: string | null;
+          event_type: string;
+          guest_group_name: string | null;
+          guest_id: string;
+          guest_name: string;
+          invitation_id: string;
+          invitation_message: string | null;
+          invitation_title: string;
+          map_url: string | null;
+          reception_location: string | null;
+          responded_at: string | null;
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"];
+          start_time: string | null;
+          whatsapp_text: string | null;
+        }[];
       };
     };
     Enums: {

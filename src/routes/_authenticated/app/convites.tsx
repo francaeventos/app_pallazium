@@ -118,11 +118,11 @@ function Page() {
     load();
   };
 
-  const copyLink = async () => {
-    const url = publicInvitationUrl(invitation?.public_token);
-    if (!url) return toast.error("O convite ainda não foi criado pela equipe.");
+  const copyGuestLink = async (guest: Guest) => {
+    const url = publicInvitationUrl(guest.public_token);
+    if (!url) return toast.error("Link individual indisponível.");
     await navigator.clipboard.writeText(url);
-    toast.success("Link do convite copiado");
+    toast.success(`Link de ${guest.name} copiado`);
   };
 
   return (
@@ -135,10 +135,9 @@ function Page() {
             Acompanhe sua lista de convidados, padrinhos e confirmações de presença.
           </p>
         </div>
-        <Button variant="outline" onClick={copyLink} disabled={!invitation}>
-          <Copy className="mr-1 h-4 w-4" />
-          Copiar link do convite
-        </Button>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Cada convidado recebe um link individual para confirmar presença.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -274,15 +273,26 @@ function Page() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Acompanhantes: {guest.confirmed_companions}/{guest.allowed_companions}
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 text-rose"
-                    onClick={() => removeGuest(guest.id)}
-                  >
-                    <Trash2 className="mr-1 h-3 w-3" />
-                    Excluir
-                  </Button>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!invitation || invitation.status !== "publicado"}
+                      onClick={() => copyGuestLink(guest)}
+                    >
+                      <Copy className="mr-1 h-3 w-3" />
+                      Copiar link individual
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose"
+                      onClick={() => removeGuest(guest.id)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      Excluir
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
