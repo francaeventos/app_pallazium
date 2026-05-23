@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { StorageImageInput } from "@/components/StorageImageInput";
+import { StorageImagesTextarea } from "@/components/StorageImageInput";
 import {
   Dialog,
   DialogContent,
@@ -43,12 +43,14 @@ function Page() {
   const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const images = splitLines(String(fd.get("images") || ""));
     const payload = {
       name: String(fd.get("name")),
       category: String(fd.get("category")),
       description: String(fd.get("description") || "") || null,
       items: String(fd.get("items") || "") || null,
-      image_url: String(fd.get("image_url") || "") || null,
+      image_url: images?.[0] ?? null,
+      images,
       notes: String(fd.get("notes") || "") || null,
       active: fd.get("active") === "on",
     };
@@ -161,11 +163,11 @@ function Page() {
                 <Textarea name="notes" defaultValue={editing?.notes ?? ""} />
               </div>
               <div>
-                <StorageImageInput
+                <StorageImagesTextarea
                   bucket="catalogos"
-                  name="image_url"
-                  label="Imagem"
-                  defaultValue={editing?.image_url ?? ""}
+                  name="images"
+                  label="Fotos do cardápio"
+                  defaultValue={menuImages(editing).join("\n")}
                   folder="cardapios"
                 />
               </div>
@@ -226,10 +228,10 @@ function Page() {
         {menus.map((menu) => (
           <Card key={menu.id} className={!menu.active ? "opacity-70" : undefined}>
             <CardContent className="grid gap-4 p-4 lg:grid-cols-[160px_1fr_auto] lg:items-center">
-              {menu.image_url ? (
+              {menuImages(menu)[0] ? (
                 <div
                   className="h-32 rounded-xl bg-muted bg-cover bg-center lg:h-24"
-                  style={{ backgroundImage: `url(${menu.image_url})` }}
+                  style={{ backgroundImage: `url(${menuImages(menu)[0]})` }}
                 />
               ) : (
                 <div className="flex h-32 items-center justify-center rounded-xl bg-muted text-gold lg:h-24">
@@ -245,6 +247,7 @@ function Page() {
                   <Badge variant={menu.active ? "default" : "outline"}>
                     {menu.active ? "Publicado" : "Oculto"}
                   </Badge>
+                  <Badge variant="outline">{menuImages(menu).length} foto(s)</Badge>
                 </div>
                 {menu.description && (
                   <p className="text-sm text-muted-foreground">{menu.description}</p>
@@ -253,6 +256,19 @@ function Page() {
                   <p className="line-clamp-3 text-xs text-muted-foreground whitespace-pre-line">
                     {menu.items}
                   </p>
+                )}
+                {menuImages(menu).length > 1 && (
+                  <div className="grid max-w-md grid-cols-4 gap-2">
+                    {menuImages(menu)
+                      .slice(1, 5)
+                      .map((image, index) => (
+                        <div
+                          key={`${image}-${index}`}
+                          className="h-14 rounded-lg bg-muted bg-cover bg-center"
+                          style={{ backgroundImage: `url(${image})` }}
+                        />
+                      ))}
+                  </div>
                 )}
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -288,5 +304,19 @@ function Page() {
         ))}
       </div>
     </div>
+  );
+}
+
+function splitLines(value: string) {
+  const items = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : null;
+}
+
+function menuImages(menu?: Menu | null) {
+  return (menu?.images?.length ? menu.images : menu?.image_url ? [menu.image_url] : []).filter(
+    Boolean,
   );
 }

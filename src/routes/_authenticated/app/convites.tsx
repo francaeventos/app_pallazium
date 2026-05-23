@@ -177,6 +177,10 @@ function Page() {
             <Info label="Cerimônia" value={invitation?.ceremony_location} />
             <Info label="Recepção" value={invitation?.reception_location} />
             <Info label="Mapa" value={invitation?.map_url ? "Disponível no convite" : null} />
+            <Info
+              label="Lista de presentes"
+              value={invitation?.gift_list_url ? "Disponível no convite" : null}
+            />
           </div>
         </CardContent>
       </Card>

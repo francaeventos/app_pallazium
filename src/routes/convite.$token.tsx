@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { rsvpStatusLabels, type RsvpStatus } from "@/lib/invitation-utils";
-import { Calendar, CheckCircle2, MapPin, Users, XCircle } from "lucide-react";
+import { Calendar, CheckCircle2, Gift, MapPin, Navigation, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/convite/$token")({ component: Page });
@@ -86,6 +86,17 @@ function Page() {
       </div>
     );
   }
+
+  const addressForMap =
+    details.reception_location || details.ceremony_location || details.event_location || "";
+  const mapEmbedUrl = addressForMap
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
+    : null;
+  const routeUrl =
+    details.map_url ||
+    (addressForMap
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`
+      : null);
 
   return (
     <main className="pallazium-invitation-shell min-h-screen">
@@ -206,17 +217,80 @@ function Page() {
         </Card>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-12">
+      <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-12 lg:grid-cols-[1.3fr_0.7fr]">
+        <Card className="pallazium-invitation-card overflow-hidden">
+          <CardContent className="grid gap-0 p-0 md:grid-cols-[1fr_0.9fr]">
+            <div className="space-y-4 p-6">
+              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                Como chegar
+              </p>
+              <h2 className="font-serif text-3xl">Localização do evento</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InfoBox label="Cerimônia" value={details.ceremony_location} />
+                <InfoBox label="Recepção" value={details.reception_location} />
+              </div>
+              {routeUrl ? (
+                <Button asChild className="mt-2">
+                  <a href={routeUrl} target="_blank" rel="noreferrer">
+                    <Navigation className="mr-2 h-4 w-4" />
+                    Abrir rota no mapa
+                  </a>
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  A rota será disponibilizada pela organização em breve.
+                </p>
+              )}
+            </div>
+            {mapEmbedUrl ? (
+              <iframe
+                title="Mapa do evento"
+                src={mapEmbedUrl}
+                className="min-h-72 w-full border-0 md:min-h-full"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <div className="flex min-h-64 items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(144,117,84,0.25),transparent_18rem),linear-gradient(135deg,#efe6da,#fffaf7)] p-8 text-center">
+                <div className="rounded-3xl border border-gold/30 bg-white/80 p-6 shadow-soft">
+                  <MapPin className="mx-auto h-10 w-10 text-gold" />
+                  <p className="mt-3 font-serif text-2xl text-[#4a3c2e]">Mapa e rota</p>
+                  <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+                    A localização aparecerá aqui quando o endereço for informado.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className="pallazium-invitation-card">
-          <CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
-            <InfoBox label="Cerimônia" value={details.ceremony_location} />
-            <InfoBox label="Recepção" value={details.reception_location} />
+          <CardContent className="space-y-4 p-6">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-champagne text-gold">
+              <Gift className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                Lista de presentes
+              </p>
+              <h2 className="mt-2 font-serif text-3xl">Presentes</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Sua presença é o mais importante. Caso queira presentear, acesse a lista oficial.
+              </p>
+            </div>
+            {details.gift_list_url ? (
+              <Button asChild variant="outline">
+                <a href={details.gift_list_url} target="_blank" rel="noreferrer">
+                  <Gift className="mr-2 h-4 w-4" />
+                  Abrir lista de presentes
+                </a>
+              </Button>
+            ) : (
+              <p className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+                Lista de presentes ainda não informada.
+              </p>
+            )}
             <InfoBox label="Dress code" value={details.dress_code} />
-            <InfoBox
-              label="Mapa"
-              value={details.map_url ? "Abrir localização" : "A definir"}
-              href={details.map_url}
-            />
           </CardContent>
         </Card>
       </section>

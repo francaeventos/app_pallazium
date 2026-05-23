@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Ban,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   ListChecks,
   Pencil,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,9 +44,25 @@ type Client = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "full_
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type EventStatus = Database["public"]["Enums"]["event_status"];
 type PriorityLevel = Database["public"]["Enums"]["priority_level"];
+type FinancialStatusOption = Database["public"]["Tables"]["financial_status_options"]["Row"];
 type EventWithClient = EventRow & {
   clients: { full_name: string; email: string } | null;
 };
+
+const DEFAULT_FINANCIAL_STATUSES: FinancialStatusOption[] = [
+  "Em aberto",
+  "Sinal pago",
+  "Parcialmente pago",
+  "Pago",
+  "Vencido",
+  "Cancelado",
+].map((label, index) => ({
+  id: `fallback-${index}`,
+  label,
+  sort_order: index,
+  created_at: "",
+  updated_at: "",
+}));
 
 function Page() {
   const [events, setEvents] = useState<EventWithClient[]>([]);
@@ -54,17 +73,30 @@ function Page() {
   const [createStatus, setCreateStatus] = useState<EventStatus>("novo");
   const [editClientId, setEditClientId] = useState("");
   const [editStatus, setEditStatus] = useState<EventStatus>("novo");
+  const [financialStatusOptions, setFinancialStatusOptions] = useState<FinancialStatusOption[]>(
+    DEFAULT_FINANCIAL_STATUSES,
+  );
+  const [createFinancialStatus, setCreateFinancialStatus] = useState("Em aberto");
+  const [editFinancialStatus, setEditFinancialStatus] = useState("Em aberto");
 
   const load = async () => {
-    const [{ data: evs }, { data: cls }] = await Promise.all([
+    const [{ data: evs }, { data: cls }, { data: financialOptions }] = await Promise.all([
       supabase
         .from("events")
         .select("*, clients(full_name, email)")
         .order("event_date", { ascending: true }),
       supabase.from("clients").select("id, full_name"),
+      supabase
+        .from("financial_status_options")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("label", { ascending: true }),
     ]);
     setEvents(evs ?? []);
     setClients(cls ?? []);
+    setFinancialStatusOptions(
+      financialOptions?.length ? financialOptions : DEFAULT_FINANCIAL_STATUSES,
+    );
   };
   useEffect(() => {
     load();
@@ -74,6 +106,7 @@ function Page() {
     if (!editing) return;
     setEditClientId(editing.client_id);
     setEditStatus(editing.status);
+    setEditFinancialStatus(editing.financial_status || "Em aberto");
   }, [editing]);
 
   const create = async (e: FormEvent<HTMLFormElement>) => {
@@ -91,8 +124,8 @@ function Page() {
         end_time: String(fd.get("end_time") || "") || null,
         location: String(fd.get("location") || "") || null,
         estimated_guests: Number(fd.get("estimated_guests")) || null,
-        contracted_value: Number(fd.get("contracted_value")) || null,
-        financial_status: String(fd.get("financial_status") || "") || null,
+        contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
+        financial_status: createFinancialStatus || null,
         status: createStatus,
         client_notes: String(fd.get("client_notes") || "") || null,
         internal_notes: String(fd.get("internal_notes") || "") || null,
@@ -120,6 +153,7 @@ function Page() {
     setOpen(false);
     setCreateClientId("");
     setCreateStatus("novo");
+    setCreateFinancialStatus("Em aberto");
     load();
   };
 
@@ -138,8 +172,8 @@ function Page() {
         end_time: String(fd.get("end_time") || "") || null,
         location: String(fd.get("location") || "") || null,
         estimated_guests: Number(fd.get("estimated_guests")) || null,
-        contracted_value: Number(fd.get("contracted_value")) || null,
-        financial_status: String(fd.get("financial_status") || "") || null,
+        contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
+        financial_status: editFinancialStatus || null,
         status: editStatus,
         client_notes: String(fd.get("client_notes") || "") || null,
         internal_notes: String(fd.get("internal_notes") || "") || null,
@@ -169,6 +203,69 @@ function Page() {
     load();
   };
 
+  const addFinancialStatus = async (label: string) => {
+    const cleanLabel = label.trim();
+    if (!cleanLabel) return toast.error("Digite um status financeiro.");
+    if (financialStatusOptions.some((option) => sameStatusLabel(option.label, cleanLabel))) {
+      return toast.error("Este status já existe.");
+    }
+
+    const nextOrder = financialStatusOptions.length;
+    const { data, error } = await supabase
+      .from("financial_status_options")
+      .insert({ label: cleanLabel, sort_order: nextOrder })
+      .select()
+      .single();
+
+    if (error || !data) {
+      setFinancialStatusOptions((items) => [
+        ...items,
+        fallbackFinancialStatus(cleanLabel, nextOrder),
+      ]);
+      toast.success("Status adicionado nesta sessão");
+      return;
+    }
+
+    setFinancialStatusOptions((items) => [...items, data]);
+    toast.success("Status financeiro adicionado");
+  };
+
+  const updateFinancialStatus = async (option: FinancialStatusOption, label: string) => {
+    const cleanLabel = label.trim();
+    if (!cleanLabel) return toast.error("Digite um status financeiro.");
+
+    const { data, error } = await supabase
+      .from("financial_status_options")
+      .update({ label: cleanLabel })
+      .eq("id", option.id)
+      .select()
+      .single();
+
+    const updatedOption = data ?? { ...option, label: cleanLabel };
+    setFinancialStatusOptions((items) =>
+      items.map((item) => (item.id === option.id ? updatedOption : item)),
+    );
+    if (sameStatusLabel(createFinancialStatus, option.label)) setCreateFinancialStatus(cleanLabel);
+    if (sameStatusLabel(editFinancialStatus, option.label)) setEditFinancialStatus(cleanLabel);
+
+    toast[error ? "warning" : "success"](
+      error ? "Status editado nesta sessão" : "Status financeiro atualizado",
+    );
+  };
+
+  const removeFinancialStatus = async (option: FinancialStatusOption) => {
+    if (!window.confirm(`Apagar o status "${option.label}"?`)) return;
+
+    const { error } = await supabase.from("financial_status_options").delete().eq("id", option.id);
+    setFinancialStatusOptions((items) => items.filter((item) => item.id !== option.id));
+    if (sameStatusLabel(createFinancialStatus, option.label)) setCreateFinancialStatus("Em aberto");
+    if (sameStatusLabel(editFinancialStatus, option.label)) setEditFinancialStatus("Em aberto");
+
+    toast[error ? "warning" : "success"](
+      error ? "Status removido desta sessão" : "Status financeiro apagado",
+    );
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4">
@@ -180,6 +277,7 @@ function Page() {
             if (!value) {
               setCreateClientId("");
               setCreateStatus("novo");
+              setCreateFinancialStatus("Em aberto");
             }
           }}
         >
@@ -240,11 +338,18 @@ function Page() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Valor contratado</Label>
-                  <Input name="contracted_value" type="number" step="0.01" min="0" />
+                  <CurrencyInput name="contracted_value" />
                 </div>
                 <div>
                   <Label>Status financeiro</Label>
-                  <Input name="financial_status" placeholder="Em aberto, pago..." />
+                  <FinancialStatusPicker
+                    value={createFinancialStatus}
+                    options={financialStatusOptions}
+                    onChange={setCreateFinancialStatus}
+                    onAdd={addFinancialStatus}
+                    onUpdate={updateFinancialStatus}
+                    onRemove={removeFinancialStatus}
+                  />
                 </div>
               </div>
               <div>
@@ -416,17 +521,18 @@ function Page() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Valor contratado</Label>
-                  <Input
-                    name="contracted_value"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={editing.contracted_value ?? ""}
-                  />
+                  <CurrencyInput name="contracted_value" defaultValue={editing.contracted_value} />
                 </div>
                 <div>
                   <Label>Status financeiro</Label>
-                  <Input name="financial_status" defaultValue={editing.financial_status ?? ""} />
+                  <FinancialStatusPicker
+                    value={editFinancialStatus}
+                    options={financialStatusOptions}
+                    onChange={setEditFinancialStatus}
+                    onAdd={addFinancialStatus}
+                    onUpdate={updateFinancialStatus}
+                    onRemove={removeFinancialStatus}
+                  />
                 </div>
               </div>
               <div>
@@ -472,4 +578,203 @@ function Page() {
       </Dialog>
     </div>
   );
+}
+
+function CurrencyInput({ name, defaultValue }: { name: string; defaultValue?: number | null }) {
+  const [displayValue, setDisplayValue] = useState(
+    defaultValue ? formatCurrency(defaultValue) : "",
+  );
+
+  const numericValue = parseCurrencyValue(displayValue);
+
+  return (
+    <>
+      <Input
+        inputMode="decimal"
+        placeholder="R$ 0,00"
+        value={displayValue}
+        onChange={(event) => setDisplayValue(event.target.value)}
+        onBlur={() => setDisplayValue(numericValue ? formatCurrency(numericValue) : "")}
+      />
+      <input type="hidden" name={name} value={numericValue ?? ""} />
+    </>
+  );
+}
+
+function FinancialStatusPicker({
+  value,
+  options,
+  onChange,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  value: string;
+  options: FinancialStatusOption[];
+  onChange: (value: string) => void;
+  onAdd: (label: string) => Promise<void>;
+  onUpdate: (option: FinancialStatusOption, label: string) => Promise<void>;
+  onRemove: (option: FinancialStatusOption) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    const cleanQuery = normalizeStatusLabel(query);
+    return options.filter((option) => normalizeStatusLabel(option.label).includes(cleanQuery));
+  }, [options, query]);
+
+  const handleAdd = async () => {
+    const label = (newLabel || query).trim();
+    await onAdd(label);
+    setNewLabel("");
+    setQuery("");
+    onChange(label);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between font-normal">
+          <span className="truncate">{value || "Selecione o status"}</span>
+          <ChevronDown className="ml-2 h-4 w-4 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(28rem,calc(100vw-3rem))] p-3">
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Pesquisar status..."
+              className="pl-9"
+            />
+          </div>
+
+          <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+            {filteredOptions.length === 0 && (
+              <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                Nenhum status encontrado.
+              </p>
+            )}
+            {filteredOptions.map((option) => (
+              <div
+                key={option.id}
+                className="flex items-center gap-2 rounded-lg border bg-background p-2"
+              >
+                {editingId === option.id ? (
+                  <>
+                    <Input
+                      value={editingLabel}
+                      onChange={(event) => setEditingLabel(event.target.value)}
+                      className="h-8"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={async () => {
+                        await onUpdate(option, editingLabel);
+                        setEditingId(null);
+                      }}
+                    >
+                      Salvar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 truncate text-left text-sm"
+                      onClick={() => {
+                        onChange(option.label);
+                        setOpen(false);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingId(option.id);
+                        setEditingLabel(option.label);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose"
+                      onClick={() => onRemove(option)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 border-t pt-3">
+            <Input
+              value={newLabel}
+              onChange={(event) => setNewLabel(event.target.value)}
+              placeholder="Novo status financeiro"
+            />
+            <Button type="button" onClick={handleAdd}>
+              <Plus className="mr-1 h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function parseCurrencyValue(value: string) {
+  const cleanValue = value.replace(/[^\d,.-]/g, "").trim();
+  if (!cleanValue) return null;
+
+  const normalized = cleanValue.includes(",")
+    ? cleanValue.replace(/\./g, "").replace(",", ".")
+    : cleanValue;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+}
+
+function normalizeStatusLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function sameStatusLabel(left: string, right: string) {
+  return normalizeStatusLabel(left) === normalizeStatusLabel(right);
+}
+
+function fallbackFinancialStatus(label: string, sortOrder: number): FinancialStatusOption {
+  return {
+    id: `fallback-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    label,
+    sort_order: sortOrder,
+    created_at: "",
+    updated_at: "",
+  };
 }

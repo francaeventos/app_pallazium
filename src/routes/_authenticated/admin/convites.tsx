@@ -53,6 +53,7 @@ function Page() {
   const [partyOpen, setPartyOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [editingParty, setEditingParty] = useState<PartyMember | null>(null);
+  const [invitationStatus, setInvitationStatus] = useState<InvitationStatus>("rascunho");
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [partyStatus, setPartyStatus] = useState<RsvpStatus>("pendente");
 
@@ -69,6 +70,7 @@ function Page() {
         confirmed.length +
         confirmed.reduce((total, guest) => total + guest.confirmed_companions, 0),
       pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
+      declined: guests.filter((guest) => guest.rsvp_status === "recusado").length,
       party: party.length,
     };
   }, [guests, party]);
@@ -88,8 +90,9 @@ function Page() {
       supabase.from("event_guests").select("*").eq("event_id", id).order("created_at"),
       supabase.from("event_party_members").select("*").eq("event_id", id).order("sort_order"),
     ]);
+    const guestsWithTokens = await ensureGuestTokens(guestData ?? []);
     setInvitation(invitationData ?? null);
-    setGuests(guestData ?? []);
+    setGuests(guestsWithTokens);
     setParty(partyData ?? []);
   }, []);
 
@@ -100,6 +103,10 @@ function Page() {
   useEffect(() => {
     if (eventId) loadDetails(eventId);
   }, [eventId, loadDetails]);
+
+  useEffect(() => {
+    setInvitationStatus(invitation?.status ?? "rascunho");
+  }, [invitation?.status]);
 
   useEffect(() => {
     if (!editingGuest) return;
@@ -115,7 +122,7 @@ function Page() {
     event.preventDefault();
     if (!eventId) return toast.error("Selecione um evento.");
     const fd = new FormData(event.currentTarget);
-    const status = String(fd.get("status")) as InvitationStatus;
+    const status = invitationStatus;
     const payload = {
       event_id: eventId,
       title: String(fd.get("title")),
@@ -125,6 +132,7 @@ function Page() {
       ceremony_location: String(fd.get("ceremony_location") || "") || null,
       reception_location: String(fd.get("reception_location") || "") || null,
       map_url: String(fd.get("map_url") || "") || null,
+      gift_list_url: String(fd.get("gift_list_url") || "") || null,
       whatsapp_text: String(fd.get("whatsapp_text") || "") || null,
       status,
       published_at: status === "publicado" ? new Date().toISOString() : invitation?.published_at,
@@ -170,6 +178,7 @@ function Page() {
       rsvp_status: status,
       dietary_restrictions: String(fd.get("dietary_restrictions") || "") || null,
       notes: String(fd.get("notes") || "") || null,
+      public_token: editingGuest?.public_token || createPublicToken(),
       responded_at: status === "pendente" ? null : new Date().toISOString(),
     };
     const { error } = editingGuest
@@ -223,7 +232,24 @@ function Page() {
   };
 
   const copyGuestLink = async (guest: Guest) => {
-    const url = publicInvitationUrl(guest.public_token);
+    if (!invitation) return toast.error("Crie e salve o convite antes de copiar links.");
+    if (invitation.status !== "publicado") {
+      return toast.error("Publique o convite para liberar o link individual.");
+    }
+
+    const publicToken = guest.public_token || createPublicToken();
+    if (!guest.public_token) {
+      const { error } = await supabase
+        .from("event_guests")
+        .update({ public_token: publicToken })
+        .eq("id", guest.id);
+      if (error) return toast.error(error.message);
+      setGuests((items) =>
+        items.map((item) => (item.id === guest.id ? { ...item, public_token: publicToken } : item)),
+      );
+    }
+
+    const url = publicInvitationUrl(publicToken);
     if (!url) return toast.error("Link individual indisponível.");
     await navigator.clipboard.writeText(url);
     toast.success(`Link de ${guest.name} copiado`);
@@ -278,11 +304,12 @@ function Page() {
 
       {selectedEvent && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Metric icon={Users} label="Convidados" value={totals.guests} />
             <Metric icon={CheckCircle2} label="Confirmados" value={totals.confirmed} />
             <Metric icon={Users} label="Pessoas confirmadas" value={totals.people} />
             <Metric icon={MailCheck} label="Pendentes" value={totals.pending} />
+            <Metric icon={Users} label="Recusados" value={totals.declined} />
             <Metric icon={Users} label="Padrinhos" value={totals.party} />
           </div>
 
@@ -317,7 +344,10 @@ function Page() {
                   <select
                     name="status"
                     className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                    defaultValue={invitation?.status ?? "rascunho"}
+                    value={invitationStatus}
+                    onChange={(event) =>
+                      setInvitationStatus(event.target.value as InvitationStatus)
+                    }
                   >
                     <option value="rascunho">Rascunho</option>
                     <option value="publicado">Publicado</option>
@@ -363,6 +393,15 @@ function Page() {
                 <div>
                   <Label>Link do mapa</Label>
                   <Input name="map_url" type="url" defaultValue={invitation?.map_url ?? ""} />
+                </div>
+                <div>
+                  <Label>Lista de presentes</Label>
+                  <Input
+                    name="gift_list_url"
+                    type="url"
+                    placeholder="https://..."
+                    defaultValue={invitation?.gift_list_url ?? ""}
+                  />
                 </div>
                 <div>
                   <Label>Texto para WhatsApp</Label>
@@ -427,6 +466,16 @@ function Page() {
                       Acompanhantes: {guest.confirmed_companions}/{guest.allowed_companions}
                       {guest.dietary_restrictions && ` • Restrições: ${guest.dietary_restrictions}`}
                     </p>
+                    {invitation?.status === "publicado" && guest.public_token && (
+                      <p className="mt-2 break-all rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                        Link: {publicInvitationUrl(guest.public_token)}
+                      </p>
+                    )}
+                    {invitation && invitation.status !== "publicado" && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        Publique o convite para ativar o link individual deste convidado.
+                      </p>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button
                         variant="outline"
@@ -442,7 +491,7 @@ function Page() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={!invitation || invitation.status !== "publicado"}
+                        disabled={!invitation}
                         onClick={() => copyGuestLink(guest)}
                       >
                         <Copy className="mr-1 h-3 w-3" />
@@ -557,10 +606,16 @@ function Metric({
 }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <Icon className="h-5 w-5 text-gold" />
-        <p className="mt-3 font-serif text-4xl">{value}</p>
-        <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <CardContent className="flex items-center gap-3 p-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-champagne text-gold">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-serif text-2xl leading-none">{value}</p>
+          <p className="mt-1 truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
@@ -727,4 +782,35 @@ function PartyForm({
       </Button>
     </form>
   );
+}
+
+async function ensureGuestTokens(guests: Guest[]) {
+  const updatedGuests = await Promise.all(
+    guests.map(async (guest) => {
+      if (guest.public_token) return guest;
+
+      const publicToken = createPublicToken();
+      const { error } = await supabase
+        .from("event_guests")
+        .update({ public_token: publicToken })
+        .eq("id", guest.id);
+
+      if (error) {
+        console.error("Erro ao gerar link do convidado", error);
+        return guest;
+      }
+
+      return { ...guest, public_token: publicToken };
+    }),
+  );
+
+  return updatedGuests;
+}
+
+function createPublicToken() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID().replace(/-/g, "");
+  }
+
+  return `${Date.now()}${Math.random().toString(16).slice(2)}`;
 }

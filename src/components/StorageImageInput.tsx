@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 type StorageImageInputProps = {
@@ -109,65 +108,136 @@ export function StorageImagesTextarea({
   folder = "uploads",
   publicBucket = true,
 }: StorageImageInputProps) {
-  const [value, setValue] = useState(defaultValue ?? "");
+  const [images, setImages] = useState(() => splitImageLines(defaultValue ?? ""));
+  const [manualUrl, setManualUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    setValue(defaultValue ?? "");
+    setImages(splitImageLines(defaultValue ?? ""));
   }, [defaultValue]);
 
-  const upload = async (file?: File) => {
-    if (!file) return;
-    const validationError = validateImageFile(file);
-    if (validationError) return toast.error(validationError);
+  const addImages = (urls: string[]) => {
+    setImages((current) => [...current, ...urls.filter(Boolean)]);
+  };
 
-    setUploading(true);
-    const path = buildStoragePath(folder, file.name);
-    const { error } = await uploadImage(bucket, path, file);
-    if (error) {
-      console.error("Storage upload error", { bucket, path, error });
-      const fallbackUrl = await imageToDataUrl(file);
-      setUploading(false);
-      setValue((current) => [current.trim(), fallbackUrl].filter(Boolean).join("\n"));
-      toast.warning("Storage indisponível. A imagem foi adicionada no cadastro.");
-      return;
+  const removeImage = (index: number) => {
+    setImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const addManualUrl = () => {
+    const cleanUrl = manualUrl.trim();
+    if (!cleanUrl) return;
+    addImages([cleanUrl]);
+    setManualUrl("");
+  };
+
+  const upload = async (files?: FileList | null) => {
+    const fileItems = Array.from(files ?? []);
+    if (fileItems.length === 0) return;
+
+    for (const file of fileItems) {
+      const validationError = validateImageFile(file);
+      if (validationError) return toast.error(validationError);
     }
 
-    const uploadedUrl = await getStorageUrl(bucket, path, publicBucket);
-    setUploading(false);
-    if (!uploadedUrl) return;
+    setUploading(true);
+    const uploadedUrls: string[] = [];
 
-    setValue((current) => [current.trim(), uploadedUrl].filter(Boolean).join("\n"));
-    toast.success("Imagem adicionada");
+    for (const file of fileItems) {
+      const path = buildStoragePath(folder, file.name);
+      const { error } = await uploadImage(bucket, path, file);
+      if (error) {
+        console.error("Storage upload error", { bucket, path, error });
+        const fallbackUrl = await imageToDataUrl(file);
+        uploadedUrls.push(fallbackUrl);
+        continue;
+      }
+
+      const uploadedUrl = await getStorageUrl(bucket, path, publicBucket);
+      if (uploadedUrl) uploadedUrls.push(uploadedUrl);
+    }
+
+    setUploading(false);
+    if (uploadedUrls.length === 0) return;
+
+    addImages(uploadedUrls);
+    toast.success(
+      uploadedUrls.length === 1
+        ? "Imagem adicionada"
+        : `${uploadedUrls.length} imagens adicionadas`,
+    );
   };
 
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Textarea
-        name={name}
-        rows={5}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder="Uma URL por linha"
-      />
+      <textarea name={name} value={images.join("\n")} readOnly className="hidden" />
+      {images.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2">
+          {images.map((image, index) => (
+            <div
+              key={`${image}-${index}`}
+              className="group relative overflow-hidden rounded-xl border"
+            >
+              <div
+                className="h-24 bg-muted bg-cover bg-center"
+                style={{ backgroundImage: `url(${image})` }}
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="absolute right-1 top-1 h-7 w-7 p-0 opacity-90"
+                onClick={() => removeImage(index)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          Nenhuma foto adicionada ainda.
+        </div>
+      )}
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <Input
+          type="text"
+          value={manualUrl}
+          onChange={(event) => setManualUrl(event.target.value)}
+          placeholder="Colar URL de imagem"
+        />
+        <Button type="button" variant="outline" onClick={addManualUrl}>
+          <Upload className="mr-1 h-4 w-4" />
+          Adicionar URL
+        </Button>
+      </div>
       <Button type="button" variant="outline" disabled={uploading} asChild>
         <label className="cursor-pointer">
           <Upload className="mr-1 h-4 w-4" />
-          {uploading ? "Enviando..." : "Adicionar imagem"}
+          {uploading ? "Enviando..." : "Adicionar fotos"}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
             className="sr-only"
-            onChange={(event) => upload(event.target.files?.[0])}
+            onChange={(event) => upload(event.target.files)}
           />
         </label>
       </Button>
       <p className="text-xs text-muted-foreground">
-        Bucket: <span className="font-medium">{bucket}</span>. Cada upload adiciona uma nova URL.
+        Bucket: <span className="font-medium">{bucket}</span>. Você pode enviar várias fotos do
+        mesmo evento.
       </p>
     </div>
   );
+}
+
+function splitImageLines(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 async function getStorageUrl(bucket: string, path: string, publicBucket: boolean) {

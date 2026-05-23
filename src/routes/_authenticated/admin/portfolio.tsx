@@ -105,7 +105,7 @@ function Page() {
               Novo
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
                 {editing ? "Editar portfólio" : "Novo item"}
@@ -138,7 +138,7 @@ function Page() {
                 <StorageImagesTextarea
                   bucket="portfolio"
                   name="images"
-                  label="Imagens"
+                  label="Fotos do evento"
                   defaultValue={(editing?.images ?? []).join("\n")}
                   folder="eventos"
                 />
@@ -179,12 +179,24 @@ function Page() {
                   <Badge variant={item.active ? "default" : "outline"}>
                     {item.active ? "Publicado" : "Oculto"}
                   </Badge>
+                  <Badge variant="outline">{item.images?.length ?? 0} foto(s)</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground capitalize">
                   {item.event_type} • {item.category}
                 </p>
               </div>
               {item.description && <p className="text-sm">{item.description}</p>}
+              {item.images && item.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {item.images.slice(1, 5).map((image, index) => (
+                    <div
+                      key={`${image}-${index}`}
+                      className="h-14 rounded-lg bg-muted bg-cover bg-center"
+                      style={{ backgroundImage: `url(${image})` }}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"

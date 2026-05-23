@@ -209,6 +209,30 @@ export type Database = {
           },
         ];
       };
+      financial_status_options: {
+        Row: {
+          created_at: string;
+          id: string;
+          label: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          label: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          label?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       event_guests: {
         Row: {
           allowed_companions: number;
@@ -288,6 +312,7 @@ export type Database = {
           created_at: string;
           dress_code: string | null;
           event_id: string;
+          gift_list_url: string | null;
           id: string;
           map_url: string | null;
           message: string | null;
@@ -305,6 +330,7 @@ export type Database = {
           created_at?: string;
           dress_code?: string | null;
           event_id: string;
+          gift_list_url?: string | null;
           id?: string;
           map_url?: string | null;
           message?: string | null;
@@ -322,6 +348,7 @@ export type Database = {
           created_at?: string;
           dress_code?: string | null;
           event_id?: string;
+          gift_list_url?: string | null;
           id?: string;
           map_url?: string | null;
           message?: string | null;
@@ -407,6 +434,7 @@ export type Database = {
           description: string | null;
           id: string;
           image_url: string | null;
+          images: string[] | null;
           items: string | null;
           name: string;
           notes: string | null;
@@ -418,6 +446,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           image_url?: string | null;
+          images?: string[] | null;
           items?: string | null;
           name: string;
           notes?: string | null;
@@ -429,6 +458,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           image_url?: string | null;
+          images?: string[] | null;
           items?: string | null;
           name?: string;
           notes?: string | null;
@@ -780,6 +810,7 @@ export type Database = {
           guest_group_name: string | null;
           guest_id: string;
           guest_name: string;
+          gift_list_url: string | null;
           invitation_id: string;
           invitation_message: string | null;
           invitation_title: string;
@@ -824,6 +855,7 @@ export type Database = {
           guest_group_name: string | null;
           guest_id: string;
           guest_name: string;
+          gift_list_url: string | null;
           invitation_id: string;
           invitation_message: string | null;
           invitation_title: string;
