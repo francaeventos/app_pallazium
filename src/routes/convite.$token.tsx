@@ -96,7 +96,7 @@ function Page() {
             style={{ backgroundImage: `url(${details.cover_image_url})` }}
           />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(144,117,84,0.22),transparent_34rem)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(43,36,28,0.82),rgba(43,36,28,0.72)),radial-gradient(circle_at_center,rgba(144,117,84,0.2),transparent_34rem)]" />
         <div className="relative mx-auto max-w-5xl px-6 py-20 text-center text-white lg:py-28">
           <div className="mx-auto mb-8 w-fit rounded-xl border border-gold/50 bg-white/95 px-5 py-3 shadow-luxe">
             <img
@@ -234,11 +234,11 @@ function Info({
   value?: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-white/15 bg-white/10 p-4 text-left">
+    <div className="rounded-xl border border-gold/45 bg-[#fffaf7] p-4 text-left shadow-soft">
       <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gold">
         {icon} {label}
       </p>
-      <p className="mt-2 text-sm text-white/90">{value || "A definir"}</p>
+      <p className="mt-2 text-sm font-medium text-[#4a3c2e]">{value || "A definir"}</p>
     </div>
   );
 }
