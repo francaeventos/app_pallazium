@@ -14,4 +14,9 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    preview: {
+      allowedHosts: ["app.espacopallazium.com.br", "2.25.133.148"],
+    },
+  },
 });
