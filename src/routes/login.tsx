@@ -1,7 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  clearRecoveryMode,
+  isRecoveryUrl,
+  markRecoveryMode,
+} from "@/lib/password-recovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +27,15 @@ const resetSchema = z.object({
 const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
 });
+const newPasswordSchema = z
+  .object({
+    password: z.string().min(6, "Use pelo menos 6 caracteres").max(72),
+    confirm: z.string().min(1, "Confirme a senha"),
+  })
+  .refine((data) => data.password === data.confirm, {
+    message: "As senhas não coincidem.",
+    path: ["confirm"],
+  });
 
 const friendlyAuthError = (message: string) => {
   if (message.toLowerCase().includes("password is known to be weak")) {
@@ -71,8 +85,42 @@ function PasswordInput({
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "recovery">("login");
   const [signupPassword, setSignupPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    const enterRecoveryMode = () => {
+      if (!active) return;
+      markRecoveryMode();
+      setMode("recovery");
+    };
+
+    if (isRecoveryUrl()) enterRecoveryMode();
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const tokenHash = searchParams.get("token_hash");
+    if (tokenHash && searchParams.get("type") === "recovery") {
+      supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash }).then(({ error }) => {
+        if (error) toast.error(error.message);
+        else enterRecoveryMode();
+      });
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") enterRecoveryMode();
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleResetPassword = async (email: FormDataEntryValue | null) => {
     const parsed = resetSchema.safeParse({ email });
@@ -86,6 +134,22 @@ function LoginPage() {
     toast.success("Enviamos o link de recuperação para o e-mail informado.");
   };
 
+  const handleUpdatePassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const parsed = newPasswordSchema.safeParse({
+      password: newPassword,
+      confirm: confirmPassword,
+    });
+    if (!parsed.success) return toast.error(parsed.error.errors[0].message);
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+    setLoading(false);
+    if (error) return toast.error(friendlyAuthError(error.message));
+    clearRecoveryMode();
+    window.history.replaceState({}, document.title, "/login");
+    toast.success("Senha atualizada com sucesso!");
+    navigate({ to: "/" });
+  };
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -132,7 +196,7 @@ function LoginPage() {
       <div className="relative w-full max-w-md">
         <div className="rounded-3xl bg-white/95 backdrop-blur-md shadow-2xl border border-white/40 p-8 sm:p-10">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-6 w-full max-w-[220px] rounded-2xl bg-black px-5 py-4 shadow-luxe">
+            <div className="mb-6 w-full max-w-[220px]">
               <img
                 src="/logo-pallazium.png"
                 alt="Espaço Pallazium"
@@ -144,6 +208,7 @@ function LoginPage() {
             </p>
           </div>
 
+          {mode !== "recovery" && (
           <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
             <button
               type="button"
@@ -168,9 +233,63 @@ function LoginPage() {
               Criar conta
             </button>
           </div>
+          )}
 
-          {mode === "login" ? (
-            <form onSubmit={handleLogin} className="mt-6 space-y-5">
+          {mode === "recovery" ? (
+            <form onSubmit={handleUpdatePassword} className="mt-6 space-y-5">
+              <div className="text-center">
+                <h2 className="font-serif text-xl text-foreground">Nova senha</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Defina uma nova senha para acessar sua conta.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password" className="text-xs font-medium text-muted-foreground">
+                  Nova senha *
+                </Label>
+                <PasswordInput
+                  id="new-password"
+                  name="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="confirm-password"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Confirmar senha *
+                </Label>
+                <PasswordInput
+                  id="confirm-password"
+                  name="confirm"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-full text-base font-semibold shadow-luxe"
+              >
+                {loading ? "Salvando…" : "Salvar nova senha"}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  clearRecoveryMode();
+                  setMode("login");
+                  window.history.replaceState({}, document.title, "/login");
+                }}
+              >
+                Voltar ao login
+              </button>
+            </form>
+          ) : mode === "login" ? (            <form onSubmit={handleLogin} className="mt-6 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">
                   Email *

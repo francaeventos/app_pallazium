@@ -2,6 +2,7 @@ import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { AppShell, type NavItem } from "@/components/AppShell";
 import {
+  BookOpen,
   LayoutDashboard,
   ListChecks,
   AlertCircle,
@@ -26,6 +27,7 @@ const nav: NavItem[] = [
   { to: "/app/referencias", label: "Referências", icon: Images },
   { to: "/app/parceiros", label: "Parceiros", icon: Users },
   { to: "/app/dicas", label: "Dicas", icon: Lightbulb },
+  { to: "/app/ebook", label: "Ebooks", icon: BookOpen },
   { to: "/app/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
 ];
 

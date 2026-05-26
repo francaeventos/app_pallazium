@@ -1,0 +1,597 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useRef, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { AdminEmptyState } from "@/components/AdminEmptyState";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  BookOpen,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/admin/ebooks")({
+  component: Page,
+});
+
+type Ebook = {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  file_url: string;
+  file_name: string;
+  file_size: number | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type FormState = {
+  title: string;
+  description: string;
+  cover_url: string;
+};
+
+const emptyForm: FormState = { title: "", description: "", cover_url: "" };
+
+function formatBytes(bytes: number | null) {
+  if (!bytes) return null;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function Page() {
+  const [ebooks, setEbooks] = useState<Ebook[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Ebook | null>(null);
+  const [removing, setRemoving] = useState<Ebook | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState | "file", string>>>({});
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isEditMode = !!editing;
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ebooks" as never)
+      .select("*")
+      .order("created_at", { ascending: false });
+    setEbooks((data as Ebook[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setPendingFile(null);
+    setErrors({});
+    setOpen(true);
+  };
+
+  const openEdit = (eb: Ebook) => {
+    setEditing(eb);
+    setForm({ title: eb.title, description: eb.description ?? "", cover_url: eb.cover_url ?? "" });
+    setPendingFile(null);
+    setErrors({});
+    setOpen(true);
+  };
+
+  const closeDialog = () => {
+    setOpen(false);
+    setEditing(null);
+    setPendingFile(null);
+  };
+
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!form.title.trim()) e.title = "Título é obrigatório";
+    if (!isEditMode && !pendingFile) e.file = "Selecione um arquivo PDF";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const uploadPdf = async (file: File): Promise<string | null> => {
+    const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const path = `uploads/${id}.${ext}`;
+
+    setUploading(true);
+
+    // Usa fetch raw para ver a mensagem de erro real do servidor
+    const SUPABASE_URL =
+      import.meta.env.VITE_SUPABASE_URL as string;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    if (!token) {
+      toast.error("Sessão expirada. Faça login novamente.");
+      setUploading(false);
+      return null;
+    }
+
+    const response = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/ebooks/${path}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": file.type || "application/pdf",
+          "x-upsert": "false",
+        },
+        body: file,
+      },
+    );
+
+    setUploading(false);
+
+    if (!response.ok) {
+      let errMsg = `HTTP ${response.status}`;
+      try {
+        const body = await response.json();
+        errMsg = body.message || body.error || errMsg;
+        console.error("[ebooks] upload error body:", body);
+      } catch {
+        console.error("[ebooks] upload error (não-JSON):", response.statusText);
+      }
+      toast.error(`Falha no upload: ${errMsg}`);
+      return null;
+    }
+
+    const { data } = supabase.storage.from("ebooks").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleSubmit = async (ev: FormEvent<HTMLFormElement>) => {
+    ev.preventDefault();
+    if (saving || uploading) return;
+    if (!validate()) return;
+
+    setSaving(true);
+
+    let file_url = editing?.file_url ?? "";
+    let file_name = editing?.file_name ?? "";
+    let file_size = editing?.file_size ?? null;
+
+    if (pendingFile) {
+      const url = await uploadPdf(pendingFile);
+      if (!url) {
+        setSaving(false);
+        return;
+      }
+      file_url = url;
+      file_name = pendingFile.name;
+      file_size = pendingFile.size;
+    }
+
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      cover_url: form.cover_url.trim() || null,
+      file_url,
+      file_name,
+      file_size,
+    };
+
+    const { error } = isEditMode
+      ? await supabase
+          .from("ebooks" as never)
+          .update(payload as never)
+          .eq("id", editing!.id)
+      : await supabase.from("ebooks" as never).insert(payload as never);
+
+    setSaving(false);
+    if (error) return toast.error((error as { message: string }).message);
+    toast.success(isEditMode ? "Ebook atualizado" : "Ebook publicado");
+    closeDialog();
+    load();
+  };
+
+  const toggleActive = async (eb: Ebook) => {
+    const { error } = await supabase
+      .from("ebooks" as never)
+      .update({ active: !eb.active } as never)
+      .eq("id", eb.id);
+    if (error) return toast.error((error as { message: string }).message);
+    toast.success(eb.active ? "Ebook ocultado dos clientes" : "Ebook visível para clientes");
+    load();
+  };
+
+  const confirmRemove = async () => {
+    if (!removing) return;
+    const { error } = await supabase
+      .from("ebooks" as never)
+      .delete()
+      .eq("id", removing.id);
+    if (error) return toast.error((error as { message: string }).message);
+    toast.success("Ebook removido");
+    setRemoving(null);
+    load();
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+  return (
+    <div className="p-6 lg:p-10 space-y-8 max-w-5xl mx-auto">
+      {/* Cabeçalho */}
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="space-y-1.5">
+          <h1 className="font-serif text-4xl text-foreground">Ebooks</h1>
+          <p className="text-muted-foreground text-sm max-w-xl">
+            Envie materiais em PDF para os clientes baixarem na Área VIP.
+          </p>
+        </div>
+        <Button
+          size="lg"
+          className="shadow-soft hover:shadow-luxe transition-shadow rounded-full px-6"
+          onClick={openNew}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Novo ebook
+        </Button>
+      </header>
+
+      {/* Lista */}
+      <Card className="rounded-2xl shadow-soft border-border/70 overflow-hidden">
+        <div className="px-5 sm:px-6 py-5 border-b bg-gradient-to-b from-card to-muted/20">
+          <div className="flex items-baseline gap-3">
+            <h2 className="font-serif text-xl">Materiais publicados</h2>
+            <span className="text-sm text-muted-foreground">
+              {loading ? "Carregando..." : `${ebooks.length} ${ebooks.length === 1 ? "ebook" : "ebooks"}`}
+            </span>
+          </div>
+        </div>
+
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-10 text-center text-muted-foreground text-sm">
+              <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />
+              Carregando ebooks...
+            </div>
+          ) : ebooks.length === 0 ? (
+            <div className="p-4">
+              <AdminEmptyState
+                icon={BookOpen}
+                title="Nenhum ebook ainda"
+                description="Publique materiais em PDF para seus clientes acessarem na Área VIP."
+                actionLabel="Novo ebook"
+                onAction={openNew}
+              />
+            </div>
+          ) : (
+            <ul className="divide-y">
+              {ebooks.map((eb) => (
+                <li
+                  key={eb.id}
+                  className="px-4 sm:px-6 py-4 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Capa ou ícone */}
+                    <div className="h-14 w-10 shrink-0 rounded-lg overflow-hidden border bg-muted flex items-center justify-center">
+                      {eb.cover_url ? (
+                        <img
+                          src={eb.cover_url}
+                          alt={eb.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-base text-foreground leading-tight truncate">
+                          {eb.title}
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className={
+                            eb.active
+                              ? "text-xs bg-emerald-100 text-emerald-800 border-emerald-200"
+                              : "text-xs bg-muted text-muted-foreground border-border"
+                          }
+                        >
+                          {eb.active ? "Visível" : "Oculto"}
+                        </Badge>
+                      </div>
+                      {eb.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {eb.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>{eb.file_name}</span>
+                        {eb.file_size && <span>{formatBytes(eb.file_size)}</span>}
+                        <span>Adicionado em {formatDate(eb.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Toggle visibilidade */}
+                      <div className="hidden sm:flex items-center gap-2">
+                        <Switch
+                          checked={eb.active}
+                          onCheckedChange={() => toggleActive(eb)}
+                          aria-label={eb.active ? "Ocultar dos clientes" : "Tornar visível"}
+                        />
+                        <span className="text-xs text-muted-foreground w-12">
+                          {eb.active ? "Visível" : "Oculto"}
+                        </span>
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem asChild>
+                            <a href={eb.file_url} target="_blank" rel="noreferrer">
+                              <Download className="h-4 w-4 mr-2" /> Abrir PDF
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(eb)}>
+                            <Pencil className="h-4 w-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toggleActive(eb)}>
+                            {eb.active ? (
+                              <>
+                                <EyeOff className="h-4 w-4 mr-2" /> Ocultar
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-2" /> Tornar visível
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setRemoving(eb)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog: Novo / Editar */}
+      <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+        <DialogContent className="sm:max-w-lg p-0 gap-0 rounded-2xl shadow-luxe overflow-hidden border-gold/20">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-card">
+            <DialogTitle className="font-serif text-2xl">
+              {isEditMode ? "Editar ebook" : "Novo ebook"}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditMode
+                ? "Altere as informações ou substitua o arquivo PDF."
+                : "Envie um PDF e preencha as informações para publicar na Área VIP."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="flex flex-col">
+            <div className="px-6 py-6 space-y-5 max-h-[65vh] overflow-y-auto">
+
+              {/* Upload de PDF */}
+              <div className="space-y-2">
+                <Label>
+                  {isEditMode ? "Substituir arquivo PDF" : "Arquivo PDF *"}
+                </Label>
+                <div
+                  className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors cursor-pointer hover:bg-muted/50 ${errors.file ? "border-destructive" : "border-border"}`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {pendingFile ? (
+                    <>
+                      <FileText className="h-8 w-8 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">{pendingFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatBytes(pendingFile.size)}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        Remover
+                      </Button>
+                    </>
+                  ) : isEditMode && editing?.file_name ? (
+                    <>
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Arquivo atual:</p>
+                        <p className="font-medium text-sm">{editing.file_name}</p>
+                        {editing.file_size && (
+                          <p className="text-xs text-muted-foreground">{formatBytes(editing.file_size)}</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Clique para substituir</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">Clique para selecionar</p>
+                        <p className="text-xs text-muted-foreground">PDF até 50 MB</p>
+                      </div>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.type !== "application/pdf") {
+                        toast.error("Selecione um arquivo PDF.");
+                        return;
+                      }
+                      if (file.size > 50 * 1024 * 1024) {
+                        toast.error("O arquivo deve ter no máximo 50 MB.");
+                        return;
+                      }
+                      setPendingFile(file);
+                      setErrors((e) => ({ ...e, file: undefined }));
+                    }}
+                  />
+                </div>
+                {errors.file && <p className="text-xs text-destructive">{errors.file}</p>}
+              </div>
+
+              {/* Título */}
+              <div className="space-y-1.5">
+                <Label>Título *</Label>
+                <Input
+                  value={form.title}
+                  maxLength={120}
+                  placeholder="Ex: Guia de Decoração para Casamentos"
+                  className="h-11"
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                />
+                {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
+              </div>
+
+              {/* Descrição */}
+              <div className="space-y-1.5">
+                <Label>Descrição <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Textarea
+                  value={form.description}
+                  maxLength={400}
+                  rows={3}
+                  placeholder="Breve descrição do conteúdo do material..."
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+
+              {/* URL da capa */}
+              <div className="space-y-1.5">
+                <Label>URL da capa <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input
+                  value={form.cover_url}
+                  placeholder="https://..."
+                  className="h-11"
+                  onChange={(e) => setForm((f) => ({ ...f, cover_url: e.target.value }))}
+                />
+                {form.cover_url && (
+                  <img
+                    src={form.cover_url}
+                    alt="Prévia da capa"
+                    className="h-28 w-auto rounded-lg object-cover border"
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="px-6 py-4 border-t bg-muted/30 gap-2">
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={saving || uploading}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving || uploading} className="min-w-[160px] shadow-soft">
+                {(saving || uploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {uploading ? "Enviando PDF..." : saving ? "Salvando..." : isEditMode ? "Salvar alterações" : "Publicar ebook"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!removing} onOpenChange={(v) => !v && setRemoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ebook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O ebook <strong>{removing?.title}</strong> será removido da Área VIP dos clientes.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemove}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

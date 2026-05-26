@@ -22,6 +22,7 @@ import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authe
 import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
 import { Route as AuthenticatedAppPendenciasRouteImport } from './routes/_authenticated/app/pendencias'
 import { Route as AuthenticatedAppParceirosRouteImport } from './routes/_authenticated/app/parceiros'
+import { Route as AuthenticatedAppEbookRouteImport } from './routes/_authenticated/app/ebook'
 import { Route as AuthenticatedAppDicasRouteImport } from './routes/_authenticated/app/dicas'
 import { Route as AuthenticatedAppConvitesRouteImport } from './routes/_authenticated/app/convites'
 import { Route as AuthenticatedAppChecklistRouteImport } from './routes/_authenticated/app/checklist'
@@ -33,6 +34,7 @@ import { Route as AuthenticatedAdminParceirosRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminNotificacoesRouteImport } from './routes/_authenticated/admin/notificacoes'
 import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_authenticated/admin/interesses'
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
+import { Route as AuthenticatedAdminEbooksRouteImport } from './routes/_authenticated/admin/ebooks'
 import { Route as AuthenticatedAdminDicasRouteImport } from './routes/_authenticated/admin/dicas'
 import { Route as AuthenticatedAdminConvitesRouteImport } from './routes/_authenticated/admin/convites'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
@@ -110,6 +112,11 @@ const AuthenticatedAppParceirosRoute =
     path: '/parceiros',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppEbookRoute = AuthenticatedAppEbookRouteImport.update({
+  id: '/ebook',
+  path: '/ebook',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const AuthenticatedAppDicasRoute = AuthenticatedAppDicasRouteImport.update({
   id: '/dicas',
   path: '/dicas',
@@ -175,6 +182,12 @@ const AuthenticatedAdminEventosRoute =
     path: '/eventos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminEbooksRoute =
+  AuthenticatedAdminEbooksRouteImport.update({
+    id: '/ebooks',
+    path: '/ebooks',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminDicasRoute = AuthenticatedAdminDicasRouteImport.update({
   id: '/dicas',
   path: '/dicas',
@@ -228,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
+  '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
   '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
@@ -239,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/app/ebook': typeof AuthenticatedAppEbookRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
@@ -258,6 +273,7 @@ export interface FileRoutesByTo {
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
+  '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
   '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
@@ -269,6 +285,7 @@ export interface FileRoutesByTo {
   '/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/app/ebook': typeof AuthenticatedAppEbookRoute
   '/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
@@ -292,6 +309,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/_authenticated/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/_authenticated/admin/dicas': typeof AuthenticatedAdminDicasRoute
+  '/_authenticated/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/_authenticated/admin/interesses': typeof AuthenticatedAdminInteressesRoute
   '/_authenticated/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
@@ -303,6 +321,7 @@ export interface FileRoutesById {
   '/_authenticated/app/checklist': typeof AuthenticatedAppChecklistRoute
   '/_authenticated/app/convites': typeof AuthenticatedAppConvitesRoute
   '/_authenticated/app/dicas': typeof AuthenticatedAppDicasRoute
+  '/_authenticated/app/ebook': typeof AuthenticatedAppEbookRoute
   '/_authenticated/app/parceiros': typeof AuthenticatedAppParceirosRoute
   '/_authenticated/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
@@ -326,6 +345,7 @@ export interface FileRouteTypes {
     | '/admin/clientes'
     | '/admin/convites'
     | '/admin/dicas'
+    | '/admin/ebooks'
     | '/admin/eventos'
     | '/admin/interesses'
     | '/admin/notificacoes'
@@ -337,6 +357,7 @@ export interface FileRouteTypes {
     | '/app/checklist'
     | '/app/convites'
     | '/app/dicas'
+    | '/app/ebook'
     | '/app/parceiros'
     | '/app/pendencias'
     | '/app/portfolio'
@@ -356,6 +377,7 @@ export interface FileRouteTypes {
     | '/admin/clientes'
     | '/admin/convites'
     | '/admin/dicas'
+    | '/admin/ebooks'
     | '/admin/eventos'
     | '/admin/interesses'
     | '/admin/notificacoes'
@@ -367,6 +389,7 @@ export interface FileRouteTypes {
     | '/app/checklist'
     | '/app/convites'
     | '/app/dicas'
+    | '/app/ebook'
     | '/app/parceiros'
     | '/app/pendencias'
     | '/app/portfolio'
@@ -389,6 +412,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/clientes'
     | '/_authenticated/admin/convites'
     | '/_authenticated/admin/dicas'
+    | '/_authenticated/admin/ebooks'
     | '/_authenticated/admin/eventos'
     | '/_authenticated/admin/interesses'
     | '/_authenticated/admin/notificacoes'
@@ -400,6 +424,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/checklist'
     | '/_authenticated/app/convites'
     | '/_authenticated/app/dicas'
+    | '/_authenticated/app/ebook'
     | '/_authenticated/app/parceiros'
     | '/_authenticated/app/pendencias'
     | '/_authenticated/app/portfolio'
@@ -511,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppParceirosRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/ebook': {
+      id: '/_authenticated/app/ebook'
+      path: '/ebook'
+      fullPath: '/app/ebook'
+      preLoaderRoute: typeof AuthenticatedAppEbookRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/dicas': {
       id: '/_authenticated/app/dicas'
       path: '/dicas'
@@ -588,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEventosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/ebooks': {
+      id: '/_authenticated/admin/ebooks'
+      path: '/ebooks'
+      fullPath: '/admin/ebooks'
+      preLoaderRoute: typeof AuthenticatedAdminEbooksRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/dicas': {
       id: '/_authenticated/admin/dicas'
       path: '/dicas'
@@ -646,6 +685,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
   AuthenticatedAdminConvitesRoute: typeof AuthenticatedAdminConvitesRoute
   AuthenticatedAdminDicasRoute: typeof AuthenticatedAdminDicasRoute
+  AuthenticatedAdminEbooksRoute: typeof AuthenticatedAdminEbooksRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
   AuthenticatedAdminInteressesRoute: typeof AuthenticatedAdminInteressesRoute
   AuthenticatedAdminNotificacoesRoute: typeof AuthenticatedAdminNotificacoesRoute
@@ -664,6 +704,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
   AuthenticatedAdminConvitesRoute: AuthenticatedAdminConvitesRoute,
   AuthenticatedAdminDicasRoute: AuthenticatedAdminDicasRoute,
+  AuthenticatedAdminEbooksRoute: AuthenticatedAdminEbooksRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
   AuthenticatedAdminInteressesRoute: AuthenticatedAdminInteressesRoute,
   AuthenticatedAdminNotificacoesRoute: AuthenticatedAdminNotificacoesRoute,
@@ -685,6 +726,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppChecklistRoute: typeof AuthenticatedAppChecklistRoute
   AuthenticatedAppConvitesRoute: typeof AuthenticatedAppConvitesRoute
   AuthenticatedAppDicasRoute: typeof AuthenticatedAppDicasRoute
+  AuthenticatedAppEbookRoute: typeof AuthenticatedAppEbookRoute
   AuthenticatedAppParceirosRoute: typeof AuthenticatedAppParceirosRoute
   AuthenticatedAppPendenciasRoute: typeof AuthenticatedAppPendenciasRoute
   AuthenticatedAppPortfolioRoute: typeof AuthenticatedAppPortfolioRoute
@@ -698,6 +740,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppChecklistRoute: AuthenticatedAppChecklistRoute,
   AuthenticatedAppConvitesRoute: AuthenticatedAppConvitesRoute,
   AuthenticatedAppDicasRoute: AuthenticatedAppDicasRoute,
+  AuthenticatedAppEbookRoute: AuthenticatedAppEbookRoute,
   AuthenticatedAppParceirosRoute: AuthenticatedAppParceirosRoute,
   AuthenticatedAppPendenciasRoute: AuthenticatedAppPendenciasRoute,
   AuthenticatedAppPortfolioRoute: AuthenticatedAppPortfolioRoute,
@@ -732,3 +775,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
