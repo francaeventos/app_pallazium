@@ -5,8 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
+import loginBg from "@/assets/login-bg.jpg";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -23,7 +25,7 @@ const signupSchema = loginSchema.extend({
 
 const friendlyAuthError = (message: string) => {
   if (message.toLowerCase().includes("password is known to be weak")) {
-    return "O login bloqueou essa senha por configuração do Auth. Para aceitar qualquer senha, desative a proteção de senha fraca no Lovable/Supabase Auth.";
+    return "Senha bloqueada pela proteção de senha fraca. Use uma senha mais forte.";
   }
   return message;
 };
@@ -42,7 +44,6 @@ function PasswordInput({
   onChange?: (value: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
-
   return (
     <div className="relative">
       <Input
@@ -51,14 +52,14 @@ function PasswordInput({
         type={visible ? "text" : "password"}
         required
         autoComplete={autoComplete}
-        className="pr-10"
+        className="h-12 pr-11 rounded-xl border-border/70 bg-card focus-visible:ring-primary"
         value={value}
-        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       />
       <button
         type="button"
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition hover:text-foreground"
-        onClick={() => setVisible((current) => !current)}
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition hover:text-foreground"
+        onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
       >
         {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -76,13 +77,11 @@ function LoginPage() {
   const handleResetPassword = async (email: FormDataEntryValue | null) => {
     const parsed = resetSchema.safeParse({ email });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
-
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${window.location.origin}/login`,
     });
     setLoading(false);
-
     if (error) return toast.error(error.message);
     toast.success("Enviamos o link de recuperação para o e-mail informado.");
   };
@@ -109,7 +108,6 @@ function LoginPage() {
       password: fd.get("password"),
     });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
-
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email: parsed.data.email,
@@ -120,152 +118,161 @@ function LoginPage() {
       },
     });
     setLoading(false);
-
     if (error) return toast.error(friendlyAuthError(error.message));
     toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex relative bg-gradient-luxe items-center justify-center p-12 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.78_0.12_85/0.25),transparent_60%)]" />
-        <div className="relative max-w-md text-center">
-          <div className="mb-8 rounded-2xl border border-white/10 bg-black/75 p-6 shadow-luxe">
-            <img
-              src="/logo-pallazium.png"
-              alt="Espaço Pallazium"
-              className="mx-auto h-auto w-full object-contain"
-            />
-          </div>
-          <p className="mt-3 text-sm uppercase tracking-[0.3em] text-muted-foreground">
-            Área do Cliente
-          </p>
-          <p className="mt-8 text-muted-foreground">
-            Acompanhe cada detalhe do seu evento com a sofisticação e organização que ele merece.
-          </p>
-        </div>
-      </div>
+    <div
+      className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-center p-4 sm:p-8"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
 
-      <div className="flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 text-center">
-            <div className="mx-auto mb-3 max-w-56 rounded-xl bg-black p-3 shadow-luxe">
+      <div className="relative w-full max-w-md">
+        <div className="rounded-3xl bg-white/95 backdrop-blur-md shadow-2xl border border-white/40 p-8 sm:p-10">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-6 w-full max-w-[220px] rounded-2xl bg-black px-5 py-4 shadow-luxe">
               <img
                 src="/logo-pallazium.png"
                 alt="Espaço Pallazium"
                 className="h-auto w-full object-contain"
               />
             </div>
+            <p className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground">
+              Área do Cliente
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
-            <Button
+          <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
+            <button
               type="button"
-              variant={mode === "login" ? "secondary" : "ghost"}
               onClick={() => setMode("login")}
-              className="w-full"
+              className={`rounded-full py-2 font-medium transition ${
+                mode === "login"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               Entrar
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant={mode === "signup" ? "secondary" : "ghost"}
               onClick={() => setMode("signup")}
-              className="w-full"
+              className={`rounded-full py-2 font-medium transition ${
+                mode === "signup"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               Criar conta
-            </Button>
+            </button>
           </div>
 
           {mode === "login" ? (
-            <div className="mt-6">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    Acesso exclusivo
-                  </p>
-                  <h2 className="font-serif text-3xl mt-2">Bem-vindo de volta</h2>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Entre com o e-mail liberado pela equipe Pallazium após o fechamento do contrato.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" name="email" type="email" required autoComplete="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <PasswordInput id="password" name="password" autoComplete="current-password" />
-                </div>
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Entrando…" : "Entrar"}
-                </Button>
+            <form onSubmit={handleLogin} className="mt-6 space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">
+                  Email *
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className="h-12 rounded-xl border-border/70 bg-card focus-visible:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs font-medium text-muted-foreground">
+                  Senha *
+                </Label>
+                <PasswordInput id="password" name="password" autoComplete="current-password" />
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-muted-foreground cursor-pointer">
+                  <Checkbox id="remember" />
+                  <span>Salvar login</span>
+                </label>
                 <button
                   type="button"
-                  className="block w-full text-center text-xs text-muted-foreground underline"
+                  className="flex items-center gap-1.5 font-medium text-gold hover:underline"
                   onClick={(event) => {
                     const form = event.currentTarget.closest("form");
                     if (form) handleResetPassword(new FormData(form).get("email"));
                   }}
                 >
+                  <KeyRound className="h-3.5 w-3.5" />
                   Esqueci minha senha
                 </button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Primeiro acesso? Clique em{" "}
-                  <button type="button" className="underline" onClick={() => setMode("signup")}>
-                    Criar conta
-                  </button>
-                  .
-                </p>
-              </form>
-            </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-full text-base font-semibold shadow-luxe"
+              >
+                {loading ? "Entrando…" : "Entrar"}
+              </Button>
+            </form>
           ) : (
-            <div className="mt-6">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    Primeiro acesso
-                  </p>
-                  <h2 className="font-serif text-3xl mt-2">Criar sua conta</h2>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Use o mesmo e-mail informado no contrato para facilitar o vínculo do evento.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Nome completo</Label>
-                  <Input id="full_name" name="full_name" required autoComplete="name" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">E-mail</Label>
-                  <Input
-                    id="signup-email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <PasswordInput
-                    id="signup-password"
-                    name="password"
-                    autoComplete="new-password"
-                    value={signupPassword}
-                    onChange={setSignupPassword}
-                  />
-                  <p className="text-xs text-muted-foreground">Pode usar a senha que preferir.</p>
-                </div>
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Criando…" : "Criar conta"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Após o cadastro, a equipe Pallazium vinculará seu evento à conta.
-                </p>
-              </form>
-            </div>
+            <form onSubmit={handleSignup} className="mt-6 space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="full_name" className="text-xs font-medium text-muted-foreground">
+                  Nome completo *
+                </Label>
+                <Input
+                  id="full_name"
+                  name="full_name"
+                  required
+                  autoComplete="name"
+                  className="h-12 rounded-xl border-border/70 bg-card focus-visible:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email" className="text-xs font-medium text-muted-foreground">
+                  Email *
+                </Label>
+                <Input
+                  id="signup-email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className="h-12 rounded-xl border-border/70 bg-card focus-visible:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password" className="text-xs font-medium text-muted-foreground">
+                  Senha *
+                </Label>
+                <PasswordInput
+                  id="signup-password"
+                  name="password"
+                  autoComplete="new-password"
+                  value={signupPassword}
+                  onChange={setSignupPassword}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-full text-base font-semibold shadow-luxe"
+              >
+                {loading ? "Criando…" : "Criar conta"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Após o cadastro, a equipe Pallazium vinculará seu evento à conta.
+              </p>
+            </form>
           )}
         </div>
+
+        <p className="mt-6 text-center text-xs text-white/85 drop-shadow">
+          © {new Date().getFullYear()} Espaço Pallazium. Todos os direitos reservados.
+        </p>
       </div>
     </div>
   );
