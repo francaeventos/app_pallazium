@@ -1,0 +1,455 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AppRole {
+  admin
+  client
+
+  @@map("app_role")
+}
+
+enum EventStatus {
+  novo
+  em_organizacao
+  proximo
+  concluido
+  cancelado
+
+  @@map("event_status")
+}
+
+enum ClientStatus {
+  ativo
+  inativo
+  evento_concluido
+
+  @@map("client_status")
+}
+
+enum ChecklistStatus {
+  pendente
+  em_analise
+  concluido
+
+  @@map("checklist_status")
+}
+
+enum PriorityLevel {
+  baixa
+  media
+  alta
+
+  @@map("priority_level")
+}
+
+enum InterestStatus {
+  novo
+  em_contato
+  vendido
+  perdido
+
+  @@map("interest_status")
+}
+
+enum InvitationStatus {
+  rascunho
+  publicado
+  pausado
+
+  @@map("invitation_status")
+}
+
+enum RsvpStatus {
+  pendente
+  confirmado
+  recusado
+
+  @@map("rsvp_status")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile       Profile?
+  roles         UserRole[]
+  client        Client?
+  notifications Notification[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Profile {
+  id        String   @id @db.Uuid
+  fullName  String?  @map("full_name")
+  email     String?
+  avatarUrl String?  @map("avatar_url")
+  phone     String?
+  whatsapp  String?
+  document  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model UserRole {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String  @map("user_id") @db.Uuid
+  role      AppRole
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+model Client {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?      @unique @map("user_id") @db.Uuid
+  fullName  String       @map("full_name")
+  email     String
+  phone     String?
+  whatsapp  String?
+  document  String?
+  notes     String?
+  status    ClientStatus @default(ativo)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  events           Event[]
+  upgradeInterests UpgradeInterest[]
+  menuInterests    MenuInterest[]
+
+  @@map("clients")
+}
+
+model Event {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId         String      @map("client_id") @db.Uuid
+  eventType        String      @map("event_type")
+  eventDate        DateTime?   @map("event_date") @db.Date
+  startTime        DateTime?   @map("start_time") @db.Time(6)
+  endTime          DateTime?   @map("end_time") @db.Time(6)
+  location         String?
+  estimatedGuests  Int?        @map("estimated_guests")
+  contractedValue  Decimal?    @map("contracted_value") @db.Decimal(12, 2)
+  financialStatus  String?     @map("financial_status")
+  status           EventStatus @default(novo)
+  internalNotes    String?     @map("internal_notes")
+  clientNotes      String?     @map("client_notes")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  checklistItems   ChecklistItem[]
+  upgradeInterests UpgradeInterest[]
+  menuInterests    MenuInterest[]
+  eventReferences  EventReference[]
+  invitation       EventInvitation?
+  guests           EventGuest[]
+  partyMembers     EventPartyMember[]
+  giftItems        EventGiftItem[]
+
+  @@map("events")
+}
+
+model ChecklistItem {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId       String          @map("event_id") @db.Uuid
+  title         String
+  description   String?
+  status        ChecklistStatus @default(pendente)
+  priority      PriorityLevel   @default(media)
+  dueDate       DateTime?       @map("due_date") @db.Date
+  clientNotes   String?         @map("client_notes")
+  internalNotes String?         @map("internal_notes")
+  attachmentUrl String?         @map("attachment_url")
+  sortOrder     Int             @default(0) @map("sort_order")
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("checklist_items")
+}
+
+model Menu {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  category    String
+  items       String?
+  imageUrl    String?  @map("image_url")
+  images      String[]
+  notes       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  menuInterests MenuInterest[]
+
+  @@map("menus")
+}
+
+model MenuInterest {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuId    String         @map("menu_id") @db.Uuid
+  eventId   String         @map("event_id") @db.Uuid
+  clientId  String         @map("client_id") @db.Uuid
+  status    InterestStatus @default(novo)
+  notes     String?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  menu   Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, eventId, menuId], map: "menu_interests_unique_event_menu")
+  @@map("menu_interests")
+}
+
+model Upgrade {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  category    String
+  imageUrl    String?  @map("image_url")
+  priceText   String?  @map("price_text")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  upgradeInterests UpgradeInterest[]
+
+  @@map("upgrades")
+}
+
+model UpgradeInterest {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  upgradeId String         @map("upgrade_id") @db.Uuid
+  eventId   String         @map("event_id") @db.Uuid
+  clientId  String         @map("client_id") @db.Uuid
+  status    InterestStatus @default(novo)
+  notes     String?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  upgrade Upgrade @relation(fields: [upgradeId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("upgrade_interests")
+}
+
+model Partner {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  category    String
+  description String?
+  phone       String?
+  whatsapp    String?
+  instagram   String?
+  imageUrl    String?  @map("image_url")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("partners")
+}
+
+model Tip {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String
+  category  String
+  content   String
+  imageUrl  String?  @map("image_url")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("tips")
+}
+
+model PortfolioItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventName   String   @map("event_name")
+  eventType   String   @map("event_type")
+  category    String
+  description String?
+  highlights  String?
+  images      String[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("portfolio_items")
+}
+
+model EventReference {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId         String   @map("event_id") @db.Uuid
+  title           String
+  category        String
+  imageUrl        String?  @map("image_url")
+  inspirationLink String?  @map("inspiration_link")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("event_references")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String
+  message   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model EventInvitation {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId            String           @unique @map("event_id") @db.Uuid
+  publicToken        String           @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex')")) @map("public_token")
+  title              String
+  message            String?
+  coverImageUrl      String?          @map("cover_image_url")
+  dressCode          String?          @map("dress_code")
+  ceremonyLocation   String?          @map("ceremony_location")
+  receptionLocation  String?          @map("reception_location")
+  mapUrl             String?          @map("map_url")
+  giftListUrl        String?          @map("gift_list_url")
+  whatsappText       String?          @map("whatsapp_text")
+  status             InvitationStatus @default(rascunho)
+  publishedAt        DateTime?        @map("published_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event  Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guests EventGuest[]
+
+  @@map("event_invitations")
+}
+
+model EventGuest {
+  id                   String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId              String     @map("event_id") @db.Uuid
+  invitationId         String?    @map("invitation_id") @db.Uuid
+  publicToken          String     @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex')")) @map("public_token")
+  name                 String
+  phone                String?
+  email                String?
+  groupName            String?    @map("group_name")
+  allowedCompanions    Int        @default(0) @map("allowed_companions")
+  confirmedCompanions  Int        @default(0) @map("confirmed_companions")
+  rsvpStatus           RsvpStatus @default(pendente) @map("rsvp_status")
+  dietaryRestrictions  String?    @map("dietary_restrictions")
+  notes                String?
+  respondedAt          DateTime?  @map("responded_at") @db.Timestamptz(6)
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event            Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  invitation       EventInvitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+  reservedGiftItems EventGiftItem[]
+
+  @@index([eventId])
+  @@index([invitationId])
+  @@index([rsvpStatus])
+  @@map("event_guests")
+}
+
+model EventPartyMember {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId    String     @map("event_id") @db.Uuid
+  name       String
+  role       String
+  side       String?
+  phone      String?
+  email      String?
+  attire     String?
+  rsvpStatus RsvpStatus @default(pendente) @map("rsvp_status")
+  notes      String?
+  sortOrder  Int        @default(0) @map("sort_order")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_party_members")
+}
+
+model EventGiftItem {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId           String    @map("event_id") @db.Uuid
+  name              String
+  referenceLinks    String[]  @default([]) @map("reference_links")
+  imageUrl          String?   @map("image_url")
+  notes             String?
+  sortOrder         Int       @default(0) @map("sort_order")
+  reservedByGuestId String?   @map("reserved_by_guest_id") @db.Uuid
+  reservedAt        DateTime? @map("reserved_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reservedByGuest EventGuest? @relation(fields: [reservedByGuestId], references: [id], onDelete: SetNull)
+
+  @@index([reservedByGuestId])
+  @@map("event_gift_items")
+}
+
+model FinancialStatusOption {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  label     String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("financial_status_options")
+}
+
+model Ebook {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  coverUrl    String?  @map("cover_url")
+  fileUrl     String   @map("file_url")
+  fileName    String   @map("file_name")
+  fileSize    BigInt?  @map("file_size")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("ebooks")
+}

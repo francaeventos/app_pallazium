@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth, notifyAuthChange } from "@/lib/auth";
+import { listNotificationsFn, markNotificationReadFn, type NotificationRow } from "@/fns/notifications";
+import { updateProfileFn } from "@/fns/profile";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -35,15 +36,12 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
 export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
 }
-
-type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
 export function AppShell({
   title,
@@ -62,7 +60,7 @@ export function AppShell({
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileAvatar, setProfileAvatar] = useState("");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("pallazium-theme") === "dark";
@@ -85,25 +83,20 @@ export function AppShell({
 
   const loadNotifications = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(8);
-    setNotifications(data ?? []);
+    try {
+      const rows = await listNotificationsFn();
+      setNotifications(rows);
+    } catch (error) {
+      console.error("Erro ao carregar notificações", error);
+    }
   };
 
   useEffect(() => {
     loadNotifications();
   }, [user?.id]);
 
-  const displayName =
-    typeof user?.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
-      ? user.user_metadata.full_name
-      : (user?.email?.split("@")[0] ?? "Cliente");
-  const avatarUrl =
-    typeof user?.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null;
+  const displayName = user?.fullName?.trim() || user?.email?.split("@")[0] || "Cliente";
+  const avatarUrl = user?.avatarUrl ?? null;
   const timeLabel = now
     ? now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : "--:--";
@@ -129,32 +122,32 @@ export function AppShell({
     if (!fullName) return toast.error("Informe seu nome.");
 
     setSavingProfile(true);
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        full_name: fullName,
-        avatar_url: avatar || null,
-      },
-    });
-    if (!error && user) {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        full_name: fullName,
-        email: user.email ?? null,
+    try {
+      await updateProfileFn({
+        data: {
+          fullName,
+          avatarUrl: avatar || null,
+        },
       });
+      notifyAuthChange();
+      toast.success("Perfil atualizado.");
+      setProfileOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o perfil.");
+    } finally {
+      setSavingProfile(false);
     }
-    setSavingProfile(false);
-
-    if (error) return toast.error(error.message);
-    toast.success("Perfil atualizado.");
-    setProfileOpen(false);
   };
 
   const markNotificationRead = async (id: string) => {
-    const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
-    if (error) return toast.error(error.message);
-    setNotifications((items) =>
-      items.map((item) => (item.id === id ? { ...item, read: true } : item)),
-    );
+    try {
+      await markNotificationReadFn({ data: { id } });
+      setNotifications((items) =>
+        items.map((item) => (item.id === id ? { ...item, read: true } : item)),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível marcar como lida.");
+    }
   };
 
   const SideNav = () => (

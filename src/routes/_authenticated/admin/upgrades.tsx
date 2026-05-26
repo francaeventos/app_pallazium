@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deleteUpgradeFn,
+  listUpgradesFn,
+  saveUpgradeFn,
+  toggleUpgradeFn,
+} from "@/fns/admin-catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +23,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/upgrades")({ component: Page });
 
-type Upgrade = Database["public"]["Tables"]["upgrades"]["Row"];
+type Upgrade = Awaited<ReturnType<typeof listUpgradesFn>>[number];
 
 function Page() {
   const [items, setItems] = useState<Upgrade[]>([]);
@@ -30,11 +33,11 @@ function Page() {
   const [editing, setEditing] = useState<Upgrade | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("upgrades")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setItems(data ?? []);
+    try {
+      setItems(await listUpgradesFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os upgrades.");
+    }
   };
   useEffect(() => {
     load();
@@ -51,10 +54,11 @@ function Page() {
       image_url: String(fd.get("image_url") || "") || null,
       active: fd.get("active") === "on",
     };
-    const { error } = editing
-      ? await supabase.from("upgrades").update(payload).eq("id", editing.id)
-      : await supabase.from("upgrades").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await saveUpgradeFn({ data: { id: editing?.id, ...payload } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Upgrade atualizado" : "Upgrade criado");
     setOpen(false);
     setEditing(null);
@@ -62,18 +66,21 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("upgrades").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteUpgradeFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Upgrade excluído");
     load();
   };
 
   const toggleActive = async (item: Upgrade) => {
-    const { error } = await supabase
-      .from("upgrades")
-      .update({ active: !item.active })
-      .eq("id", item.id);
-    if (error) return toast.error(error.message);
+    try {
+      await toggleUpgradeFn({ data: { id: item.id, active: !item.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(item.active ? "Upgrade ocultado" : "Upgrade publicado");
     load();
   };

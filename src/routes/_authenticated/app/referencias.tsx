@@ -1,35 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listEventReferencesFn, type ReferenceRow } from "@/fns/catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { ExternalLink, Images } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/referencias")({ component: Page });
 
-type Reference = Database["public"]["Tables"]["event_references"]["Row"] & {
-  events?: {
-    event_type: string;
-    event_date: string | null;
-    clients?: { full_name: string } | null;
-  } | null;
-};
-
 function Page() {
-  const [items, setItems] = useState<Reference[]>([]);
+  const [items, setItems] = useState<ReferenceRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const { data: refs } = await supabase
-      .from("event_references")
-      .select("*, events(event_type, event_date, clients(full_name))")
-      .order("created_at", { ascending: false });
-    setItems((refs ?? []) as Reference[]);
-    setLoading(false);
+    try {
+      const refs = await listEventReferencesFn();
+      setItems(refs);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -107,8 +98,8 @@ function Page() {
   );
 }
 
-function groupReferencesByEventLevel(items: Reference[]) {
-  return items.reduce<Record<string, Reference[]>>((acc, item) => {
+function groupReferencesByEventLevel(items: ReferenceRow[]) {
+  return items.reduce<Record<string, ReferenceRow[]>>((acc, item) => {
     const eventLevel = item.events?.event_type || "Outros eventos";
     (acc[eventLevel] ||= []).push(item);
     return acc;

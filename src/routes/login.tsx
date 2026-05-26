@@ -1,18 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  clearRecoveryMode,
-  isRecoveryUrl,
-  markRecoveryMode,
-} from "@/lib/password-recovery";
+import { loginFn, setStoredAuthToken, signupFn } from "@/fns/auth";
+import { notifyAuthChange } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import loginBg from "@/assets/login-bg.jpg";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -21,28 +17,9 @@ const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(255),
   password: z.string().min(1, "Informe a senha").max(72),
 });
-const resetSchema = z.object({
-  email: z.string().trim().email("E-mail inválido").max(255),
-});
 const signupSchema = loginSchema.extend({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
 });
-const newPasswordSchema = z
-  .object({
-    password: z.string().min(6, "Use pelo menos 6 caracteres").max(72),
-    confirm: z.string().min(1, "Confirme a senha"),
-  })
-  .refine((data) => data.password === data.confirm, {
-    message: "As senhas não coincidem.",
-    path: ["confirm"],
-  });
-
-const friendlyAuthError = (message: string) => {
-  if (message.toLowerCase().includes("password is known to be weak")) {
-    return "Senha bloqueada pela proteção de senha fraca. Use uma senha mais forte.";
-  }
-  return message;
-};
 
 function PasswordInput({
   id,
@@ -85,86 +62,28 @@ function PasswordInput({
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "signup" | "recovery">("login");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [signupPassword, setSignupPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  useEffect(() => {
-    let active = true;
-
-    const enterRecoveryMode = () => {
-      if (!active) return;
-      markRecoveryMode();
-      setMode("recovery");
-    };
-
-    if (isRecoveryUrl()) enterRecoveryMode();
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const tokenHash = searchParams.get("token_hash");
-    if (tokenHash && searchParams.get("type") === "recovery") {
-      supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash }).then(({ error }) => {
-        if (error) toast.error(error.message);
-        else enterRecoveryMode();
-      });
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") enterRecoveryMode();
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleResetPassword = async (email: FormDataEntryValue | null) => {
-    const parsed = resetSchema.safeParse({ email });
-    if (!parsed.success) return toast.error(parsed.error.errors[0].message);
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/login`,
-    });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Enviamos o link de recuperação para o e-mail informado.");
-  };
-
-  const handleUpdatePassword = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const parsed = newPasswordSchema.safeParse({
-      password: newPassword,
-      confirm: confirmPassword,
-    });
-    if (!parsed.success) return toast.error(parsed.error.errors[0].message);
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-    setLoading(false);
-    if (error) return toast.error(friendlyAuthError(error.message));
-    clearRecoveryMode();
-    window.history.replaceState({}, document.title, "/login");
-    toast.success("Senha atualizada com sucesso!");
-    navigate({ to: "/" });
-  };
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const parsed = loginSchema.safeParse({ email: fd.get("email"), password: fd.get("password") });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Bem-vindo(a)!");
-    navigate({ to: "/" });
+    try {
+      const result = await loginFn({ data: parsed.data });
+      setStoredAuthToken(result.token);
+      notifyAuthChange();
+      toast.success("Bem-vindo(a)!");
+      navigate({ to: "/" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível entrar.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const parsed = signupSchema.safeParse({
       full_name: fd.get("full_name"),
@@ -173,17 +92,23 @@ function LoginPage() {
     });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: { full_name: parsed.data.full_name },
-      },
-    });
-    setLoading(false);
-    if (error) return toast.error(friendlyAuthError(error.message));
-    toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
+    try {
+      const result = await signupFn({
+        data: {
+          email: parsed.data.email,
+          password: parsed.data.password,
+          fullName: parsed.data.full_name,
+        },
+      });
+      setStoredAuthToken(result.token);
+      notifyAuthChange();
+      toast.success("Conta criada! Agora a equipe Pallazium vinculará seu evento.");
+      navigate({ to: "/" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar a conta.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -208,7 +133,6 @@ function LoginPage() {
             </p>
           </div>
 
-          {mode !== "recovery" && (
           <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
             <button
               type="button"
@@ -233,63 +157,15 @@ function LoginPage() {
               Criar conta
             </button>
           </div>
-          )}
 
-          {mode === "recovery" ? (
-            <form onSubmit={handleUpdatePassword} className="mt-6 space-y-5">
-              <div className="text-center">
-                <h2 className="font-serif text-xl text-foreground">Nova senha</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Defina uma nova senha para acessar sua conta.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-xs font-medium text-muted-foreground">
-                  Nova senha *
-                </Label>
-                <PasswordInput
-                  id="new-password"
-                  name="password"
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={setNewPassword}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="confirm-password"
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Confirmar senha *
-                </Label>
-                <PasswordInput
-                  id="confirm-password"
-                  name="confirm"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-12 rounded-full text-base font-semibold shadow-luxe"
-              >
-                {loading ? "Salvando…" : "Salvar nova senha"}
-              </Button>
-              <button
-                type="button"
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  clearRecoveryMode();
-                  setMode("login");
-                  window.history.replaceState({}, document.title, "/login");
-                }}
-              >
-                Voltar ao login
-              </button>
-            </form>
-          ) : mode === "login" ? (            <form onSubmit={handleLogin} className="mt-6 space-y-5">
+          {mode === "login" ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleLogin(e);
+              }}
+              className="mt-6 space-y-5"
+            >
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">
                   Email *
@@ -310,22 +186,11 @@ function LoginPage() {
                 <PasswordInput id="password" name="password" autoComplete="current-password" />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center text-sm">
                 <label className="flex items-center gap-2 text-muted-foreground cursor-pointer">
                   <Checkbox id="remember" />
                   <span>Salvar login</span>
                 </label>
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 font-medium text-gold hover:underline"
-                  onClick={(event) => {
-                    const form = event.currentTarget.closest("form");
-                    if (form) handleResetPassword(new FormData(form).get("email"));
-                  }}
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Esqueci minha senha
-                </button>
               </div>
 
               <Button
@@ -337,7 +202,13 @@ function LoginPage() {
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleSignup} className="mt-6 space-y-5">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSignup(e);
+              }}
+              className="mt-6 space-y-5"
+            >
               <div className="space-y-2">
                 <Label htmlFor="full_name" className="text-xs font-medium text-muted-foreground">
                   Nome completo *

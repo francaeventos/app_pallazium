@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { deleteTipFn, listTipsFn, saveTipFn, toggleTipFn } from "@/fns/admin-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,11 +18,9 @@ import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { StorageImageInput } from "@/components/StorageImageInput";
 import { Eye, EyeOff, Lightbulb, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/dicas")({ component: Page });
 
-type Tip = Database["public"]["Tables"]["tips"]["Row"];
+type Tip = Awaited<ReturnType<typeof listTipsFn>>[number];
 
 function Page() {
   const [items, setItems] = useState<Tip[]>([]);
@@ -30,11 +28,11 @@ function Page() {
   const [editing, setEditing] = useState<Tip | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("tips")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setItems(data ?? []);
+    try {
+      setItems(await listTipsFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar as dicas.");
+    }
   };
 
   useEffect(() => {
@@ -51,10 +49,11 @@ function Page() {
       image_url: String(fd.get("image_url") || "") || null,
       active: fd.get("active") === "on",
     };
-    const { error } = editing
-      ? await supabase.from("tips").update(payload).eq("id", editing.id)
-      : await supabase.from("tips").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await saveTipFn({ data: { id: editing?.id, ...payload } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Dica atualizada" : "Dica criada");
     setOpen(false);
     setEditing(null);
@@ -62,18 +61,21 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("tips").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteTipFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Dica excluída");
     load();
   };
 
   const toggleActive = async (item: Tip) => {
-    const { error } = await supabase
-      .from("tips")
-      .update({ active: !item.active })
-      .eq("id", item.id);
-    if (error) return toast.error(error.message);
+    try {
+      await toggleTipFn({ data: { id: item.id, active: !item.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(item.active ? "Dica ocultada" : "Dica publicada");
     load();
   };

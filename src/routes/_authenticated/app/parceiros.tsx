@@ -1,31 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listActivePartnersFn, type PartnerRow } from "@/fns/catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Instagram, MessageCircle, Phone, Users } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/parceiros")({ component: Page });
 
-type Partner = Database["public"]["Tables"]["partners"]["Row"];
-
 function Page() {
-  const [items, setItems] = useState<Partner[]>([]);
+  const [items, setItems] = useState<PartnerRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("partners")
-      .select("*")
-      .eq("active", true)
-      .order("category")
-      .then(({ data }) => {
-        setItems(data ?? []);
+    listActivePartnersFn()
+      .then((data) => {
+        setItems(data);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;

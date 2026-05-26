@@ -6,47 +6,50 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
-import { rsvpStatusLabels, type RsvpStatus } from "@/lib/invitation-utils";
+import {
+  getInvitationGuestByTokenFn,
+  getPublicEventGiftItemsByTokenFn,
+  releaseEventGiftItemReservationFn,
+  reserveEventGiftItemFn,
+  respondInvitationGuestFn,
+  type PublicGiftItem,
+  type PublicInvitationGuest,
+} from "@/fns/invitation-public";
+import { rsvpStatusLabels } from "@/lib/invitation-utils";
 import { Calendar, CheckCircle2, Gift, MapPin, Navigation, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/convite/$token")({ component: Page });
 
-type InvitationGuest =
-  Database["public"]["Functions"]["get_invitation_guest_by_token"]["Returns"][number];
-type GiftItem = Database["public"]["Tables"]["event_gift_items"]["Row"];
-
 function Page() {
   const { token } = Route.useParams();
-  const [details, setDetails] = useState<InvitationGuest | null>(null);
+  const [details, setDetails] = useState<PublicInvitationGuest | null>(null);
   const [companions, setCompanions] = useState(0);
-  const [giftItems, setGiftItems] = useState<GiftItem[]>([]);
-  const [selectedGiftImage, setSelectedGiftImage] = useState<GiftItem | null>(null);
+  const [giftItems, setGiftItems] = useState<PublicGiftItem[]>([]);
+  const [selectedGiftImage, setSelectedGiftImage] = useState<PublicGiftItem | null>(null);
   const [reservingGiftId, setReservingGiftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("get_invitation_guest_by_token", {
-      _guest_token: token,
-    });
+    try {
+      const row = await getInvitationGuestByTokenFn({ data: { guestToken: token } });
+      if (!row) {
+        setDetails(null);
+        setLoading(false);
+        return;
+      }
 
-    const row = data?.[0] ?? null;
-    if (error || !row) {
+      setDetails(row);
+      setCompanions(row.confirmed_companions);
+      const gifts = await getPublicEventGiftItemsByTokenFn({ data: { guestToken: token } });
+      setGiftItems(gifts);
+    } catch (error) {
+      console.error("Erro ao carregar convite", error);
       setDetails(null);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setDetails(row);
-    setCompanions(row.confirmed_companions);
-    const { data: gifts } = await supabase.rpc("get_public_event_gift_items_by_token", {
-      _guest_token: token,
-    });
-    setGiftItems(gifts ?? []);
-    setLoading(false);
   }, [token]);
 
   useEffect(() => {
@@ -55,60 +58,63 @@ function Page() {
 
   const respond = async (status: "confirmado" | "recusado") => {
     if (!details) return toast.error("Convite indisponível.");
-    const { data, error } = await supabase.rpc("respond_invitation_guest", {
-      _guest_token: token,
-      _rsvp_status: status as RsvpStatus,
-      _confirmed_companions: status === "confirmado" ? companions : 0,
-      _dietary_restrictions: null,
-    });
-    if (error) return toast.error(error.message);
-    if (data?.[0]) {
-      setDetails(data[0]);
-      setCompanions(data[0].confirmed_companions);
+    try {
+      const updated = await respondInvitationGuestFn({
+        data: {
+          guestToken: token,
+          rsvpStatus: status,
+          confirmedCompanions: status === "confirmado" ? companions : 0,
+          dietaryRestrictions: null,
+        },
+      });
+      setDetails(updated);
+      setCompanions(updated.confirmed_companions);
+      toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a resposta.");
     }
-    toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
   };
 
-  const reserveGiftItem = async (item: GiftItem) => {
+  const reserveGiftItem = async (item: PublicGiftItem) => {
     setReservingGiftId(item.id);
-    const { data, error } = await supabase.rpc("reserve_event_gift_item", {
-      _gift_item_id: item.id,
-      _guest_token: token,
-    });
-    setReservingGiftId(null);
-
-    if (error) {
-      await load();
-      return toast.error("Este presente acabou de ser escolhido por outro convidado.");
-    }
-
-    if (data) {
+    try {
+      const updated = await reserveEventGiftItemFn({
+        data: { guestToken: token, giftItemId: item.id },
+      });
       setGiftItems((current) =>
-        current.map((giftItem) => (giftItem.id === item.id ? data : giftItem)),
+        current.map((giftItem) => (giftItem.id === item.id ? updated : giftItem)),
       );
+      toast.success("Presente reservado para você");
+    } catch (error) {
+      await load();
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Este presente acabou de ser escolhido por outro convidado.",
+      );
+    } finally {
+      setReservingGiftId(null);
     }
-    toast.success("Presente reservado para você");
   };
 
-  const releaseGiftItemReservation = async (item: GiftItem) => {
+  const releaseGiftItemReservation = async (item: PublicGiftItem) => {
     setReservingGiftId(item.id);
-    const { data, error } = await supabase.rpc("release_event_gift_item_reservation", {
-      _gift_item_id: item.id,
-      _guest_token: token,
-    });
-    setReservingGiftId(null);
-
-    if (error) {
-      await load();
-      return toast.error("Não foi possível cancelar a reserva deste presente.");
-    }
-
-    if (data) {
+    try {
+      const updated = await releaseEventGiftItemReservationFn({
+        data: { guestToken: token, giftItemId: item.id },
+      });
       setGiftItems((current) =>
-        current.map((giftItem) => (giftItem.id === item.id ? data : giftItem)),
+        current.map((giftItem) => (giftItem.id === item.id ? updated : giftItem)),
       );
+      toast.success("Reserva cancelada");
+    } catch (error) {
+      await load();
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível cancelar a reserva deste presente.",
+      );
+    } finally {
+      setReservingGiftId(null);
     }
-    toast.success("Reserva cancelada");
   };
 
   if (loading) {
@@ -421,7 +427,13 @@ function Page() {
   );
 }
 
-function GiftImageDialog({ item, onClose }: { item: GiftItem | null; onClose: () => void }) {
+function GiftImageDialog({
+  item,
+  onClose,
+}: {
+  item: PublicGiftItem | null;
+  onClose: () => void;
+}) {
   return (
     <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">

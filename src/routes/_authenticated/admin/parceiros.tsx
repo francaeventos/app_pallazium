@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deletePartnerFn,
+  listPartnersFn,
+  savePartnerFn,
+  togglePartnerFn,
+} from "@/fns/admin-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,11 +23,9 @@ import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { StorageImageInput } from "@/components/StorageImageInput";
 import { Eye, EyeOff, Handshake, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/parceiros")({ component: Page });
 
-type Partner = Database["public"]["Tables"]["partners"]["Row"];
+type Partner = Awaited<ReturnType<typeof listPartnersFn>>[number];
 
 function Page() {
   const [items, setItems] = useState<Partner[]>([]);
@@ -30,11 +33,11 @@ function Page() {
   const [editing, setEditing] = useState<Partner | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("partners")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setItems(data ?? []);
+    try {
+      setItems(await listPartnersFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os parceiros.");
+    }
   };
 
   useEffect(() => {
@@ -54,10 +57,11 @@ function Page() {
       image_url: String(fd.get("image_url") || "") || null,
       active: fd.get("active") === "on",
     };
-    const { error } = editing
-      ? await supabase.from("partners").update(payload).eq("id", editing.id)
-      : await supabase.from("partners").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await savePartnerFn({ data: { id: editing?.id, ...payload } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Parceiro atualizado" : "Parceiro criado");
     setOpen(false);
     setEditing(null);
@@ -65,18 +69,21 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("partners").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deletePartnerFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Parceiro excluído");
     load();
   };
 
   const toggleActive = async (item: Partner) => {
-    const { error } = await supabase
-      .from("partners")
-      .update({ active: !item.active })
-      .eq("id", item.id);
-    if (error) return toast.error(error.message);
+    try {
+      await togglePartnerFn({ data: { id: item.id, active: !item.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(item.active ? "Parceiro ocultado" : "Parceiro publicado");
     load();
   };

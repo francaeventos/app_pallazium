@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  getUpgradesPageDataFn,
+  registerUpgradeInterestFn,
+  type UpgradeRow,
+} from "@/fns/upgrades";
 import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,38 +12,23 @@ import { Badge } from "@/components/ui/badge";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/upgrades")({ component: Page });
 
-type Upgrade = Database["public"]["Tables"]["upgrades"]["Row"];
-type Interest = Pick<
-  Database["public"]["Tables"]["upgrade_interests"]["Row"],
-  "upgrade_id" | "status"
->;
-
 function Page() {
   const { data } = useMyEvent();
-  const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
+  const [upgrades, setUpgrades] = useState<UpgradeRow[]>([]);
   const [interests, setInterests] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data: ups } = await supabase
-      .from("upgrades")
-      .select("*")
-      .eq("active", true)
-      .order("category");
-    setUpgrades(ups ?? []);
-    if (data?.client && data.event) {
-      const { data: ints } = await supabase
-        .from("upgrade_interests")
-        .select("upgrade_id, status")
-        .eq("client_id", data.client.id)
-        .eq("event_id", data.event.id);
-      setInterests(new Map(((ints ?? []) as Interest[]).map((i) => [i.upgrade_id, i.status])));
+    try {
+      const { upgrades: ups, interests: ints } = await getUpgradesPageDataFn();
+      setUpgrades(ups);
+      setInterests(new Map(ints.map((i) => [i.upgrade_id, i.status])));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -48,17 +37,17 @@ function Page() {
 
   const showInterest = async (upgradeId: string) => {
     if (!data?.client || !data?.event) return toast.error("Evento não vinculado");
-    const { error } = await supabase.from("upgrade_interests").insert({
-      upgrade_id: upgradeId,
-      client_id: data.client.id,
-      event_id: data.event.id,
-    });
-    if (error) {
-      if (error.code === "23505") return toast.info("Este interesse já foi registrado.");
-      return toast.error(error.message);
+    try {
+      await registerUpgradeInterestFn({
+        data: { upgradeId, eventId: data.event.id },
+      });
+      toast.success("Interesse registrado! Nossa equipe entrará em contato.");
+      setInterests((current) => new Map(current).set(upgradeId, "novo"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao registrar interesse";
+      if (message === "DUPLICATE") return toast.info("Este interesse já foi registrado.");
+      toast.error(message);
     }
-    toast.success("Interesse registrado! Nossa equipe entrará em contato.");
-    setInterests((current) => new Map(current).set(upgradeId, "novo"));
   };
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;

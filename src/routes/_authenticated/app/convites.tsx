@@ -16,33 +16,56 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { StorageImageInput } from "@/components/StorageImageInput";
 import { useMyEvent } from "@/hooks/use-my-event";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import {
+  createGuestFn,
+  deleteGiftItemFn,
+  deleteGuestFn,
+  getConvitesPageDataFn,
+  saveGiftItemFn,
+  saveInvitationFn,
+  type GiftItemRow,
+  type GuestRow,
+  type InvitationRow,
+  type PartyMemberRow,
+} from "@/fns/convites";
 import {
   invitationStatusLabels,
   publicInvitationUrl,
   rsvpStatusLabels,
   type RsvpStatus,
 } from "@/lib/invitation-utils";
-import { CheckCircle2, Copy, Gift, MailCheck, Pencil, Plus, Trash2, Users } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Download,
+  Gift,
+  MailCheck,
+  Pencil,
+  Plus,
+  QrCode,
+  Trash2,
+  Users,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/convites")({ component: Page });
 
-type Invitation = Database["public"]["Tables"]["event_invitations"]["Row"];
-type Guest = Database["public"]["Tables"]["event_guests"]["Row"];
-type PartyMember = Database["public"]["Tables"]["event_party_members"]["Row"];
-type GiftItem = Database["public"]["Tables"]["event_gift_items"]["Row"];
-
 function Page() {
   const { data, loading } = useMyEvent();
-  const [invitation, setInvitation] = useState<Invitation | null>(null);
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [party, setParty] = useState<PartyMember[]>([]);
-  const [giftItems, setGiftItems] = useState<GiftItem[]>([]);
-  const [editingGiftItem, setEditingGiftItem] = useState<GiftItem | null>(null);
+  const [invitation, setInvitation] = useState<InvitationRow | null>(null);
+  const [guests, setGuests] = useState<GuestRow[]>([]);
+  const [party, setParty] = useState<PartyMemberRow[]>([]);
+  const [giftItems, setGiftItems] = useState<GiftItemRow[]>([]);
+  const [editingGiftItem, setEditingGiftItem] = useState<GiftItemRow | null>(null);
+  const [qrGuest, setQrGuest] = useState<GuestRow | null>(null);
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
-  const [invitationStatus, setInvitationStatus] = useState<Invitation["status"]>("rascunho");
+  const [invitationStatus, setInvitationStatus] = useState<InvitationRow["status"]>("rascunho");
 
   const event = data?.event ?? null;
   const totals = useMemo(() => {
@@ -58,21 +81,15 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!event) return;
-    const [
-      { data: invitationData },
-      { data: guestData },
-      { data: partyData },
-      { data: giftsData },
-    ] = await Promise.all([
-      supabase.from("event_invitations").select("*").eq("event_id", event.id).maybeSingle(),
-      supabase.from("event_guests").select("*").eq("event_id", event.id).order("created_at"),
-      supabase.from("event_party_members").select("*").eq("event_id", event.id).order("sort_order"),
-      supabase.from("event_gift_items").select("*").eq("event_id", event.id).order("sort_order"),
-    ]);
-    setInvitation(invitationData ?? null);
-    setGuests(guestData ?? []);
-    setParty(partyData ?? []);
-    setGiftItems(giftsData ?? []);
+    try {
+      const pageData = await getConvitesPageDataFn({ data: { eventId: event.id } });
+      setInvitation(pageData.invitation);
+      setGuests(pageData.guests);
+      setParty(pageData.party);
+      setGiftItems(pageData.giftItems);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar convites");
+    }
   }, [event]);
 
   useEffect(() => {
@@ -102,75 +119,74 @@ function Page() {
     const fd = new FormData(formEvent.currentTarget);
     const allowed = Number(fd.get("allowed_companions")) || 0;
     const status = guestStatus;
-    const { data: createdGuest, error } = await supabase
-      .from("event_guests")
-      .insert({
-        event_id: event.id,
-        invitation_id: invitation?.id ?? null,
-        name: String(fd.get("name")),
-        phone: String(fd.get("phone") || "") || null,
-        email: String(fd.get("email") || "") || null,
-        group_name: String(fd.get("group_name") || "") || null,
-        allowed_companions: allowed,
-        confirmed_companions:
-          status === "confirmado"
-            ? Math.min(Number(fd.get("confirmed_companions")) || 0, allowed)
-            : 0,
-        rsvp_status: status,
-        notes: String(fd.get("notes") || "") || null,
-        responded_at: status === "pendente" ? null : new Date().toISOString(),
-      })
-      .select()
-      .single();
-    if (error) return toast.error(error.message);
-    if (createdGuest) setGuests((current) => [...current, createdGuest]);
-    toast.success("Convidado adicionado");
-    formEvent.currentTarget.reset();
-    setGuestStatus("pendente");
-    load();
+
+    try {
+      const createdGuest = await createGuestFn({
+        data: {
+          eventId: event.id,
+          invitationId: invitation?.id ?? null,
+          name: String(fd.get("name")),
+          phone: String(fd.get("phone") || "") || null,
+          email: String(fd.get("email") || "") || null,
+          groupName: String(fd.get("group_name") || "") || null,
+          allowedCompanions: allowed,
+          confirmedCompanions:
+            status === "confirmado"
+              ? Math.min(Number(fd.get("confirmed_companions")) || 0, allowed)
+              : 0,
+          rsvpStatus: status,
+          notes: String(fd.get("notes") || "") || null,
+        },
+      });
+      setGuests((current) => [...current, createdGuest]);
+      toast.success("Convidado adicionado");
+      formEvent.currentTarget.reset();
+      setGuestStatus("pendente");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar convidado");
+    }
   };
 
   const removeGuest = async (id: string) => {
     if (!window.confirm("Excluir convidado?")) return;
-    const { error } = await supabase.from("event_guests").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Convidado excluído");
-    load();
+    try {
+      await deleteGuestFn({ data: { eventId: event.id, guestId: id } });
+      toast.success("Convidado excluído");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir convidado");
+    }
   };
 
   const saveInvitation = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
     const fd = new FormData(formEvent.currentTarget);
     const status = invitationStatus;
-    const payload = {
-      event_id: event.id,
-      title: String(fd.get("title")),
-      message: String(fd.get("message") || "") || null,
-      cover_image_url: String(fd.get("cover_image_url") || "") || null,
-      dress_code: String(fd.get("dress_code") || "") || null,
-      ceremony_location: String(fd.get("ceremony_location") || "") || null,
-      reception_location: String(fd.get("reception_location") || "") || null,
-      map_url: String(fd.get("map_url") || "") || null,
-      status,
-      published_at: status === "publicado" ? new Date().toISOString() : invitation?.published_at,
-    };
 
-    const { data: savedInvitation, error } = invitation
-      ? await supabase
-          .from("event_invitations")
-          .update(payload)
-          .eq("id", invitation.id)
-          .select()
-          .single()
-      : await supabase.from("event_invitations").insert(payload).select().single();
-
-    if (error) return toast.error(error.message);
-    if (savedInvitation) {
+    try {
+      const savedInvitation = await saveInvitationFn({
+        data: {
+          eventId: event.id,
+          invitationId: invitation?.id,
+          title: String(fd.get("title")),
+          message: String(fd.get("message") || "") || null,
+          coverImageUrl: String(fd.get("cover_image_url") || "") || null,
+          dressCode: String(fd.get("dress_code") || "") || null,
+          ceremonyLocation: String(fd.get("ceremony_location") || "") || null,
+          receptionLocation: String(fd.get("reception_location") || "") || null,
+          mapUrl: String(fd.get("map_url") || "") || null,
+          status,
+          publishedAt: invitation?.published_at ?? null,
+        },
+      });
       setInvitation(savedInvitation);
       setInvitationStatus(savedInvitation.status);
+      toast.success(invitation ? "Convite atualizado" : "Convite criado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar convite");
     }
-    toast.success(invitation ? "Convite atualizado" : "Convite criado");
-    load();
   };
 
   const saveGiftItem = async (formEvent: FormEvent<HTMLFormElement>) => {
@@ -184,53 +200,60 @@ function Page() {
       .map((link) => link.trim())
       .filter(Boolean);
 
-    const payload = {
-      event_id: event.id,
-      name: String(fd.get("name")),
-      image_url: String(fd.get("image_url") || "") || null,
-      reference_links: referenceLinks,
-      notes: String(fd.get("notes") || "") || null,
-      sort_order: editingGiftItem?.sort_order ?? giftItems.length,
-    };
-
-    const { data: savedGiftItem, error } = editingGiftItem
-      ? await supabase
-          .from("event_gift_items")
-          .update(payload)
-          .eq("id", editingGiftItem.id)
-          .select()
-          .single()
-      : await supabase.from("event_gift_items").insert(payload).select().single();
-
-    if (error) return toast.error(error.message);
-    if (savedGiftItem) {
+    try {
+      const savedGiftItem = await saveGiftItemFn({
+        data: {
+          eventId: event.id,
+          giftItemId: editingGiftItem?.id,
+          name: String(fd.get("name")),
+          imageUrl: String(fd.get("image_url") || "") || null,
+          referenceLinks,
+          notes: String(fd.get("notes") || "") || null,
+          sortOrder: editingGiftItem?.sort_order ?? giftItems.length,
+        },
+      });
       setGiftItems((current) =>
         editingGiftItem
           ? current.map((item) => (item.id === savedGiftItem.id ? savedGiftItem : item))
           : [...current, savedGiftItem],
       );
+      toast.success(editingGiftItem ? "Presente atualizado" : "Presente adicionado");
+      setEditingGiftItem(null);
+      formEvent.currentTarget.reset();
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar presente");
     }
-    toast.success(editingGiftItem ? "Presente atualizado" : "Presente adicionado");
-    setEditingGiftItem(null);
-    formEvent.currentTarget.reset();
-    load();
   };
 
   const removeGiftItem = async (id: string) => {
     if (!window.confirm("Excluir este item da lista de presentes?")) return;
-    const { error } = await supabase.from("event_gift_items").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    setGiftItems((current) => current.filter((item) => item.id !== id));
-    if (editingGiftItem?.id === id) setEditingGiftItem(null);
-    toast.success("Item removido");
-    load();
+    try {
+      await deleteGiftItemFn({ data: { eventId: event.id, giftItemId: id } });
+      setGiftItems((current) => current.filter((item) => item.id !== id));
+      if (editingGiftItem?.id === id) setEditingGiftItem(null);
+      toast.success("Item removido");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir item");
+    }
   };
 
-  const copyGuestLink = async (guest: Guest) => {
+  const copyGuestLink = async (guest: GuestRow) => {
     const url = publicInvitationUrl(guest.public_token);
     if (!url) return toast.error("Link individual indisponível.");
     await navigator.clipboard.writeText(url);
     toast.success(`Link de ${guest.name} copiado`);
+  };
+
+  const downloadQr = (guest: GuestRow) => {
+    const url = publicInvitationUrl(guest.public_token);
+    if (!url) return;
+    const qrUrl = qrCodeImageUrl(url, 600);
+    const a = document.createElement("a");
+    a.href = qrUrl;
+    a.download = `qr-${guest.name.replace(/\s+/g, "-").toLowerCase()}.png`;
+    a.target = "_blank";
+    a.click();
   };
 
   return (
@@ -256,45 +279,112 @@ function Page() {
       </div>
 
       {invitation && (
-        <Card className="overflow-hidden">
-          {invitation.cover_image_url && (
-            <div
-              className="h-56 bg-muted bg-cover bg-center"
-              style={{ backgroundImage: `url(${invitation.cover_image_url})` }}
-            />
-          )}
-          <CardContent className="space-y-3 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                  Convite digital
-                </p>
-                <h2 className="mt-2 font-serif text-3xl">{invitation.title}</h2>
-              </div>
-              <Badge variant="outline">{invitationStatusLabels[invitation.status]}</Badge>
-            </div>
-            {invitation.message && (
-              <p className="text-sm leading-relaxed text-muted-foreground">{invitation.message}</p>
-            )}
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <Info label="Dress code" value={invitation.dress_code} />
-              <Info label="Cerimônia" value={invitation.ceremony_location} />
-              <Info label="Recepção" value={invitation.reception_location} />
-              <Info label="Mapa" value={invitation.map_url ? "Disponível no convite" : null} />
-              <Info
-                label="Lista de presentes"
-                value={
-                  giftItems.length > 0
-                    ? `${giftItems.length} presente(s) cadastrado(s)`
-                    : invitation.gift_list_url
-                      ? "Link externo disponível"
-                      : null
-                }
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+          <Card className="overflow-hidden">
+            {invitation.cover_image_url && (
+              <div
+                className="h-56 bg-muted bg-cover bg-center"
+                style={{ backgroundImage: `url(${invitation.cover_image_url})` }}
               />
-            </div>
-          </CardContent>
-        </Card>
+            )}
+            <CardContent className="space-y-3 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                    Convite digital
+                  </p>
+                  <h2 className="mt-2 font-serif text-3xl">{invitation.title}</h2>
+                </div>
+                <Badge variant="outline">{invitationStatusLabels[invitation.status]}</Badge>
+              </div>
+              {invitation.message && (
+                <p className="text-sm leading-relaxed text-muted-foreground">{invitation.message}</p>
+              )}
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
+                <Info label="Dress code" value={invitation.dress_code} />
+                <Info label="Cerimônia" value={invitation.ceremony_location} />
+                <Info label="Recepção" value={invitation.reception_location} />
+                <Info label="Mapa" value={invitation.map_url ? "Disponível no convite" : null} />
+                <Info
+                  label="Lista de presentes"
+                  value={
+                    giftItems.length > 0
+                      ? `${giftItems.length} presente(s) cadastrado(s)`
+                      : invitation.gift_list_url
+                        ? "Link externo disponível"
+                        : null
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {invitation.status === "publicado" && (
+            <Card className="flex flex-col items-center justify-center p-6 gap-3 min-w-[180px]">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground text-center">
+                QR do convite
+              </p>
+              <img
+                src={qrCodeImageUrl(
+                  typeof window !== "undefined" ? `${window.location.origin}/convite/${invitation.id}` : "",
+                  200,
+                )}
+                alt="QR Code do convite"
+                className="h-40 w-40 rounded-xl border"
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                Escaneie para abrir
+              </p>
+            </Card>
+          )}
+        </div>
       )}
+
+      <Dialog open={!!qrGuest} onOpenChange={(v) => !v && setQrGuest(null)}>
+        <DialogContent className="sm:max-w-xs rounded-2xl p-0 gap-0 overflow-hidden">
+          {qrGuest && (() => {
+            const url = publicInvitationUrl(qrGuest.public_token);
+            return (
+              <>
+                <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                  <DialogTitle className="font-serif text-xl">QR Code</DialogTitle>
+                  <p className="text-sm text-muted-foreground mt-1">{qrGuest.name}</p>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 px-6 py-6">
+                  <img
+                    src={qrCodeImageUrl(url, 280)}
+                    alt={`QR Code de ${qrGuest.name}`}
+                    className="h-56 w-56 rounded-xl border"
+                  />
+                  <p className="text-xs text-muted-foreground text-center break-all">{url}</p>
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(url);
+                        toast.success("Link copiado");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Copiar link
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => downloadQr(qrGuest)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Baixar QR
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -318,7 +408,7 @@ function Page() {
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 value={invitationStatus}
                 onChange={(event) =>
-                  setInvitationStatus(event.target.value as Invitation["status"])
+                  setInvitationStatus(event.target.value as InvitationRow["status"])
                 }
               >
                 <option value="rascunho">Rascunho</option>
@@ -613,7 +703,16 @@ function Page() {
                       onClick={() => copyGuestLink(guest)}
                     >
                       <Copy className="mr-1 h-3 w-3" />
-                      Copiar link individual
+                      Copiar link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!invitation || invitation.status !== "publicado"}
+                      onClick={() => setQrGuest(guest)}
+                    >
+                      <QrCode className="mr-1 h-3 w-3" />
+                      QR Code
                     </Button>
                     <Button
                       variant="ghost"
@@ -691,4 +790,9 @@ function Info({ label, value }: { label: string; value?: string | null }) {
       <p className="mt-1 text-sm">{value || "A definir"}</p>
     </div>
   );
+}
+
+function qrCodeImageUrl(data: string, size = 300) {
+  if (!data) return "";
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&format=png&margin=12&color=1a1a1a&bgcolor=ffffff`;
 }

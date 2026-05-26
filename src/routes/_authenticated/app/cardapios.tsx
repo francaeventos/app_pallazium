@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getMenusPageDataFn, registerMenuInterestFn, type MenuRow } from "@/fns/menus";
 import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,46 +9,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Check, ChevronLeft, ChevronRight, ChefHat, Images, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/cardapios")({ component: Page });
 
-type Menu = Database["public"]["Tables"]["menus"]["Row"];
-type MenuInterest = Pick<
-  Database["public"]["Tables"]["menu_interests"]["Row"],
-  "menu_id" | "status"
->;
-
 function Page() {
   const { data } = useMyEvent();
-  const [menus, setMenus] = useState<Menu[]>([]);
+  const [menus, setMenus] = useState<MenuRow[]>([]);
   const [interests, setInterests] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+  const [selectedMenu, setSelectedMenu] = useState<MenuRow | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const load = async () => {
     setLoading(true);
-    const { data: menuRows } = await supabase
-      .from("menus")
-      .select("*")
-      .eq("active", true)
-      .order("category");
-    setMenus(menuRows ?? []);
-
-    if (data?.client && data.event) {
-      const { data: interestRows } = await supabase
-        .from("menu_interests")
-        .select("menu_id, status")
-        .eq("client_id", data.client.id)
-        .eq("event_id", data.event.id);
-      setInterests(
-        new Map(
-          ((interestRows ?? []) as MenuInterest[]).map((item) => [item.menu_id, item.status]),
-        ),
-      );
+    try {
+      const { menus: menuRows, interests: interestRows } = await getMenusPageDataFn();
+      setMenus(menuRows);
+      setInterests(new Map(interestRows.map((item) => [item.menu_id, item.status])));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -57,23 +37,24 @@ function Page() {
 
   const chooseMenu = async (menuId: string) => {
     if (!data?.client || !data.event) return toast.error("Evento não vinculado.");
-    const { error } = await supabase.from("menu_interests").insert({
-      menu_id: menuId,
-      client_id: data.client.id,
-      event_id: data.event.id,
-    });
-    if (error) {
-      if (error.code === "23505")
+    try {
+      await registerMenuInterestFn({
+        data: { menuId, eventId: data.event.id },
+      });
+      toast.success("Interesse em cardápio registrado.");
+      setInterests((current) => new Map(current).set(menuId, "novo"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao registrar interesse";
+      if (message === "DUPLICATE") {
         return toast.info("Este cardápio já está registrado para o seu evento.");
-      return toast.error(error.message);
+      }
+      toast.error(message);
     }
-    toast.success("Interesse em cardápio registrado.");
-    setInterests((current) => new Map(current).set(menuId, "novo"));
   };
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
 
-  const byCat: Record<string, Menu[]> = {};
+  const byCat: Record<string, MenuRow[]> = {};
   menus.forEach((menu) => {
     (byCat[menu.category] ||= []).push(menu);
   });
@@ -200,7 +181,7 @@ function MenuGalleryDialog({
   canChoose,
   onChoose,
 }: {
-  menu: Menu | null;
+  menu: MenuRow | null;
   imageIndex: number;
   onImageIndexChange: (index: number) => void;
   onClose: () => void;
@@ -327,7 +308,7 @@ function MenuGalleryDialog({
   );
 }
 
-function menuImages(menu: Menu) {
+function menuImages(menu: MenuRow) {
   return (menu.images?.length ? menu.images : menu.image_url ? [menu.image_url] : []).filter(
     Boolean,
   );

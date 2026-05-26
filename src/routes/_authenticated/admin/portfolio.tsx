@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deletePortfolioFn,
+  listPortfolioFn,
+  savePortfolioFn,
+  togglePortfolioFn,
+} from "@/fns/admin-catalog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,11 +23,9 @@ import { StorageImagesTextarea } from "@/components/StorageImageInput";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Images, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/portfolio")({ component: Page });
 
-type PortfolioItem = Database["public"]["Tables"]["portfolio_items"]["Row"];
+type PortfolioItem = Awaited<ReturnType<typeof listPortfolioFn>>[number];
 
 function Page() {
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -30,11 +33,11 @@ function Page() {
   const [editing, setEditing] = useState<PortfolioItem | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("portfolio_items")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setItems(data ?? []);
+    try {
+      setItems(await listPortfolioFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar o portfólio.");
+    }
   };
 
   useEffect(() => {
@@ -53,10 +56,17 @@ function Page() {
       images: splitLines(String(fd.get("images") || "")),
       active: fd.get("active") === "on",
     };
-    const { error } = editing
-      ? await supabase.from("portfolio_items").update(payload).eq("id", editing.id)
-      : await supabase.from("portfolio_items").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await savePortfolioFn({
+        data: {
+          id: editing?.id,
+          ...payload,
+          images: payload.images ?? [],
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Portfólio atualizado" : "Item publicado");
     setOpen(false);
     setEditing(null);
@@ -64,18 +74,21 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("portfolio_items").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deletePortfolioFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Item removido");
     load();
   };
 
   const toggleActive = async (item: PortfolioItem) => {
-    const { error } = await supabase
-      .from("portfolio_items")
-      .update({ active: !item.active })
-      .eq("id", item.id);
-    if (error) return toast.error(error.message);
+    try {
+      await togglePortfolioFn({ data: { id: item.id, active: !item.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(item.active ? "Item ocultado" : "Item publicado");
     load();
   };

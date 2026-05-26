@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deleteClientFn,
+  linkClientToUserFn,
+  listClientsFn,
+  saveClientFn,
+  updateClientStatusFn,
+} from "@/fns/clients";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,17 +70,25 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 import { maskPhone, maskDocument, isValidEmail } from "@/lib/masks";
 
 export const Route = createFileRoute("/_authenticated/admin/clientes")({ component: Page });
 
-type Client = Database["public"]["Tables"]["clients"]["Row"];
-type ClientStatus = Database["public"]["Enums"]["client_status"];
-type LinkClientRpc = (
-  fn: "link_client_to_auth_user_by_email",
-  args: { _client_id: string },
-) => Promise<{ error: { message: string } | null }>;
+type ClientStatus = "ativo" | "inativo" | "evento_concluido";
+
+type Client = {
+  id: string;
+  user_id: string | null;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  whatsapp: string | null;
+  document: string | null;
+  notes: string | null;
+  status: ClientStatus;
+  created_at: string;
+  updated_at: string;
+};
 
 type StatusFilter = "all" | "ativo" | "inativo" | "evento_concluido";
 type SortKey = "created_at_desc" | "created_at_asc" | "name_asc" | "name_desc";
@@ -147,12 +161,14 @@ function Page() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("clients")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setClients(data ?? []);
-    setLoading(false);
+    try {
+      const data = await listClientsFn();
+      setClients(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar clientes.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -238,50 +254,61 @@ function Page() {
     if (saving) return;
     if (!validate()) return;
     setSaving(true);
-    const payload = {
-      full_name: form.full_name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim() || null,
-      whatsapp: form.whatsapp.trim() || null,
-      document: form.document.trim() || null,
-      notes: form.notes.trim() || null,
-      status: form.status,
-    };
-    const { error } = isEditMode
-      ? await supabase.from("clients").update(payload).eq("id", editing!.id)
-      : await supabase.from("clients").insert(payload);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(isEditMode ? "Cliente atualizado" : "Cliente cadastrado");
+    try {
+      await saveClientFn({
+        data: {
+          id: editing?.id,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+          whatsapp: form.whatsapp.trim() || null,
+          document: form.document.trim() || null,
+          notes: form.notes.trim() || null,
+          status: form.status,
+        },
+      });
+      toast.success(isEditMode ? "Cliente atualizado" : "Cliente cadastrado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar cliente.");
+      return;
+    } finally {
+      setSaving(false);
+    }
     setOpen(false);
     setEditing(null);
     load();
   };
 
   const linkByEmail = async (clientId: string) => {
-    const linkClient = supabase.rpc as unknown as LinkClientRpc;
-    const { error } = await linkClient("link_client_to_auth_user_by_email", {
-      _client_id: clientId,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Conta vinculada pelo e-mail");
-    load();
+    try {
+      await linkClientToUserFn({ data: { client_id: clientId } });
+      toast.success("Conta vinculada pelo e-mail");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao vincular conta.");
+    }
   };
 
   const updateStatus = async (clientId: string, status: ClientStatus) => {
-    const { error } = await supabase.from("clients").update({ status }).eq("id", clientId);
-    if (error) return toast.error(error.message);
-    toast.success("Status atualizado");
-    load();
+    try {
+      await updateClientStatusFn({ data: { id: clientId, status } });
+      toast.success("Status atualizado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar status.");
+    }
   };
 
   const confirmRemove = async () => {
     if (!removing) return;
-    const { error } = await supabase.from("clients").delete().eq("id", removing.id);
-    if (error) return toast.error(error.message);
-    toast.success("Cliente excluído");
-    setRemoving(null);
-    load();
+    try {
+      await deleteClientFn({ data: { id: removing.id } });
+      toast.success("Cliente excluído");
+      setRemoving(null);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir cliente.");
+    }
   };
 
   const formatDate = (iso: string) =>
@@ -844,8 +871,8 @@ function Page() {
       <Card className="bg-champagne/30 border-gold/30 rounded-2xl">
         <CardContent className="p-5 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">Dica:</strong> após liberar a conta no Supabase
-            Auth, cadastre o cliente com o mesmo e-mail e use o botão <em>Vincular conta</em>.
+            <strong className="text-foreground">Dica:</strong> após o usuário criar conta com o
+            mesmo e-mail do cliente, use o botão <em>Vincular conta</em>.
           </p>
         </CardContent>
       </Card>

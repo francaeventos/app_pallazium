@@ -1,6 +1,4 @@
-import type { Database } from "@/integrations/supabase/types";
-
-type PriorityLevel = Database["public"]["Enums"]["priority_level"];
+import type { PriorityLevel } from "@/generated/prisma/client";
 
 export type ChecklistTemplateItem = {
   title: string;

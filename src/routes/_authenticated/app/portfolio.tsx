@@ -1,34 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listActivePortfolioFn, type PortfolioRow } from "@/fns/catalog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { ChevronLeft, ChevronRight, Images } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/portfolio")({ component: Page });
 
-type PortfolioItem = Database["public"]["Tables"]["portfolio_items"]["Row"];
-
 function Page() {
-  const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [items, setItems] = useState<PortfolioRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PortfolioRow | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
-    supabase
-      .from("portfolio_items")
-      .select("*")
-      .eq("active", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setItems(data ?? []);
+    listActivePortfolioFn()
+      .then((data) => {
+        setItems(data);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
@@ -130,7 +124,7 @@ function PortfolioGalleryDialog({
   onImageIndexChange,
   onClose,
 }: {
-  item: PortfolioItem | null;
+  item: PortfolioRow | null;
   imageIndex: number;
   onImageIndexChange: (index: number) => void;
   onClose: () => void;

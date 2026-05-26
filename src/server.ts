@@ -1,7 +1,47 @@
 import "./lib/error-capture";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { ebookIdFromPath, isEbookFileRoute, serveEbookPdf } from "./lib/ebook-file-server";
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "uploads";
+const PUBLIC_UPLOAD_URL = process.env.PUBLIC_UPLOAD_URL ?? "/uploads";
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".pdf": "application/pdf",
+};
+
+async function serveUpload(pathname: string): Promise<Response | null> {
+  if (!pathname.startsWith(`${PUBLIC_UPLOAD_URL}/`)) return null;
+
+  const relativePath = pathname.slice(PUBLIC_UPLOAD_URL.length + 1);
+  if (!relativePath || relativePath.includes("..")) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const filePath = path.join(UPLOAD_DIR, relativePath);
+  try {
+    const bytes = await readFile(filePath);
+    const extension = path.extname(filePath).toLowerCase();
+    const contentType = MIME_BY_EXTENSION[extension] ?? "application/octet-stream";
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
+}
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -69,6 +109,15 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const { pathname } = new URL(request.url);
+      if (request.method === "GET") {
+        const uploadResponse = await serveUpload(pathname);
+        if (uploadResponse) return uploadResponse;
+      }
+      if (request.method === "GET" && isEbookFileRoute(pathname)) {
+        return serveEbookPdf(ebookIdFromPath(pathname));
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

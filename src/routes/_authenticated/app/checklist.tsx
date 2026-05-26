@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMyEvent } from "@/hooks/use-my-event";
-import { supabase } from "@/integrations/supabase/client";
+import { updateChecklistItemFn } from "@/fns/checklist";
+import type { ChecklistSummary } from "@/fns/my-event";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,12 +17,11 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Calendar, ExternalLink, ListChecks } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/checklist")({ component: ChecklistPage });
 
 type ChecklistItem = Pick<
-  Database["public"]["Tables"]["checklist_items"]["Row"],
+  ChecklistSummary,
   | "id"
   | "title"
   | "description"
@@ -31,7 +31,7 @@ type ChecklistItem = Pick<
   | "client_notes"
   | "attachment_url"
 >;
-type ChecklistStatus = Database["public"]["Enums"]["checklist_status"];
+type ChecklistStatus = ChecklistSummary["status"];
 
 function ChecklistPage() {
   const { data, loading, reload } = useMyEvent();
@@ -62,30 +62,46 @@ function ChecklistPage() {
       )}
       <div className="space-y-3">
         {data.checklist.map((item) => (
-          <ChecklistRow key={item.id} item={item} onChange={reload} />
+          <ChecklistRow key={item.id} eventId={data.event!.id} item={item} onChange={reload} />
         ))}
       </div>
     </div>
   );
 }
 
-function ChecklistRow({ item, onChange }: { item: ChecklistItem; onChange: () => void }) {
+function ChecklistRow({
+  eventId,
+  item,
+  onChange,
+}: {
+  eventId: string;
+  item: ChecklistItem;
+  onChange: () => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<ChecklistStatus>(item.status);
+  const [status, setStatus] = useState<ChecklistStatus>(item.status as ChecklistStatus);
   const [notes, setNotes] = useState(item.client_notes ?? "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from("checklist_items")
-      .update({ status, client_notes: notes })
-      .eq("id", item.id);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Atualizado");
-    onChange();
-    setOpen(false);
+    try {
+      await updateChecklistItemFn({
+        data: {
+          id: item.id,
+          eventId,
+          status: status as "pendente" | "em_analise" | "concluido",
+          clientNotes: notes,
+        },
+      });
+      toast.success("Atualizado");
+      onChange();
+      setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const statusColor: Record<string, string> = {

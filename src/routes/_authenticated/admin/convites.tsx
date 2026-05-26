@@ -22,8 +22,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { StorageImageInput } from "@/components/StorageImageInput";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import {
+  deleteGuestFn,
+  deletePartyMemberFn,
+  ensureGuestTokenFn,
+  getInvitationDetailsFn,
+  listInvitationEventsFn,
+  saveGuestFn,
+  saveInvitationFn,
+  savePartyMemberFn,
+} from "@/fns/admin-invitations";
 import {
   invitationStatusLabels,
   publicInvitationUrl,
@@ -36,12 +44,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/convites")({ component: Page });
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"] & {
-  clients: { full_name: string; email: string } | null;
-};
-type Invitation = Database["public"]["Tables"]["event_invitations"]["Row"];
-type Guest = Database["public"]["Tables"]["event_guests"]["Row"];
-type PartyMember = Database["public"]["Tables"]["event_party_members"]["Row"];
+type EventRow = Awaited<ReturnType<typeof listInvitationEventsFn>>[number];
+type Invitation = NonNullable<
+  Awaited<ReturnType<typeof getInvitationDetailsFn>>["invitation"]
+>;
+type Guest = Awaited<ReturnType<typeof getInvitationDetailsFn>>["guests"][number];
+type PartyMember = Awaited<ReturnType<typeof getInvitationDetailsFn>>["party"][number];
 
 function Page() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -76,24 +84,25 @@ function Page() {
   }, [guests, party]);
 
   const loadEvents = useCallback(async () => {
-    const { data } = await supabase
-      .from("events")
-      .select("*, clients(full_name, email)")
-      .order("event_date", { ascending: true });
-    setEvents(data ?? []);
-    if (!eventId && data?.[0]) setEventId(data[0].id);
+    try {
+      const data = await listInvitationEventsFn();
+      setEvents(data);
+      if (!eventId && data[0]) setEventId(data[0].id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os eventos.");
+    }
   }, [eventId]);
 
   const loadDetails = useCallback(async (id: string) => {
-    const [{ data: invitationData }, { data: guestData }, { data: partyData }] = await Promise.all([
-      supabase.from("event_invitations").select("*").eq("event_id", id).maybeSingle(),
-      supabase.from("event_guests").select("*").eq("event_id", id).order("created_at"),
-      supabase.from("event_party_members").select("*").eq("event_id", id).order("sort_order"),
-    ]);
-    const guestsWithTokens = await ensureGuestTokens(guestData ?? []);
-    setInvitation(invitationData ?? null);
-    setGuests(guestsWithTokens);
-    setParty(partyData ?? []);
+    try {
+      const { invitation: invitationData, guests: guestData, party: partyData } =
+        await getInvitationDetailsFn({ data: { eventId: id } });
+      setInvitation(invitationData);
+      setGuests(guestData);
+      setParty(partyData);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar o convite.");
+    }
   }, []);
 
   useEffect(() => {
@@ -138,21 +147,26 @@ function Page() {
       published_at: status === "publicado" ? new Date().toISOString() : invitation?.published_at,
     };
 
-    const { data: savedInvitation, error } = invitation
-      ? await supabase
-          .from("event_invitations")
-          .update(payload)
-          .eq("id", invitation.id)
-          .select()
-          .single()
-      : await supabase.from("event_invitations").insert(payload).select().single();
-    if (error) return toast.error(error.message);
-    if (savedInvitation) {
-      await supabase
-        .from("event_guests")
-        .update({ invitation_id: savedInvitation.id })
-        .eq("event_id", eventId)
-        .is("invitation_id", null);
+    try {
+      await saveInvitationFn({
+        data: {
+          id: invitation?.id,
+          event_id: payload.event_id,
+          title: payload.title,
+          message: payload.message ?? undefined,
+          cover_image_url: payload.cover_image_url ?? undefined,
+          dress_code: payload.dress_code ?? undefined,
+          ceremony_location: payload.ceremony_location ?? undefined,
+          reception_location: payload.reception_location ?? undefined,
+          map_url: payload.map_url ?? undefined,
+          gift_list_url: payload.gift_list_url ?? undefined,
+          whatsapp_text: payload.whatsapp_text ?? undefined,
+          status,
+          published_at: payload.published_at,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
     }
     toast.success(invitation ? "Convite atualizado" : "Convite criado");
     loadDetails(eventId);
@@ -180,10 +194,26 @@ function Page() {
       public_token: editingGuest?.public_token || createPublicToken(),
       responded_at: status === "pendente" ? null : new Date().toISOString(),
     };
-    const { error } = editingGuest
-      ? await supabase.from("event_guests").update(payload).eq("id", editingGuest.id)
-      : await supabase.from("event_guests").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await saveGuestFn({
+        data: {
+          id: editingGuest?.id,
+          event_id: payload.event_id,
+          invitation_id: payload.invitation_id,
+          name: payload.name,
+          phone: payload.phone ?? undefined,
+          email: payload.email ?? undefined,
+          group_name: payload.group_name ?? undefined,
+          allowed_companions: payload.allowed_companions,
+          confirmed_companions: payload.confirmed_companions,
+          rsvp_status: payload.rsvp_status,
+          notes: payload.notes ?? undefined,
+          public_token: payload.public_token,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editingGuest ? "Convidado atualizado" : "Convidado criado");
     closeGuestDialog();
     loadDetails(eventId);
@@ -205,10 +235,25 @@ function Page() {
       notes: String(fd.get("notes") || "") || null,
       sort_order: Number(fd.get("sort_order")) || 0,
     };
-    const { error } = editingParty
-      ? await supabase.from("event_party_members").update(payload).eq("id", editingParty.id)
-      : await supabase.from("event_party_members").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await savePartyMemberFn({
+        data: {
+          id: editingParty?.id,
+          event_id: payload.event_id,
+          name: payload.name,
+          role: payload.role,
+          side: payload.side ?? undefined,
+          phone: payload.phone ?? undefined,
+          email: payload.email ?? undefined,
+          attire: payload.attire ?? undefined,
+          rsvp_status: payload.rsvp_status,
+          notes: payload.notes ?? undefined,
+          sort_order: payload.sort_order,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editingParty ? "Padrinho atualizado" : "Padrinho cadastrado");
     closePartyDialog();
     loadDetails(eventId);
@@ -216,16 +261,22 @@ function Page() {
 
   const removeGuest = async (id: string) => {
     if (!window.confirm("Excluir este convidado?")) return;
-    const { error } = await supabase.from("event_guests").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteGuestFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Convidado excluído");
     loadDetails(eventId);
   };
 
   const removeParty = async (id: string) => {
     if (!window.confirm("Excluir este padrinho/madrinha?")) return;
-    const { error } = await supabase.from("event_party_members").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deletePartyMemberFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Registro excluído");
     loadDetails(eventId);
   };
@@ -236,16 +287,17 @@ function Page() {
       return toast.error("Publique o convite para liberar o link individual.");
     }
 
-    const publicToken = guest.public_token || createPublicToken();
-    if (!guest.public_token) {
-      const { error } = await supabase
-        .from("event_guests")
-        .update({ public_token: publicToken })
-        .eq("id", guest.id);
-      if (error) return toast.error(error.message);
-      setGuests((items) =>
-        items.map((item) => (item.id === guest.id ? { ...item, public_token: publicToken } : item)),
-      );
+    let publicToken = guest.public_token;
+    if (!publicToken) {
+      try {
+        const updated = await ensureGuestTokenFn({ data: { id: guest.id } });
+        publicToken = updated.public_token;
+        setGuests((items) =>
+          items.map((item) => (item.id === guest.id ? updated : item)),
+        );
+      } catch (error) {
+        return toast.error(error instanceof Error ? error.message : "Não foi possível gerar o link.");
+      }
     }
 
     const url = publicInvitationUrl(publicToken);
@@ -779,29 +831,6 @@ function PartyForm({
       </Button>
     </form>
   );
-}
-
-async function ensureGuestTokens(guests: Guest[]) {
-  const updatedGuests = await Promise.all(
-    guests.map(async (guest) => {
-      if (guest.public_token) return guest;
-
-      const publicToken = createPublicToken();
-      const { error } = await supabase
-        .from("event_guests")
-        .update({ public_token: publicToken })
-        .eq("id", guest.id);
-
-      if (error) {
-        console.error("Erro ao gerar link do convidado", error);
-        return guest;
-      }
-
-      return { ...guest, public_token: publicToken };
-    }),
-  );
-
-  return updatedGuests;
 }
 
 function createPublicToken() {

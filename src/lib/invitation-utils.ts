@@ -1,7 +1,7 @@
-import type { Database } from "@/integrations/supabase/types";
+import type { RsvpStatus } from "@/generated/prisma/client";
 
-export type InvitationStatus = Database["public"]["Enums"]["invitation_status"];
-export type RsvpStatus = Database["public"]["Enums"]["rsvp_status"];
+export type { RsvpStatus };
+export type InvitationStatus = "rascunho" | "publicado" | "pausado";
 
 export const invitationStatusLabels: Record<InvitationStatus, string> = {
   rascunho: "Rascunho",

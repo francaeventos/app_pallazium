@@ -1,35 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listActiveTipsFn, type TipRow } from "@/fns/catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { Lightbulb } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/dicas")({ component: Page });
 
-type Tip = Database["public"]["Tables"]["tips"]["Row"];
-
 function Page() {
-  const [items, setItems] = useState<Tip[]>([]);
+  const [items, setItems] = useState<TipRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("tips")
-      .select("*")
-      .eq("active", true)
-      .order("category")
-      .then(({ data }) => {
-        setItems(data ?? []);
+    listActiveTipsFn()
+      .then((data) => {
+        setItems(data);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
 
-  const byCategory: Record<string, Tip[]> = {};
+  const byCategory: Record<string, TipRow[]> = {};
   items.forEach((item) => {
     (byCategory[item.category] ||= []).push(item);
   });

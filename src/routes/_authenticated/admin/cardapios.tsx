@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deleteMenuFn,
+  listMenusFn,
+  saveMenuFn,
+  toggleMenuFn,
+} from "@/fns/admin-catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,11 +22,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChefHat, Eye, EyeOff, ImageIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/cardapios")({ component: Page });
 
-type Menu = Database["public"]["Tables"]["menus"]["Row"];
+type Menu = Awaited<ReturnType<typeof listMenusFn>>[number];
 
 function Page() {
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -29,11 +32,11 @@ function Page() {
   const [editing, setEditing] = useState<Menu | null>(null);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("menus")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setMenus(data ?? []);
+    try {
+      setMenus(await listMenusFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os cardápios.");
+    }
   };
 
   useEffect(() => {
@@ -54,10 +57,17 @@ function Page() {
       notes: String(fd.get("notes") || "") || null,
       active: fd.get("active") === "on",
     };
-    const { error } = editing
-      ? await supabase.from("menus").update(payload).eq("id", editing.id)
-      : await supabase.from("menus").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await saveMenuFn({
+        data: {
+          id: editing?.id,
+          ...payload,
+          images: payload.images ?? [],
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Cardápio atualizado" : "Cardápio criado");
     setOpen(false);
     setEditing(null);
@@ -65,18 +75,21 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("menus").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteMenuFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Cardápio excluído");
     load();
   };
 
   const toggleActive = async (menu: Menu) => {
-    const { error } = await supabase
-      .from("menus")
-      .update({ active: !menu.active })
-      .eq("id", menu.id);
-    if (error) return toast.error(error.message);
+    try {
+      await toggleMenuFn({ data: { id: menu.id, active: !menu.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(menu.active ? "Cardápio ocultado" : "Cardápio publicado");
     load();
   };

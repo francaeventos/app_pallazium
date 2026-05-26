@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMyEvent } from "@/hooks/use-my-event";
+import type { ChecklistSummary } from "@/fns/my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
@@ -11,7 +12,6 @@ import {
   AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/pendencias")({ component: Page });
 
@@ -84,7 +84,7 @@ const tones: Record<string, string> = {
 };
 
 type ChecklistItem = Pick<
-  Database["public"]["Tables"]["checklist_items"]["Row"],
+  ChecklistSummary,
   "id" | "title" | "description" | "status" | "priority" | "due_date"
 >;
 

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { uploadImageFn } from "@/fns/upload-image";
+import { fileToBase64 } from "@/lib/file-base64";
 import { Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,7 +13,6 @@ type StorageImageInputProps = {
   label: string;
   defaultValue?: string | null;
   folder?: string;
-  publicBucket?: boolean;
   onValueChange?: (url: string) => void;
 };
 
@@ -22,7 +22,6 @@ export function StorageImageInput({
   label,
   defaultValue,
   folder = "uploads",
-  publicBucket = true,
   onValueChange,
 }: StorageImageInputProps) {
   const [url, setUrl] = useState(defaultValue ?? "");
@@ -38,25 +37,29 @@ export function StorageImageInput({
     if (validationError) return toast.error(validationError);
 
     setUploading(true);
-    const path = buildStoragePath(folder, file.name);
-    const { error } = await uploadImage(bucket, path, file);
-    if (error) {
-      console.error("Storage upload error", { bucket, path, error });
+    try {
+      const { publicUrl } = await uploadImageFn({
+        data: {
+          bucket,
+          folder,
+          fileName: file.name,
+          fileBase64: await fileToBase64(file),
+          contentType: file.type,
+        },
+      });
+
+      setUrl(publicUrl);
+      onValueChange?.(publicUrl);
+      toast.success("Imagem enviada");
+    } catch (error) {
+      console.error("Upload error", { bucket, folder, error });
       const fallbackUrl = await imageToDataUrl(file);
-      setUploading(false);
       setUrl(fallbackUrl);
       onValueChange?.(fallbackUrl);
-      toast.warning("Storage indisponível. A imagem foi salva no cadastro.");
-      return;
+      toast.warning("Upload indisponível. A imagem foi salva no cadastro.");
+    } finally {
+      setUploading(false);
     }
-
-    const uploadedUrl = await getStorageUrl(bucket, path, publicBucket);
-    setUploading(false);
-    if (!uploadedUrl) return;
-
-    setUrl(uploadedUrl);
-    onValueChange?.(uploadedUrl);
-    toast.success("Imagem enviada");
   };
 
   return (
@@ -93,8 +96,7 @@ export function StorageImageInput({
         />
       )}
       <p className="text-xs text-muted-foreground">
-        Bucket: <span className="font-medium">{bucket}</span>
-        {publicBucket ? ". Imagem pública." : ". Imagem privada com link assinado."}
+        Pasta: <span className="font-medium">{bucket}/{folder}</span>
       </p>
     </div>
   );
@@ -106,7 +108,6 @@ export function StorageImagesTextarea({
   label,
   defaultValue,
   folder = "uploads",
-  publicBucket = true,
 }: StorageImageInputProps) {
   const [images, setImages] = useState(() => splitImageLines(defaultValue ?? ""));
   const [manualUrl, setManualUrl] = useState("");
@@ -144,17 +145,21 @@ export function StorageImagesTextarea({
     const uploadedUrls: string[] = [];
 
     for (const file of fileItems) {
-      const path = buildStoragePath(folder, file.name);
-      const { error } = await uploadImage(bucket, path, file);
-      if (error) {
-        console.error("Storage upload error", { bucket, path, error });
-        const fallbackUrl = await imageToDataUrl(file);
-        uploadedUrls.push(fallbackUrl);
-        continue;
+      try {
+        const { publicUrl } = await uploadImageFn({
+          data: {
+            bucket,
+            folder,
+            fileName: file.name,
+            fileBase64: await fileToBase64(file),
+            contentType: file.type,
+          },
+        });
+        uploadedUrls.push(publicUrl);
+      } catch (error) {
+        console.error("Upload error", { bucket, folder, error });
+        uploadedUrls.push(await imageToDataUrl(file));
       }
-
-      const uploadedUrl = await getStorageUrl(bucket, path, publicBucket);
-      if (uploadedUrl) uploadedUrls.push(uploadedUrl);
     }
 
     setUploading(false);
@@ -226,8 +231,7 @@ export function StorageImagesTextarea({
         </label>
       </Button>
       <p className="text-xs text-muted-foreground">
-        Bucket: <span className="font-medium">{bucket}</span>. Você pode enviar várias fotos do
-        mesmo evento.
+        Pasta: <span className="font-medium">{bucket}/{folder}</span>. Você pode enviar várias fotos.
       </p>
     </div>
   );
@@ -238,45 +242,6 @@ function splitImageLines(value: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-}
-
-async function getStorageUrl(bucket: string, path: string, publicBucket: boolean) {
-  if (publicBucket) {
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
-  }
-
-  const tenYearsInSeconds = 60 * 60 * 24 * 365 * 10;
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, tenYearsInSeconds);
-  if (error) {
-    toast.error(error.message);
-    return null;
-  }
-  return data.signedUrl;
-}
-
-async function uploadImage(bucket: string, path: string, file: File) {
-  const signed = await supabase.storage.from(bucket).createSignedUploadUrl(path);
-  if (!signed.error && signed.data?.token) {
-    const uploaded = await supabase.storage
-      .from(bucket)
-      .uploadToSignedUrl(path, signed.data.token, file, {
-        cacheControl: "31536000",
-        contentType: file.type,
-        upsert: false,
-      });
-    if (!uploaded.error) return { error: null };
-    console.error("Signed storage upload error", { bucket, path, error: uploaded.error });
-  }
-
-  const direct = await supabase.storage.from(bucket).upload(path, file, {
-    cacheControl: "31536000",
-    contentType: file.type,
-    upsert: false,
-  });
-  return { error: direct.error ?? signed.error ?? null };
 }
 
 function validateImageFile(file: File) {
@@ -323,13 +288,4 @@ function imageToDataUrl(file: File) {
     image.onerror = () => resolve(String(reader.result));
     reader.readAsDataURL(file);
   });
-}
-
-function buildStoragePath(folder: string, fileName: string) {
-  const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
-  const id =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return `${folder}/${id}.${extension}`;
 }

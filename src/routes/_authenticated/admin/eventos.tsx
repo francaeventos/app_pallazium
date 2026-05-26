@@ -1,13 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  addFinancialStatusOptionFn,
+  createEventFn,
+  deleteEventFn,
+  deleteFinancialStatusOptionFn,
+  listEventsFn,
+  updateEventFn,
+  updateEventStatusFn,
+  updateFinancialStatusOptionFn,
+} from "@/fns/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { BRIDE_CHECKLIST, checklistTemplateForEvent } from "@/lib/checklist-templates";
 import {
   Select,
   SelectContent,
@@ -40,16 +48,33 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/eventos")({ component: Page });
 
-type Client = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "full_name">;
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
-type EventStatus = Database["public"]["Enums"]["event_status"];
-type PriorityLevel = Database["public"]["Enums"]["priority_level"];
-type FinancialStatusOption = Database["public"]["Tables"]["financial_status_options"]["Row"];
-type EventWithClient = EventRow & {
+type Client = { id: string; full_name: string };
+type EventStatus = "novo" | "em_organizacao" | "proximo" | "concluido" | "cancelado";
+type FinancialStatusOption = {
+  id: string;
+  label: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+type EventWithClient = {
+  id: string;
+  client_id: string;
+  event_type: string;
+  event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  estimated_guests: number | null;
+  contracted_value: number | null;
+  financial_status: string | null;
+  status: EventStatus;
+  internal_notes: string | null;
+  client_notes: string | null;
+  created_at: string;
+  updated_at: string;
   clients: { full_name: string; email: string } | null;
 };
 type EventViewMode = "list" | "calendar";
@@ -106,23 +131,18 @@ function Page() {
   );
 
   const load = async () => {
-    const [{ data: evs }, { data: cls }, { data: financialOptions }] = await Promise.all([
-      supabase
-        .from("events")
-        .select("*, clients(full_name, email)")
-        .order("event_date", { ascending: true }),
-      supabase.from("clients").select("id, full_name"),
-      supabase
-        .from("financial_status_options")
-        .select("*")
-        .order("sort_order", { ascending: true })
-        .order("label", { ascending: true }),
-    ]);
-    setEvents(evs ?? []);
-    setClients(cls ?? []);
-    setFinancialStatusOptions(
-      financialOptions?.length ? financialOptions : DEFAULT_FINANCIAL_STATUSES,
-    );
+    try {
+      const data = await listEventsFn();
+      setEvents(data.events);
+      setClients(data.clients);
+      setFinancialStatusOptions(
+        data.financial_status_options.length
+          ? data.financial_status_options
+          : DEFAULT_FINANCIAL_STATUSES,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar eventos.");
+    }
   };
   useEffect(() => {
     load();
@@ -140,47 +160,36 @@ function Page() {
     const fd = new FormData(e.currentTarget);
     if (!createClientId) return toast.error("Selecione um cliente.");
     const eventType = String(fd.get("event_type"));
-    const { data, error } = await supabase
-      .from("events")
-      .insert({
-        client_id: createClientId,
-        event_type: eventType,
-        event_date: String(fd.get("event_date") || "") || null,
-        start_time: String(fd.get("start_time") || "") || null,
-        end_time: String(fd.get("end_time") || "") || null,
-        location: String(fd.get("location") || "") || null,
-        estimated_guests: Number(fd.get("estimated_guests")) || null,
-        contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
-        financial_status: createFinancialStatus || null,
-        status: createStatus,
-        client_notes: String(fd.get("client_notes") || "") || null,
-        internal_notes: String(fd.get("internal_notes") || "") || null,
-      })
-      .select()
-      .single();
-    if (error || !data) return toast.error(error?.message ?? "Erro");
-
-    const template = checklistTemplateForEvent(eventType);
-    const isBrideChecklist = template === BRIDE_CHECKLIST;
-    const items = template.map((item, i) => ({
-      event_id: data.id,
-      title: item.title,
-      description: item.description ?? null,
-      sort_order: i,
-      priority: item.priority as PriorityLevel,
-    }));
-    await supabase.from("checklist_items").insert(items);
-
-    toast.success(
-      isBrideChecklist
-        ? "Evento criado com checklist da noiva"
-        : "Evento criado com checklist padrão",
-    );
-    setOpen(false);
-    setCreateClientId("");
-    setCreateStatus("novo");
-    setCreateFinancialStatus("Em aberto");
-    load();
+    try {
+      const result = await createEventFn({
+        data: {
+          client_id: createClientId,
+          event_type: eventType,
+          event_date: String(fd.get("event_date") || "") || null,
+          start_time: String(fd.get("start_time") || "") || null,
+          end_time: String(fd.get("end_time") || "") || null,
+          location: String(fd.get("location") || "") || null,
+          estimated_guests: Number(fd.get("estimated_guests")) || null,
+          contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
+          financial_status: createFinancialStatus || null,
+          status: createStatus,
+          client_notes: String(fd.get("client_notes") || "") || null,
+          internal_notes: String(fd.get("internal_notes") || "") || null,
+        },
+      });
+      toast.success(
+        result.is_bride_checklist
+          ? "Evento criado com checklist da noiva"
+          : "Evento criado com checklist padrão",
+      );
+      setOpen(false);
+      setCreateClientId("");
+      setCreateStatus("novo");
+      setCreateFinancialStatus("Em aberto");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao criar evento.");
+    }
   };
 
   const update = async (e: FormEvent<HTMLFormElement>) => {
@@ -188,34 +197,40 @@ function Page() {
     if (!editing) return;
     const fd = new FormData(e.currentTarget);
     if (!editClientId) return toast.error("Selecione um cliente.");
-    const { error } = await supabase
-      .from("events")
-      .update({
-        client_id: editClientId,
-        event_type: String(fd.get("event_type")),
-        event_date: String(fd.get("event_date") || "") || null,
-        start_time: String(fd.get("start_time") || "") || null,
-        end_time: String(fd.get("end_time") || "") || null,
-        location: String(fd.get("location") || "") || null,
-        estimated_guests: Number(fd.get("estimated_guests")) || null,
-        contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
-        financial_status: editFinancialStatus || null,
-        status: editStatus,
-        client_notes: String(fd.get("client_notes") || "") || null,
-        internal_notes: String(fd.get("internal_notes") || "") || null,
-      })
-      .eq("id", editing.id);
-    if (error) return toast.error(error.message);
-    toast.success("Evento atualizado");
-    setEditing(null);
-    load();
+    try {
+      await updateEventFn({
+        data: {
+          id: editing.id,
+          client_id: editClientId,
+          event_type: String(fd.get("event_type")),
+          event_date: String(fd.get("event_date") || "") || null,
+          start_time: String(fd.get("start_time") || "") || null,
+          end_time: String(fd.get("end_time") || "") || null,
+          location: String(fd.get("location") || "") || null,
+          estimated_guests: Number(fd.get("estimated_guests")) || null,
+          contracted_value: parseCurrencyValue(String(fd.get("contracted_value") || "")),
+          financial_status: editFinancialStatus || null,
+          status: editStatus,
+          client_notes: String(fd.get("client_notes") || "") || null,
+          internal_notes: String(fd.get("internal_notes") || "") || null,
+        },
+      });
+      toast.success("Evento atualizado");
+      setEditing(null);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar evento.");
+    }
   };
 
   const updateEventStatus = async (eventId: string, status: EventStatus) => {
-    const { error } = await supabase.from("events").update({ status }).eq("id", eventId);
-    if (error) return toast.error(error.message);
-    toast.success("Status do evento atualizado");
-    load();
+    try {
+      await updateEventStatusFn({ data: { id: eventId, status } });
+      toast.success("Status do evento atualizado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar status.");
+    }
   };
 
   const remove = async (event: EventWithClient) => {
@@ -223,10 +238,13 @@ function Page() {
       `Excluir o evento de ${event.clients?.full_name ?? "cliente"}? Isso também remove checklist, referências e interesses vinculados.`,
     );
     if (!confirmed) return;
-    const { error } = await supabase.from("events").delete().eq("id", event.id);
-    if (error) return toast.error(error.message);
-    toast.success("Evento excluído");
-    load();
+    try {
+      await deleteEventFn({ data: { id: event.id } });
+      toast.success("Evento excluído");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir evento.");
+    }
   };
 
   const addFinancialStatus = async (label: string) => {
@@ -236,60 +254,56 @@ function Page() {
       return toast.error("Este status já existe.");
     }
 
-    const nextOrder = financialStatusOptions.length;
-    const { data, error } = await supabase
-      .from("financial_status_options")
-      .insert({ label: cleanLabel, sort_order: nextOrder })
-      .select()
-      .single();
-
-    if (error || !data) {
+    try {
+      const data = await addFinancialStatusOptionFn({ data: { label: cleanLabel } });
+      setFinancialStatusOptions((items) => [...items, data]);
+      toast.success("Status financeiro adicionado");
+    } catch (error) {
+      const nextOrder = financialStatusOptions.length;
       setFinancialStatusOptions((items) => [
         ...items,
         fallbackFinancialStatus(cleanLabel, nextOrder),
       ]);
-      toast.success("Status adicionado nesta sessão");
-      return;
+      toast.warning(
+        error instanceof Error ? error.message : "Status adicionado apenas nesta sessão",
+      );
     }
-
-    setFinancialStatusOptions((items) => [...items, data]);
-    toast.success("Status financeiro adicionado");
   };
 
   const updateFinancialStatus = async (option: FinancialStatusOption, label: string) => {
     const cleanLabel = label.trim();
     if (!cleanLabel) return toast.error("Digite um status financeiro.");
 
-    const { data, error } = await supabase
-      .from("financial_status_options")
-      .update({ label: cleanLabel })
-      .eq("id", option.id)
-      .select()
-      .single();
-
-    const updatedOption = data ?? { ...option, label: cleanLabel };
-    setFinancialStatusOptions((items) =>
-      items.map((item) => (item.id === option.id ? updatedOption : item)),
-    );
+    try {
+      const data = await updateFinancialStatusOptionFn({
+        data: { id: option.id, label: cleanLabel },
+      });
+      setFinancialStatusOptions((items) =>
+        items.map((item) => (item.id === option.id ? data : item)),
+      );
+      toast.success("Status financeiro atualizado");
+    } catch (error) {
+      setFinancialStatusOptions((items) =>
+        items.map((item) => (item.id === option.id ? { ...item, label: cleanLabel } : item)),
+      );
+      toast.warning(error instanceof Error ? error.message : "Status editado nesta sessão");
+    }
     if (sameStatusLabel(createFinancialStatus, option.label)) setCreateFinancialStatus(cleanLabel);
     if (sameStatusLabel(editFinancialStatus, option.label)) setEditFinancialStatus(cleanLabel);
-
-    toast[error ? "warning" : "success"](
-      error ? "Status editado nesta sessão" : "Status financeiro atualizado",
-    );
   };
 
   const removeFinancialStatus = async (option: FinancialStatusOption) => {
     if (!window.confirm(`Apagar o status "${option.label}"?`)) return;
 
-    const { error } = await supabase.from("financial_status_options").delete().eq("id", option.id);
+    try {
+      await deleteFinancialStatusOptionFn({ data: { id: option.id } });
+      toast.success("Status financeiro apagado");
+    } catch (error) {
+      toast.warning(error instanceof Error ? error.message : "Status removido desta sessão");
+    }
     setFinancialStatusOptions((items) => items.filter((item) => item.id !== option.id));
     if (sameStatusLabel(createFinancialStatus, option.label)) setCreateFinancialStatus("Em aberto");
     if (sameStatusLabel(editFinancialStatus, option.label)) setEditFinancialStatus("Em aberto");
-
-    toast[error ? "warning" : "success"](
-      error ? "Status removido desta sessão" : "Status financeiro apagado",
-    );
   };
 
   return (

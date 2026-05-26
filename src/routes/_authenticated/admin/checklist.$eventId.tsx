@@ -1,13 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  addChecklistItemFn,
+  applyBrideChecklistFn,
+  deleteChecklistItemFn,
+  getEventChecklistFn,
+  updateChecklistItemFn,
+} from "@/fns/checklist";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { BRIDE_CHECKLIST } from "@/lib/checklist-templates";
 import {
   Select,
   SelectContent,
@@ -25,18 +30,48 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink, ListChecks, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/checklist/$eventId")({
   component: Page,
 });
 
-type EventWithClient = Database["public"]["Tables"]["events"]["Row"] & {
+type EventWithClient = {
+  id: string;
+  event_type: string;
+  event_date: string | null;
   clients: { full_name: string } | null;
 };
-type ChecklistItem = Database["public"]["Tables"]["checklist_items"]["Row"];
-type ChecklistStatus = Database["public"]["Enums"]["checklist_status"];
-type PriorityLevel = Database["public"]["Enums"]["priority_level"];
+
+type ChecklistItem = {
+  id: string;
+  event_id: string;
+  title: string;
+  description: string | null;
+  status: ChecklistStatus;
+  priority: PriorityLevel;
+  due_date: string | null;
+  client_notes: string | null;
+  internal_notes: string | null;
+  attachment_url: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type ChecklistStatus = "pendente" | "em_analise" | "concluido";
+type PriorityLevel = "baixa" | "media" | "alta";
+
+type ChecklistItemPatch = {
+  title?: string;
+  description?: string | null;
+  status?: ChecklistStatus;
+  priority?: PriorityLevel;
+  due_date?: string | null;
+  attachment_url?: string | null;
+  client_notes?: string | null;
+  internal_notes?: string | null;
+  sort_order?: number;
+};
 
 function Page() {
   const { eventId } = Route.useParams();
@@ -46,81 +81,84 @@ function Page() {
   const [newPriority, setNewPriority] = useState<PriorityLevel>("media");
 
   const load = async () => {
-    const [{ data: ev }, { data: its }] = await Promise.all([
-      supabase.from("events").select("*, clients(full_name)").eq("id", eventId).single(),
-      supabase.from("checklist_items").select("*").eq("event_id", eventId).order("sort_order"),
-    ]);
-    setEvent(ev);
-    setItems(its ?? []);
+    try {
+      const data = await getEventChecklistFn({ data: { event_id: eventId } });
+      setEvent({
+        id: data.event.id,
+        event_type: data.event.event_type,
+        event_date: data.event.event_date,
+        clients: data.event.clients
+          ? { full_name: data.event.clients.full_name }
+          : null,
+      });
+      setItems(data.items as ChecklistItem[]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar checklist.");
+    }
   };
   useEffect(() => {
     load();
   }, [eventId]);
 
-  const updateItem = async (
-    id: string,
-    patch: Database["public"]["Tables"]["checklist_items"]["Update"],
-  ) => {
-    const { error } = await supabase.from("checklist_items").update(patch).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Item atualizado");
-    load();
+  const updateItem = async (id: string, patch: ChecklistItemPatch) => {
+    try {
+      await updateChecklistItemFn({ data: { id, ...patch } });
+      toast.success("Item atualizado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar item.");
+    }
   };
 
   const add = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const { error } = await supabase.from("checklist_items").insert({
-      event_id: eventId,
-      title: String(fd.get("title")),
-      description: String(fd.get("description") || "") || null,
-      priority: newPriority,
-      due_date: String(fd.get("due_date") || "") || null,
-      attachment_url: String(fd.get("attachment_url") || "") || null,
-      client_notes: String(fd.get("client_notes") || "") || null,
-      internal_notes: String(fd.get("internal_notes") || "") || null,
-      sort_order: items.length,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Item adicionado");
-    setOpen(false);
-    setNewPriority("media");
-    load();
+    try {
+      await addChecklistItemFn({
+        data: {
+          event_id: eventId,
+          title: String(fd.get("title")),
+          description: String(fd.get("description") || "") || null,
+          priority: newPriority,
+          due_date: String(fd.get("due_date") || "") || null,
+          attachment_url: String(fd.get("attachment_url") || "") || null,
+          client_notes: String(fd.get("client_notes") || "") || null,
+          internal_notes: String(fd.get("internal_notes") || "") || null,
+          sort_order: items.length,
+        },
+      });
+      toast.success("Item adicionado");
+      setOpen(false);
+      setNewPriority("media");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao adicionar item.");
+    }
   };
 
   const applyBrideChecklist = async () => {
-    const existingTitles = new Set(items.map((item) => item.title.toLowerCase()));
-    const missingItems = BRIDE_CHECKLIST.filter(
-      (templateItem) => !existingTitles.has(templateItem.title.toLowerCase()),
-    );
-
-    if (missingItems.length === 0) {
-      return toast.info("Checklist da noiva já aplicado neste evento.");
+    try {
+      const result = await applyBrideChecklistFn({ data: { event_id: eventId } });
+      if (result.applied === 0) {
+        return toast.info(result.message ?? "Checklist da noiva já aplicado neste evento.");
+      }
+      toast.success("Checklist da noiva aplicado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao aplicar checklist.");
     }
-
-    const startOrder = items.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1;
-    const { error } = await supabase.from("checklist_items").insert(
-      missingItems.map((item, index) => ({
-        event_id: eventId,
-        title: item.title,
-        description: item.description ?? null,
-        priority: item.priority,
-        sort_order: startOrder + index,
-      })),
-    );
-
-    if (error) return toast.error(error.message);
-    toast.success("Checklist da noiva aplicado");
-    load();
   };
 
   const remove = async (id: string) => {
     const confirmed = window.confirm("Excluir este item do checklist?");
     if (!confirmed) return;
-    const { error } = await supabase.from("checklist_items").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Item removido");
-    load();
+    try {
+      await deleteChecklistItemFn({ data: { id } });
+      toast.success("Item removido");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover item.");
+    }
   };
 
   return (
@@ -236,10 +274,7 @@ function ChecklistItemCard({
   onRemove,
 }: {
   item: ChecklistItem;
-  onSave: (
-    id: string,
-    patch: Database["public"]["Tables"]["checklist_items"]["Update"],
-  ) => Promise<void>;
+  onSave: (id: string, patch: ChecklistItemPatch) => Promise<void>;
   onRemove: (id: string) => void;
 }) {
   const [status, setStatus] = useState<ChecklistStatus>(item.status);

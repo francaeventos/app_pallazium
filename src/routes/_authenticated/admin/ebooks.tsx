@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useRef, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { deleteEbookFn, listEbooksFn, toggleEbookFn } from "@/fns/admin-catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,31 +48,23 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { fileToBase64 } from "@/lib/file-base64";
+import { saveEbookFn } from "@/fns/save-ebook";
 
 export const Route = createFileRoute("/_authenticated/admin/ebooks")({
   component: Page,
 });
 
-type Ebook = {
-  id: string;
-  title: string;
-  description: string | null;
-  cover_url: string | null;
-  file_url: string;
-  file_name: string;
-  file_size: number | null;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-};
+type Ebook = Awaited<ReturnType<typeof listEbooksFn>>[number];
 
 type FormState = {
   title: string;
   description: string;
   cover_url: string;
+  file_url: string;
 };
 
-const emptyForm: FormState = { title: "", description: "", cover_url: "" };
+const emptyForm: FormState = { title: "", description: "", cover_url: "", file_url: "" };
 
 function formatBytes(bytes: number | null) {
   if (!bytes) return null;
@@ -97,12 +89,13 @@ function Page() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("ebooks" as never)
-      .select("*")
-      .order("created_at", { ascending: false });
-    setEbooks((data as Ebook[]) ?? []);
-    setLoading(false);
+    try {
+      setEbooks(await listEbooksFn());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os ebooks.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -119,7 +112,12 @@ function Page() {
 
   const openEdit = (eb: Ebook) => {
     setEditing(eb);
-    setForm({ title: eb.title, description: eb.description ?? "", cover_url: eb.cover_url ?? "" });
+    setForm({
+      title: eb.title,
+      description: eb.description ?? "",
+      cover_url: eb.cover_url ?? "",
+      file_url: eb.file_url,
+    });
     setPendingFile(null);
     setErrors({});
     setOpen(true);
@@ -134,63 +132,11 @@ function Page() {
   const validate = () => {
     const e: typeof errors = {};
     if (!form.title.trim()) e.title = "Título é obrigatório";
-    if (!isEditMode && !pendingFile) e.file = "Selecione um arquivo PDF";
+    if (!isEditMode && !pendingFile && !form.file_url.trim()) {
+      e.file = "Selecione um PDF ou informe a URL do arquivo";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
-  };
-
-  const uploadPdf = async (file: File): Promise<string | null> => {
-    const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const path = `uploads/${id}.${ext}`;
-
-    setUploading(true);
-
-    // Usa fetch raw para ver a mensagem de erro real do servidor
-    const SUPABASE_URL =
-      import.meta.env.VITE_SUPABASE_URL as string;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-
-    if (!token) {
-      toast.error("Sessão expirada. Faça login novamente.");
-      setUploading(false);
-      return null;
-    }
-
-    const response = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/ebooks/${path}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": file.type || "application/pdf",
-          "x-upsert": "false",
-        },
-        body: file,
-      },
-    );
-
-    setUploading(false);
-
-    if (!response.ok) {
-      let errMsg = `HTTP ${response.status}`;
-      try {
-        const body = await response.json();
-        errMsg = body.message || body.error || errMsg;
-        console.error("[ebooks] upload error body:", body);
-      } catch {
-        console.error("[ebooks] upload error (não-JSON):", response.statusText);
-      }
-      toast.error(`Falha no upload: ${errMsg}`);
-      return null;
-    }
-
-    const { data } = supabase.storage.from("ebooks").getPublicUrl(path);
-    return data.publicUrl;
   };
 
   const handleSubmit = async (ev: FormEvent<HTMLFormElement>) => {
@@ -199,62 +145,55 @@ function Page() {
     if (!validate()) return;
 
     setSaving(true);
+    setUploading(!!pendingFile);
 
-    let file_url = editing?.file_url ?? "";
-    let file_name = editing?.file_name ?? "";
-    let file_size = editing?.file_size ?? null;
-
-    if (pendingFile) {
-      const url = await uploadPdf(pendingFile);
-      if (!url) {
-        setSaving(false);
-        return;
+    try {
+      let fileBase64: string | undefined;
+      if (pendingFile) {
+        fileBase64 = await fileToBase64(pendingFile);
       }
-      file_url = url;
-      file_name = pendingFile.name;
-      file_size = pendingFile.size;
+
+      await saveEbookFn({
+        data: {
+          id: editing?.id,
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          cover_url: form.cover_url.trim() || undefined,
+          externalFileUrl: !pendingFile && !isEditMode ? form.file_url.trim() || undefined : undefined,
+          fileName: pendingFile?.name,
+          fileBase64,
+          contentType: pendingFile?.type || "application/pdf",
+        },
+      });
+
+      toast.success(isEditMode ? "Ebook atualizado" : "Ebook publicado");
+      closeDialog();
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o ebook.");
+    } finally {
+      setSaving(false);
+      setUploading(false);
     }
-
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      cover_url: form.cover_url.trim() || null,
-      file_url,
-      file_name,
-      file_size,
-    };
-
-    const { error } = isEditMode
-      ? await supabase
-          .from("ebooks" as never)
-          .update(payload as never)
-          .eq("id", editing!.id)
-      : await supabase.from("ebooks" as never).insert(payload as never);
-
-    setSaving(false);
-    if (error) return toast.error((error as { message: string }).message);
-    toast.success(isEditMode ? "Ebook atualizado" : "Ebook publicado");
-    closeDialog();
-    load();
   };
 
   const toggleActive = async (eb: Ebook) => {
-    const { error } = await supabase
-      .from("ebooks" as never)
-      .update({ active: !eb.active } as never)
-      .eq("id", eb.id);
-    if (error) return toast.error((error as { message: string }).message);
+    try {
+      await toggleEbookFn({ data: { id: eb.id, active: !eb.active } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
     toast.success(eb.active ? "Ebook ocultado dos clientes" : "Ebook visível para clientes");
     load();
   };
 
   const confirmRemove = async () => {
     if (!removing) return;
-    const { error } = await supabase
-      .from("ebooks" as never)
-      .delete()
-      .eq("id", removing.id);
-    if (error) return toast.error((error as { message: string }).message);
+    try {
+      await deleteEbookFn({ data: { id: removing.id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Ebook removido");
     setRemoving(null);
     load();
@@ -432,7 +371,7 @@ function Page() {
             <DialogDescription>
               {isEditMode
                 ? "Altere as informações ou substitua o arquivo PDF."
-                : "Envie um PDF e preencha as informações para publicar na Área VIP."}
+                : "Envie um PDF ou informe a URL do arquivo para publicar na Área VIP."}
             </DialogDescription>
           </DialogHeader>
 
@@ -442,7 +381,7 @@ function Page() {
               {/* Upload de PDF */}
               <div className="space-y-2">
                 <Label>
-                  {isEditMode ? "Substituir arquivo PDF" : "Arquivo PDF *"}
+                  {isEditMode ? "Substituir arquivo PDF" : "Arquivo PDF"}
                 </Label>
                 <div
                   className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors cursor-pointer hover:bg-muted/50 ${errors.file ? "border-destructive" : "border-border"}`}
@@ -506,12 +445,39 @@ function Page() {
                         return;
                       }
                       setPendingFile(file);
+                      setForm((f) => ({ ...f, file_url: "" }));
                       setErrors((e) => ({ ...e, file: undefined }));
                     }}
                   />
                 </div>
                 {errors.file && <p className="text-xs text-destructive">{errors.file}</p>}
               </div>
+
+              {!isEditMode && (
+                <div className="space-y-1.5">
+                  <Label>
+                    URL do PDF{" "}
+                    <span className="text-muted-foreground font-normal">(alternativa ao upload)</span>
+                  </Label>
+                  <Input
+                    value={form.file_url}
+                    placeholder="https://..."
+                    className="h-11"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((f) => ({ ...f, file_url: value }));
+                      if (value.trim()) {
+                        setPendingFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                        setErrors((prev) => ({ ...prev, file: undefined }));
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use se o upload falhar — cole o link direto do PDF (Google Drive, Dropbox, etc.).
+                  </p>
+                </div>
+              )}
 
               {/* Título */}
               <div className="space-y-1.5">

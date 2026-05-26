@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deleteNotificationFn,
+  listNotificationsAdminFn,
+  saveNotificationFn,
+} from "@/fns/admin-notifications";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,15 +28,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Bell, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/notificacoes")({ component: Page });
 
-type Notification = Database["public"]["Tables"]["notifications"]["Row"];
-type Client = Pick<
-  Database["public"]["Tables"]["clients"]["Row"],
-  "id" | "full_name" | "email" | "user_id"
->;
+type Notification = Awaited<
+  ReturnType<typeof listNotificationsAdminFn>
+>["notifications"][number];
+type Client = Awaited<ReturnType<typeof listNotificationsAdminFn>>["clients"][number];
 
 function Page() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -42,15 +43,15 @@ function Page() {
   const [selectedClientId, setSelectedClientId] = useState("");
 
   const load = async () => {
-    const [{ data: notificationRows }, { data: clientRows }] = await Promise.all([
-      supabase.from("notifications").select("*").order("created_at", { ascending: false }),
-      supabase
-        .from("clients")
-        .select("id, full_name, email, user_id")
-        .order("full_name", { ascending: true }),
-    ]);
-    setNotifications(notificationRows ?? []);
-    setClients(clientRows ?? []);
+    try {
+      const { notifications, clients } = await listNotificationsAdminFn();
+      setNotifications(notifications);
+      setClients(clients);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível carregar as notificações.",
+      );
+    }
   };
 
   useEffect(() => {
@@ -65,18 +66,19 @@ function Page() {
       return toast.error("Este cliente ainda não está vinculado a uma conta de acesso.");
     }
 
-    const payload = {
-      user_id: client.user_id,
-      title: String(fd.get("title")),
-      message: String(fd.get("message") || "") || null,
-      read: fd.get("read") === "on",
-    };
-
-    const { error } = editing
-      ? await supabase.from("notifications").update(payload).eq("id", editing.id)
-      : await supabase.from("notifications").insert(payload);
-
-    if (error) return toast.error(error.message);
+    try {
+      await saveNotificationFn({
+        data: {
+          id: editing?.id,
+          client_id: selectedClientId,
+          title: String(fd.get("title")),
+          message: String(fd.get("message") || "") || undefined,
+          read: fd.get("read") === "on",
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Notificação atualizada" : "Notificação enviada");
     setOpen(false);
     setEditing(null);
@@ -85,8 +87,11 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("notifications").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteNotificationFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Notificação removida");
     load();
   };

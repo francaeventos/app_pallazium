@@ -1,78 +1,112 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { markRecoveryMode } from "@/lib/password-recovery";
+import {
+  getSessionFn,
+  getStoredAuthToken,
+  logoutFn,
+  setStoredAuthToken,
+  type AuthSessionResponse,
+} from "@/fns/auth";
 
 type Role = "admin" | "client";
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+}
+
 interface AuthCtx {
-  session: Session | null;
-  user: User | null;
+  user: AuthUser | null;
   role: Role | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>({
-  session: null,
   user: null,
   role: null,
   loading: true,
   signOut: async () => {},
 });
 
+function toAuthUser(user: NonNullable<AuthSessionResponse["user"]>): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
-    const loadSession = async (nextSession: Session | null) => {
-      setSession(nextSession);
-
-      if (!nextSession?.user) {
+    const loadSession = async () => {
+      const token = getStoredAuthToken();
+      if (!token) {
+        if (!active) return;
+        setUser(null);
         setRole(null);
         setLoading(false);
         return;
       }
 
-      const nextRole = await getUserRole(nextSession.user.id);
-      if (!active) return;
+      try {
+        const { user: sessionUser } = await getSessionFn({ data: { token } });
+        if (!active) return;
 
-      setRole(nextRole);
-      setLoading(false);
+        if (!sessionUser) {
+          setStoredAuthToken(null);
+          setUser(null);
+          setRole(null);
+        } else {
+          setUser(toAuthUser(sessionUser));
+          setRole(sessionUser.role);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar sessão", error);
+        if (!active) return;
+        setStoredAuthToken(null);
+        setUser(null);
+        setRole(null);
+      } finally {
+        if (active) setLoading(false);
+      }
     };
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      loadSession(data.session);
-    });
+    loadSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === "PASSWORD_RECOVERY") markRecoveryMode();
+    const onAuthChange = () => {
       setLoading(true);
-      loadSession(s);
-    });
+      loadSession();
+    };
 
+    window.addEventListener("pallazium-auth-change", onAuthChange);
     return () => {
       active = false;
-      subscription.unsubscribe();
+      window.removeEventListener("pallazium-auth-change", onAuthChange);
     };
   }, []);
 
   return (
     <Ctx.Provider
       value={{
-        session,
-        user: session?.user ?? null,
+        user,
         role,
         loading,
         signOut: async () => {
-          await supabase.auth.signOut();
+          const token = getStoredAuthToken();
+          if (token) await logoutFn({ data: { token } });
+          setStoredAuthToken(null);
+          setUser(null);
+          setRole(null);
+          window.dispatchEvent(new Event("pallazium-auth-change"));
         },
       }}
     >
@@ -83,13 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => useContext(Ctx);
 
-async function getUserRole(userId: string): Promise<Role> {
-  const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  if (error) {
-    console.error("Erro ao carregar permissões do usuário", error);
-    return "client";
-  }
-
-  const roles = (data ?? []).map((item) => item.role as Role);
-  return roles.includes("admin") ? "admin" : (roles[0] ?? "client");
+export function notifyAuthChange() {
+  window.dispatchEvent(new Event("pallazium-auth-change"));
 }

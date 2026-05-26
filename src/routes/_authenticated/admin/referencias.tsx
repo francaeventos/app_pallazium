@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { deleteReferenceFn, listReferencesFn, saveReferenceFn } from "@/fns/admin-references";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,23 +25,10 @@ import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { StorageImageInput } from "@/components/StorageImageInput";
 import { ExternalLink, GalleryHorizontalEnd, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/referencias")({ component: Page });
 
-type Reference = Database["public"]["Tables"]["event_references"]["Row"] & {
-  events?: {
-    event_type: string;
-    event_date: string | null;
-    clients?: { full_name: string } | null;
-  } | null;
-};
-type EventOption = {
-  id: string;
-  event_type: string;
-  event_date: string | null;
-  clients: { full_name: string } | null;
-};
+type Reference = Awaited<ReturnType<typeof listReferencesFn>>["references"][number];
+type EventOption = Awaited<ReturnType<typeof listReferencesFn>>["events"][number];
 
 function Page() {
   const [items, setItems] = useState<Reference[]>([]);
@@ -51,18 +38,13 @@ function Page() {
   const [selectedEventId, setSelectedEventId] = useState("");
 
   const load = async () => {
-    const [{ data: refs }, { data: eventRows }] = await Promise.all([
-      supabase
-        .from("event_references")
-        .select("*, events(event_type, event_date, clients(full_name))")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("events")
-        .select("id, event_type, event_date, clients(full_name)")
-        .order("event_date"),
-    ]);
-    setItems((refs ?? []) as Reference[]);
-    setEvents((eventRows ?? []) as EventOption[]);
+    try {
+      const { references, events } = await listReferencesFn();
+      setItems(references);
+      setEvents(events);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar as referências.");
+    }
   };
 
   useEffect(() => {
@@ -86,10 +68,16 @@ function Page() {
       inspiration_link: String(fd.get("inspiration_link") || "") || null,
       notes: String(fd.get("notes") || "") || null,
     };
-    const { error } = editing
-      ? await supabase.from("event_references").update(payload).eq("id", editing.id)
-      : await supabase.from("event_references").insert(payload);
-    if (error) return toast.error(error.message);
+    try {
+      await saveReferenceFn({
+        data: {
+          id: editing?.id,
+          ...payload,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success(editing ? "Referência atualizada" : "Referência criada");
     setOpen(false);
     setEditing(null);
@@ -98,8 +86,11 @@ function Page() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("event_references").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteReferenceFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Referência removida");
     load();
   };

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getAdminDashboardFn } from "@/fns/admin-dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,29 +15,41 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/")({ component: Dashboard });
 
-type EventRow = Database["public"]["Tables"]["events"]["Row"] & {
+type EventRow = {
+  id: string;
+  event_type: string;
+  event_date: string | null;
+  estimated_guests: number | null;
+  status: string;
   clients: { full_name: string; email: string; whatsapp: string | null } | null;
 };
-type ChecklistItem = Pick<
-  Database["public"]["Tables"]["checklist_items"]["Row"],
-  "id" | "event_id" | "title" | "priority" | "status" | "due_date"
->;
-type Guest = Pick<
-  Database["public"]["Tables"]["event_guests"]["Row"],
-  "event_id" | "rsvp_status" | "confirmed_companions"
->;
-type UpgradeInterest = Pick<
-  Database["public"]["Tables"]["upgrade_interests"]["Row"],
-  "id" | "event_id" | "status" | "created_at"
->;
-type MenuInterest = Pick<
-  Database["public"]["Tables"]["menu_interests"]["Row"],
-  "id" | "event_id" | "status" | "created_at"
->;
+type ChecklistItem = {
+  id: string;
+  event_id: string;
+  title: string;
+  priority: string;
+  status: string;
+  due_date: string | null;
+};
+type Guest = {
+  event_id: string;
+  rsvp_status: string;
+  confirmed_companions: number;
+};
+type UpgradeInterest = {
+  id: string;
+  event_id: string;
+  status: string;
+  created_at: string;
+};
+type MenuInterest = {
+  id: string;
+  event_id: string;
+  status: string;
+  created_at: string;
+};
 
 function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -50,27 +62,16 @@ function Dashboard() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [eventResult, checklistResult, guestResult, upgradeResult, menuResult] =
-        await Promise.all([
-          supabase
-            .from("events")
-            .select("*, clients(full_name, email, whatsapp)")
-            .order("event_date"),
-          supabase
-            .from("checklist_items")
-            .select("id, event_id, title, priority, status, due_date")
-            .neq("status", "concluido"),
-          supabase.from("event_guests").select("event_id, rsvp_status, confirmed_companions"),
-          supabase.from("upgrade_interests").select("id, event_id, status, created_at"),
-          supabase.from("menu_interests").select("id, event_id, status, created_at"),
-        ]);
-
-      setEvents((eventResult.data ?? []) as EventRow[]);
-      setChecklistItems((checklistResult.data ?? []) as ChecklistItem[]);
-      setGuests((guestResult.data ?? []) as Guest[]);
-      setUpgradeInterests((upgradeResult.data ?? []) as UpgradeInterest[]);
-      setMenuInterests((menuResult.data ?? []) as MenuInterest[]);
-      setLoading(false);
+      try {
+        const data = await getAdminDashboardFn();
+        setEvents(data.events as EventRow[]);
+        setChecklistItems(data.checklist_items);
+        setGuests(data.guests);
+        setUpgradeInterests(data.upgrade_interests);
+        setMenuInterests(data.menu_interests);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

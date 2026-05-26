@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  addUserRoleFn,
+  linkClientToProfileFn,
+  listAccessRowsFn,
+  promoteAdminByEmailFn,
+  removeUserRoleFn,
+  unlinkClientFromUserFn,
+  updateAccessProfileFn,
+} from "@/fns/access";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,26 +17,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/acessos")({ component: Page });
 
-type AppRole = Database["public"]["Enums"]["app_role"];
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-type UserRole = Database["public"]["Tables"]["user_roles"]["Row"];
-type Client = Pick<
-  Database["public"]["Tables"]["clients"]["Row"],
-  "user_id" | "full_name" | "email" | "status"
->;
+type AppRole = "admin" | "client";
 
-type AccessRow = Profile & {
+type UserRole = {
+  id: string;
+  user_id: string;
+  role: AppRole;
+  created_at: string;
+};
+
+type Client = {
+  user_id: string | null;
+  full_name: string;
+  email: string;
+  status: string;
+};
+
+type AccessRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  document: string | null;
+  created_at: string;
+  updated_at: string;
   roles: UserRole[];
   client: Client | null;
 };
-type PromoteAdminRpc = (
-  fn: "promote_user_to_admin_by_email",
-  args: { _email: string },
-) => Promise<{ error: { message: string } | null }>;
 
 function Page() {
   const [rows, setRows] = useState<AccessRow[]>([]);
@@ -36,31 +55,12 @@ function Page() {
   const [editingProfile, setEditingProfile] = useState<AccessRow | null>(null);
 
   const load = async () => {
-    const [{ data: profiles }, { data: roles }, { data: clients }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("*"),
-      supabase
-        .from("clients")
-        .select("user_id, full_name, email, status")
-        .not("user_id", "is", null),
-    ]);
-
-    const rolesByUser = new Map<string, UserRole[]>();
-    (roles ?? []).forEach((role) => {
-      rolesByUser.set(role.user_id, [...(rolesByUser.get(role.user_id) ?? []), role]);
-    });
-
-    const clientByUser = new Map(
-      (clients ?? []).map((client) => [client.user_id, client as Client]),
-    );
-
-    setRows(
-      (profiles ?? []).map((profile) => ({
-        ...profile,
-        roles: rolesByUser.get(profile.id) ?? [],
-        client: clientByUser.get(profile.id) ?? null,
-      })),
-    );
+    try {
+      const data = await listAccessRowsFn();
+      setRows(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar acessos.");
+    }
   };
 
   useEffect(() => {
@@ -68,70 +68,80 @@ function Page() {
   }, []);
 
   const addRole = async (userId: string, role: AppRole) => {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-    if (error) return toast.error(error.message);
-    toast.success(role === "admin" ? "Admin liberado" : "Cliente liberado");
-    load();
+    try {
+      await addUserRoleFn({ data: { user_id: userId, role } });
+      toast.success(role === "admin" ? "Admin liberado" : "Cliente liberado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao adicionar papel.");
+    }
   };
 
   const removeRole = async (roleId: string, role: AppRole) => {
-    const { error } = await supabase.from("user_roles").delete().eq("id", roleId);
-    if (error) return toast.error(error.message);
-    toast.success(role === "admin" ? "Admin removido" : "Perfil cliente removido");
-    load();
+    try {
+      await removeUserRoleFn({ data: { role_id: roleId } });
+      toast.success(role === "admin" ? "Admin removido" : "Perfil cliente removido");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover papel.");
+    }
   };
 
   const promoteByEmail = async () => {
     const email = adminEmail.trim();
     if (!email) return toast.error("Informe o e-mail.");
-    const promote = supabase.rpc as unknown as PromoteAdminRpc;
-    const { error } = await promote("promote_user_to_admin_by_email", { _email: email });
-    if (error) return toast.error(error.message);
-    toast.success("Admin liberado pelo e-mail");
-    setAdminEmail("");
-    load();
+    try {
+      await promoteAdminByEmailFn({ data: { email } });
+      toast.success("Admin liberado pelo e-mail");
+      setAdminEmail("");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao promover admin.");
+    }
   };
 
   const linkClientByEmail = async (row: AccessRow) => {
     if (!row.email) return toast.error("Este perfil não tem e-mail salvo.");
-    const { error } = await supabase
-      .from("clients")
-      .update({ user_id: row.id })
-      .eq("email", row.email)
-      .is("user_id", null);
-    if (error) return toast.error(error.message);
-    toast.success("Cliente vinculado pelo e-mail");
-    load();
+    try {
+      await linkClientToProfileFn({ data: { user_id: row.id, email: row.email } });
+      toast.success("Cliente vinculado pelo e-mail");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao vincular cliente.");
+    }
   };
 
   const unlinkClient = async (row: AccessRow) => {
-    const { error } = await supabase
-      .from("clients")
-      .update({ user_id: null })
-      .eq("user_id", row.id);
-    if (error) return toast.error(error.message);
-    toast.success("Cliente desvinculado");
-    load();
+    try {
+      await unlinkClientFromUserFn({ data: { user_id: row.id } });
+      toast.success("Cliente desvinculado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao desvincular cliente.");
+    }
   };
 
   const updateProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingProfile) return;
     const fd = new FormData(event.currentTarget);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: String(fd.get("full_name") || "") || null,
-        email: String(fd.get("email") || "") || null,
-        phone: String(fd.get("phone") || "") || null,
-        whatsapp: String(fd.get("whatsapp") || "") || null,
-        document: String(fd.get("document") || "") || null,
-      })
-      .eq("id", editingProfile.id);
-    if (error) return toast.error(error.message);
-    toast.success("Perfil atualizado");
-    setEditingProfile(null);
-    load();
+    try {
+      await updateAccessProfileFn({
+        data: {
+          id: editingProfile.id,
+          full_name: String(fd.get("full_name") || "") || null,
+          email: String(fd.get("email") || "") || null,
+          phone: String(fd.get("phone") || "") || null,
+          whatsapp: String(fd.get("whatsapp") || "") || null,
+          document: String(fd.get("document") || "") || null,
+        },
+      });
+      toast.success("Perfil atualizado");
+      setEditingProfile(null);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar perfil.");
+    }
   };
 
   return (
@@ -263,8 +273,8 @@ function Page() {
                 <Label>E-mail de exibição/vínculo</Label>
                 <Input name="email" type="email" defaultValue={editingProfile.email ?? ""} />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Este campo ajuda no vínculo com clientes. O login do Auth continua sendo
-                  gerenciado pela conta do usuário.
+                  Este campo ajuda no vínculo com clientes. O login continua sendo o e-mail da
+                  conta do usuário.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">

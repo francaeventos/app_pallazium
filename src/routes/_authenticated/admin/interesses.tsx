@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  deleteMenuInterestFn,
+  deleteUpgradeInterestFn,
+  listInterestsFn,
+  saveMenuInterestFn,
+  saveUpgradeInterestFn,
+  updateMenuInterestStatusFn,
+  updateUpgradeInterestStatusFn,
+} from "@/fns/admin-interests";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,21 +25,11 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
 export const Route = createFileRoute("/_authenticated/admin/interesses")({ component: Page });
 
-type InterestStatus = Database["public"]["Enums"]["interest_status"];
-type UpgradeInterest = Database["public"]["Tables"]["upgrade_interests"]["Row"] & {
-  upgrades: { name: string; category: string } | null;
-  clients: { full_name: string; email: string; whatsapp: string | null } | null;
-  events: { event_type: string; event_date: string | null } | null;
-};
-type MenuInterest = Database["public"]["Tables"]["menu_interests"]["Row"] & {
-  menus: { name: string; category: string } | null;
-  clients: { full_name: string; email: string; whatsapp: string | null } | null;
-  events: { event_type: string; event_date: string | null } | null;
-};
+type InterestStatus = "novo" | "em_contato" | "vendido" | "perdido";
+type UpgradeInterest = Awaited<ReturnType<typeof listInterestsFn>>["upgradeInterests"][number];
+type MenuInterest = Awaited<ReturnType<typeof listInterestsFn>>["menuInterests"][number];
 
 function Page() {
   const [list, setList] = useState<UpgradeInterest[]>([]);
@@ -41,61 +39,58 @@ function Page() {
   const [editStatus, setEditStatus] = useState<InterestStatus>("novo");
 
   const load = async () => {
-    const [{ data }, { data: menus }] = await Promise.all([
-      supabase
-        .from("upgrade_interests")
-        .select(
-          "*, upgrades(name, category), clients(full_name, email, whatsapp), events(event_type, event_date)",
-        )
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("menu_interests")
-        .select(
-          "*, menus(name, category), clients(full_name, email, whatsapp), events(event_type, event_date)",
-        )
-        .order("created_at", { ascending: false }),
-    ]);
-    setList((data ?? []) as UpgradeInterest[]);
-    setMenuList((menus ?? []) as MenuInterest[]);
+    try {
+      const { upgradeInterests, menuInterests } = await listInterestsFn();
+      setList(upgradeInterests);
+      setMenuList(menuInterests);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os interesses.");
+    }
   };
   useEffect(() => {
     load();
   }, []);
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from("upgrade_interests")
-      .update({ status: status as InterestStatus })
-      .eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await updateUpgradeInterestStatusFn({
+        data: { id, status: status as InterestStatus },
+      });
       toast.success("Atualizado");
       load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
     }
   };
 
   const updateMenuStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from("menu_interests")
-      .update({ status: status as InterestStatus })
-      .eq("id", id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await updateMenuInterestStatusFn({
+        data: { id, status: status as InterestStatus },
+      });
       toast.success("Atualizado");
       load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
     }
   };
 
   const removeUpgradeInterest = async (id: string) => {
-    const { error } = await supabase.from("upgrade_interests").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteUpgradeInterestFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Interesse removido");
     load();
   };
 
   const removeMenuInterest = async (id: string) => {
-    const { error } = await supabase.from("menu_interests").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteMenuInterestFn({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
+    }
     toast.success("Interesse removido");
     load();
   };
@@ -114,14 +109,17 @@ function Page() {
     event.preventDefault();
     if (!editingUpgrade) return;
     const fd = new FormData(event.currentTarget);
-    const { error } = await supabase
-      .from("upgrade_interests")
-      .update({
-        status: editStatus,
-        notes: String(fd.get("notes") || "") || null,
-      })
-      .eq("id", editingUpgrade.id);
-    if (error) return toast.error(error.message);
+    try {
+      await saveUpgradeInterestFn({
+        data: {
+          id: editingUpgrade.id,
+          status: editStatus,
+          notes: String(fd.get("notes") || "") || undefined,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success("Interesse atualizado");
     setEditingUpgrade(null);
     load();
@@ -131,14 +129,17 @@ function Page() {
     event.preventDefault();
     if (!editingMenu) return;
     const fd = new FormData(event.currentTarget);
-    const { error } = await supabase
-      .from("menu_interests")
-      .update({
-        status: editStatus,
-        notes: String(fd.get("notes") || "") || null,
-      })
-      .eq("id", editingMenu.id);
-    if (error) return toast.error(error.message);
+    try {
+      await saveMenuInterestFn({
+        data: {
+          id: editingMenu.id,
+          status: editStatus,
+          notes: String(fd.get("notes") || "") || undefined,
+        },
+      });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
+    }
     toast.success("Interesse atualizado");
     setEditingMenu(null);
     load();

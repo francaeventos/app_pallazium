@@ -1,26 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listChecklistEventsFn } from "@/fns/checklist";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/checklist/")({ component: Page });
 
-type EventWithClient = Pick<
-  Database["public"]["Tables"]["events"]["Row"],
-  "id" | "event_type" | "event_date"
-> & {
+type EventWithClient = {
+  id: string;
+  event_type: string;
+  event_date: string | null;
   clients: { full_name: string } | null;
 };
 
 function Page() {
   const [events, setEvents] = useState<EventWithClient[]>([]);
   useEffect(() => {
-    supabase
-      .from("events")
-      .select("*, clients(full_name)")
-      .order("event_date")
-      .then(({ data }) => setEvents(data ?? []));
+    listChecklistEventsFn().then(setEvents);
   }, []);
   return (
     <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-4">
