@@ -339,7 +339,7 @@ model Notification {
 model EventInvitation {
   id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   eventId            String           @unique @map("event_id") @db.Uuid
-  publicToken        String           @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex')")) @map("public_token")
+  publicToken        String           @unique @default(dbgenerated("replace(gen_random_uuid()::text, '-', '')")) @map("public_token")
   title              String
   message            String?
   coverImageUrl      String?          @map("cover_image_url")
@@ -364,7 +364,7 @@ model EventGuest {
   id                   String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   eventId              String     @map("event_id") @db.Uuid
   invitationId         String?    @map("invitation_id") @db.Uuid
-  publicToken          String     @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex')")) @map("public_token")
+  publicToken          String     @unique @default(dbgenerated("replace(gen_random_uuid()::text, '-', '')")) @map("public_token")
   name                 String
   phone                String?
   email                String?

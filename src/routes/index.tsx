@@ -6,7 +6,7 @@ import { isRecoveryUrl, markRecoveryMode } from "@/lib/password-recovery";
 export const Route = createFileRoute("/")({ component: Index });
 
 function Index() {
-  const { loading, session, role } = useAuth();
+  const { loading, user, role } = useAuth();
   const [recoveryRedirecting, setRecoveryRedirecting] = useState(false);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function Index() {
         Carregando…
       </div>
     );
-  if (!session) return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
   if (isRecoveryUrl()) return <Navigate to="/login" />;
   if (role === "admin") return <Navigate to="/admin" />;
   return <Navigate to="/app" />;

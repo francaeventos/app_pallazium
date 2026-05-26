@@ -258,7 +258,7 @@ CREATE TABLE "notifications" (
 CREATE TABLE "event_invitations" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "event_id" UUID NOT NULL,
-    "public_token" TEXT NOT NULL DEFAULT encode(gen_random_bytes(16), 'hex'),
+    "public_token" TEXT NOT NULL DEFAULT replace(gen_random_uuid()::text, '-', ''),
     "title" TEXT NOT NULL,
     "message" TEXT,
     "cover_image_url" TEXT,
@@ -281,7 +281,7 @@ CREATE TABLE "event_guests" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "event_id" UUID NOT NULL,
     "invitation_id" UUID,
-    "public_token" TEXT NOT NULL DEFAULT encode(gen_random_bytes(16), 'hex'),
+    "public_token" TEXT NOT NULL DEFAULT replace(gen_random_uuid()::text, '-', ''),
     "name" TEXT NOT NULL,
     "phone" TEXT,
     "email" TEXT,
