@@ -33,6 +33,8 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
+import { StorageImageInput } from "@/components/StorageImageInput";
+import { LEAD_PRIMARY_PRESETS } from "@/lib/leads/theme";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/leads/formulario")({
@@ -127,6 +129,10 @@ function Page() {
     brand_name: "",
     agent_name: "",
     agent_title: "",
+    agent_avatar_url: "",
+    primary_color: "#128C7E",
+    wallpaper_url: "",
+    header_subtitle: "",
     whatsapp_destination: "",
     whatsapp_message: "",
     qualification_threshold: 60,
@@ -151,6 +157,10 @@ function Page() {
         brand_name: data.brand_name,
         agent_name: data.agent_name,
         agent_title: data.agent_title || "",
+        agent_avatar_url: data.agent_avatar_url || "",
+        primary_color: data.primary_color || "#128C7E",
+        wallpaper_url: data.wallpaper_url || "",
+        header_subtitle: data.header_subtitle || "",
         whatsapp_destination: data.whatsapp_destination,
         whatsapp_message: data.whatsapp_message || "",
         qualification_threshold: data.qualification_threshold,
@@ -204,6 +214,10 @@ function Page() {
           brand_name: meta.brand_name,
           agent_name: meta.agent_name,
           agent_title: meta.agent_title || null,
+          agent_avatar_url: meta.agent_avatar_url || null,
+          primary_color: meta.primary_color,
+          wallpaper_url: meta.wallpaper_url || null,
+          header_subtitle: meta.header_subtitle || null,
           whatsapp_destination: meta.whatsapp_destination,
           whatsapp_message: meta.whatsapp_message || null,
           qualification_threshold: meta.qualification_threshold,
@@ -435,13 +449,93 @@ function Page() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Identidade e qualificação</CardTitle>
+          <CardTitle>Visual do chat (cores e avatar)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-3">
+            <Label>Cor primária (header, botões, opções)</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="color"
+                value={meta.primary_color}
+                onChange={(e) => setMeta({ ...meta, primary_color: e.target.value })}
+                className="h-11 w-14 cursor-pointer rounded border bg-transparent p-1"
+              />
+              <Input
+                className="max-w-[140px] font-mono uppercase"
+                value={meta.primary_color}
+                onChange={(e) => setMeta({ ...meta, primary_color: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {LEAD_PRIMARY_PRESETS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  title={color}
+                  onClick={() => setMeta({ ...meta, primary_color: color })}
+                  className="h-8 w-8 rounded-full border-2 border-white shadow ring-1 ring-black/10"
+                  style={{ background: color }}
+                />
+              ))}
+            </div>
+            <div
+              className="rounded-xl p-4 text-white shadow"
+              style={{
+                background: `linear-gradient(180deg, ${meta.primary_color} 0%, color-mix(in srgb, ${meta.primary_color} 72%, black) 100%)`,
+              }}
+            >
+              <p className="text-sm font-semibold">{meta.agent_name || "Agente"}</p>
+              <p className="text-xs opacity-70">
+                {meta.header_subtitle || meta.agent_title || "diagnóstico online"}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <StorageImageInput
+              bucket="leads"
+              folder="avatars"
+              name="agent_avatar"
+              label="Foto do avatar do agente"
+              defaultValue={meta.agent_avatar_url}
+              onValueChange={(url) => setMeta({ ...meta, agent_avatar_url: url })}
+            />
+            <StorageImageInput
+              bucket="leads"
+              folder="wallpapers"
+              name="wallpaper"
+              label="Wallpaper do chat (opcional)"
+              defaultValue={meta.wallpaper_url}
+              onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
+            />
+          </div>
+
+          <Field label="Subtítulo do header">
+            <Input
+              value={meta.header_subtitle}
+              placeholder="diagnóstico online"
+              onChange={(e) => setMeta({ ...meta, header_subtitle: e.target.value })}
+            />
+          </Field>
+          <Field label="Cargo do agente (fallback do subtítulo)">
+            <Input
+              value={meta.agent_title}
+              onChange={(e) => setMeta({ ...meta, agent_title: e.target.value })}
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Identidade, WhatsApp e qualificação</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <Field label="Título interno">
             <Input value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })} />
           </Field>
-          <Field label="Marca (topo do chat)">
+          <Field label="Marca">
             <Input
               value={meta.brand_name}
               onChange={(e) => setMeta({ ...meta, brand_name: e.target.value })}
@@ -451,12 +545,6 @@ function Page() {
             <Input
               value={meta.agent_name}
               onChange={(e) => setMeta({ ...meta, agent_name: e.target.value })}
-            />
-          </Field>
-          <Field label="Cargo do agente">
-            <Input
-              value={meta.agent_title}
-              onChange={(e) => setMeta({ ...meta, agent_title: e.target.value })}
             />
           </Field>
           <Field label="WhatsApp destino (só números com DDI)">
@@ -526,7 +614,7 @@ function Page() {
           </div>
           <div className="sm:col-span-2">
             <Button onClick={saveMeta} disabled={saving}>
-              <Save className="h-4 w-4" /> Salvar configuração
+              <Save className="h-4 w-4" /> Salvar visual e configuração
             </Button>
           </div>
         </CardContent>

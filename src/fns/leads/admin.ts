@@ -228,6 +228,9 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
         agent_name: form.agentName,
         agent_title: form.agentTitle,
         agent_avatar_url: form.agentAvatarUrl,
+        primary_color: form.primaryColor,
+        wallpaper_url: form.wallpaperUrl,
+        header_subtitle: form.headerSubtitle,
         whatsapp_destination: form.whatsappDestination,
         whatsapp_message: form.whatsappMessage,
         privacy_url: form.privacyUrl,
@@ -302,6 +305,14 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         brand_name: z.string().trim().min(2).max(120).optional(),
         agent_name: z.string().trim().min(2).max(80).optional(),
         agent_title: z.string().trim().max(120).nullable().optional(),
+        agent_avatar_url: z.string().trim().max(5000).nullable().optional(),
+        primary_color: z
+          .string()
+          .trim()
+          .regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "Cor inválida")
+          .optional(),
+        wallpaper_url: z.string().trim().max(5000).nullable().optional(),
+        header_subtitle: z.string().trim().max(160).nullable().optional(),
         whatsapp_destination: z.string().trim().min(10).max(30).optional(),
         whatsapp_message: z.string().trim().max(500).nullable().optional(),
         privacy_url: z.string().trim().max(500).nullable().optional(),
@@ -327,6 +338,10 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         ...(rest.brand_name !== undefined ? { brandName: rest.brand_name } : {}),
         ...(rest.agent_name !== undefined ? { agentName: rest.agent_name } : {}),
         ...(rest.agent_title !== undefined ? { agentTitle: rest.agent_title } : {}),
+        ...(rest.agent_avatar_url !== undefined ? { agentAvatarUrl: rest.agent_avatar_url } : {}),
+        ...(rest.primary_color !== undefined ? { primaryColor: rest.primary_color } : {}),
+        ...(rest.wallpaper_url !== undefined ? { wallpaperUrl: rest.wallpaper_url } : {}),
+        ...(rest.header_subtitle !== undefined ? { headerSubtitle: rest.header_subtitle } : {}),
         ...(rest.whatsapp_destination !== undefined
           ? { whatsappDestination: rest.whatsapp_destination }
           : {}),

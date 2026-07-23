@@ -37,6 +37,9 @@ function publicFormShape(form: {
   agentName: string;
   agentTitle: string | null;
   agentAvatarUrl: string | null;
+  primaryColor: string;
+  wallpaperUrl: string | null;
+  headerSubtitle: string | null;
   whatsappDestination: string;
   whatsappMessage: string | null;
   privacyUrl: string | null;
@@ -78,6 +81,9 @@ function publicFormShape(form: {
     agentName: form.agentName,
     agentTitle: form.agentTitle,
     agentAvatarUrl: form.agentAvatarUrl,
+    primaryColor: form.primaryColor,
+    wallpaperUrl: form.wallpaperUrl,
+    headerSubtitle: form.headerSubtitle,
     whatsappDestination: form.whatsappDestination,
     whatsappMessage: form.whatsappMessage,
     privacyUrl: form.privacyUrl,

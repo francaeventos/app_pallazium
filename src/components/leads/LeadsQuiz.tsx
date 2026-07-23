@@ -14,6 +14,7 @@ import {
   readCookie,
   trackPixel,
 } from "@/lib/leads/tracking";
+import { darkenHex } from "@/lib/leads/theme";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -125,6 +126,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   answersRef.current = answers;
 
   const agentInitial = form.agentName.trim().slice(0, 1).toUpperCase() || "B";
+  const primary = form.primaryColor || "#128C7E";
+  const primaryDark = darkenHex(primary, 0.28);
+  const themeStyle = {
+    ["--sf-primary" as string]: primary,
+    ["--sf-primary-dark" as string]: primaryDark,
+    ["--sf-page-bg-light" as string]: primaryDark,
+  };
+  const wallpaperStyle = form.wallpaperUrl
+    ? {
+        backgroundImage: `url(${form.wallpaperUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }
+    : undefined;
 
   useEffect(() => {
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
@@ -318,7 +334,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const showOptions = phase === "quiz" && current?.type === "choice" && !typing && !busy;
 
   return (
-    <div className="sf-root sf-page-frame-light">
+    <div className="sf-root sf-page-frame-light" style={themeStyle}>
       <div className="sf-phone">
         <header className="sf-header">
           <div className="sf-avatar">
@@ -331,7 +347,8 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           <div className="sf-header-text">
             <div className="sf-header-name">{form.agentName}</div>
             <div className="sf-header-sub">
-              {form.agentTitle || "diagnóstico online"} · {form.brandName}
+              {form.headerSubtitle || form.agentTitle || "diagnóstico online"}
+              {form.brandName ? ` · ${form.brandName}` : ""}
             </div>
           </div>
           <div className="sf-progress" aria-hidden>
@@ -340,7 +357,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         </header>
 
         <div className="sf-body">
-          <div className="sf-wallpaper" aria-hidden />
+          <div className="sf-wallpaper" aria-hidden style={wallpaperStyle} />
           <div ref={listRef} className="sf-scroll">
             <div className="sf-date-chip">Hoje</div>
 
