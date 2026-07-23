@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { computeLeadScore } from "@/lib/leads/score";
-import { sendMetaCapiEvent } from "@/lib/leads/tracking";
+import { sendMetaCapiEvent } from "@/lib/leads/tracking.server";
 import { sendLeadWebhook, type WebhookLeadPayload } from "@/lib/leads/webhook";
 import type { Lead, LeadForm, LeadIntegrationSettings, Prisma } from "@/generated/prisma/client";
 
