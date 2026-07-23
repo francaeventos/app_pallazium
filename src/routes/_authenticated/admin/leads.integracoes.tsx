@@ -205,14 +205,17 @@ function Page() {
           </p>
           <p>
             2. Eventos no <code className="rounded bg-muted px-1">dataLayer</code>:{" "}
-            <code>quiz_started</code>, <code>quiz_partial</code>, <code>quiz_lead</code>,{" "}
-            <code>quiz_schedule</code>. No Pixel: <code>PageView</code>, <code>Lead</code>,{" "}
-            <code>Schedule</code> (com <code>eventID</code> para dedupe).
+            <code>quiz_started</code>, <code>quiz_partial</code>, <code>quiz_complete</code>,{" "}
+            <code>quiz_schedule</code>. Conversão <code>quiz_lead</code> + Pixel{" "}
+            <code>Lead</code> / CAPI <code>Lead</code> / webhook:{" "}
+            <strong>somente se score ≥ limiar</strong> (qualificado).
           </p>
           <p>
-            3. CAPI (servidor) dispara no complete/agendamento. Webhook CRM dispara só quando{" "}
-            <strong>score ≥ limiar</strong> (lead qualificado), com header{" "}
-            <code className="rounded bg-muted px-1">X-Pallazium-Secret</code>.
+            3. Configure o limiar em{" "}
+            <Link className="underline" to="/admin/leads/formulario">
+              Formulário
+            </Link>
+            . CAPI Schedule e Pixel Schedule também só disparam para leads qualificados.
           </p>
         </CardContent>
       </Card>

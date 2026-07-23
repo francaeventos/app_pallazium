@@ -355,8 +355,9 @@ export const completeLeadFn = createServerFn({ method: "POST" })
     }
 
     const settings = form.integrations;
-    await maybeSendCapi(lead, settings, "Lead", eventId);
+    // Conversão (CAPI Lead + webhook) só quando atinge o limiar de score
     if (scored.qualified) {
+      await maybeSendCapi(lead, settings, "Lead", eventId);
       await maybeSendQualifiedWebhook(lead, form, settings);
     }
 
@@ -427,8 +428,9 @@ export const bookLeadSlotFn = createServerFn({ method: "POST" })
     });
 
     await recordLeadEvent(updated.id, "scheduled", { slot: data.slot, eventId });
-    await maybeSendCapi(updated, form.integrations, "Schedule", eventId);
+    // Conversões de agenda também só para leads já qualificados por score
     if (updated.qualified) {
+      await maybeSendCapi(updated, form.integrations, "Schedule", eventId);
       await maybeSendQualifiedWebhook(updated, form, form.integrations);
     }
 

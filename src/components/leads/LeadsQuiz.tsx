@@ -111,6 +111,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [busy, setBusy] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
+  const [qualified, setQualified] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
   const [bookedSlot, setBookedSlot] = useState<string | null>(null);
@@ -227,13 +228,24 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       });
       setLeadId(result.leadId);
       setDiagnosis(result.diagnosis);
-      pushDataLayer("quiz_lead", {
+      setQualified(Boolean(result.qualified));
+      pushDataLayer("quiz_complete", {
         lead_id: result.leadId,
         event_id: result.eventId,
         score: result.score,
         qualified: result.qualified,
+        threshold: form.qualificationThreshold,
       });
-      trackPixel("Lead", { content_name: form.slug, value: result.score }, result.eventId);
+      // Conversão Pixel Lead só se score >= limiar
+      if (result.qualified) {
+        pushDataLayer("quiz_lead", {
+          lead_id: result.leadId,
+          event_id: result.eventId,
+          score: result.score,
+          qualified: true,
+        });
+        trackPixel("Lead", { content_name: form.slug, value: result.score }, result.eventId);
+      }
       setPhase("diagnosis");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
@@ -322,8 +334,11 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         lead_id: result.leadId,
         event_id: result.eventId,
         slot: result.slot,
+        qualified,
       });
-      trackPixel("Schedule", { content_name: slot.id }, result.eventId);
+      if (qualified) {
+        trackPixel("Schedule", { content_name: slot.id }, result.eventId);
+      }
       setPhase("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível agendar.");
