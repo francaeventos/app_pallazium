@@ -42,6 +42,7 @@ import { Route as AuthenticatedAdminConvitesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
+import { Route as AuthenticatedAdminLeadsIndexRouteImport } from './routes/_authenticated/admin/leads.index'
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
 import { Route as AuthenticatedAdminLeadsIntegracoesRouteImport } from './routes/_authenticated/admin/leads.integracoes'
 import { Route as AuthenticatedAdminLeadsFormularioRouteImport } from './routes/_authenticated/admin/leads.formulario'
@@ -231,6 +232,12 @@ const AuthenticatedAdminAcessosRoute =
     path: '/acessos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminLeadsIndexRoute =
+  AuthenticatedAdminLeadsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminLeadsRoute,
+  } as any)
 const AuthenticatedAdminChecklistIndexRoute =
   AuthenticatedAdminChecklistIndexRouteImport.update({
     id: '/checklist/',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
+  '/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -307,7 +315,6 @@ export interface FileRoutesByTo {
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
-  '/admin/leads': typeof AuthenticatedAdminLeadsRouteWithChildren
   '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
   '/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
+  '/admin/leads': typeof AuthenticatedAdminLeadsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
   '/_authenticated/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
+  '/_authenticated/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/admin/leads/formulario'
     | '/admin/leads/integracoes'
     | '/admin/checklist/'
+    | '/admin/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -423,7 +433,6 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/eventos'
     | '/admin/interesses'
-    | '/admin/leads'
     | '/admin/notificacoes'
     | '/admin/parceiros'
     | '/admin/portfolio'
@@ -445,6 +454,7 @@ export interface FileRouteTypes {
     | '/admin/leads/formulario'
     | '/admin/leads/integracoes'
     | '/admin/checklist'
+    | '/admin/leads'
   id:
     | '__root__'
     | '/'
@@ -484,6 +494,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/leads/formulario'
     | '/_authenticated/admin/leads/integracoes'
     | '/_authenticated/admin/checklist/'
+    | '/_authenticated/admin/leads/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -727,6 +738,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAcessosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/leads/': {
+      id: '/_authenticated/admin/leads/'
+      path: '/'
+      fullPath: '/admin/leads/'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsRoute
+    }
     '/_authenticated/admin/checklist/': {
       id: '/_authenticated/admin/checklist/'
       path: '/checklist'
@@ -761,6 +779,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminLeadsRouteChildren {
   AuthenticatedAdminLeadsFormularioRoute: typeof AuthenticatedAdminLeadsFormularioRoute
   AuthenticatedAdminLeadsIntegracoesRoute: typeof AuthenticatedAdminLeadsIntegracoesRoute
+  AuthenticatedAdminLeadsIndexRoute: typeof AuthenticatedAdminLeadsIndexRoute
 }
 
 const AuthenticatedAdminLeadsRouteChildren: AuthenticatedAdminLeadsRouteChildren =
@@ -769,6 +788,7 @@ const AuthenticatedAdminLeadsRouteChildren: AuthenticatedAdminLeadsRouteChildren
       AuthenticatedAdminLeadsFormularioRoute,
     AuthenticatedAdminLeadsIntegracoesRoute:
       AuthenticatedAdminLeadsIntegracoesRoute,
+    AuthenticatedAdminLeadsIndexRoute: AuthenticatedAdminLeadsIndexRoute,
   }
 
 const AuthenticatedAdminLeadsRouteWithChildren =

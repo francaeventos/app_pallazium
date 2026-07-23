@@ -132,15 +132,11 @@ function Page() {
     agent_avatar_url: "",
     primary_color: "#128C7E",
     wallpaper_url: "",
+    wallpaper_dark_url: "",
     header_subtitle: "",
     whatsapp_destination: "",
     whatsapp_message: "",
     qualification_threshold: 60,
-    agenda_enabled: true,
-    agenda_times: "09:00, 11:00, 14:00, 16:00, 19:00",
-    agenda_days_ahead: 21,
-    agenda_lead_hours: 3,
-    agenda_slots_per_slot: 3,
     active: true,
   });
   const [questions, setQuestions] = useState<QuestionDraft[]>([]);
@@ -160,15 +156,11 @@ function Page() {
         agent_avatar_url: data.agent_avatar_url || "",
         primary_color: data.primary_color || "#128C7E",
         wallpaper_url: data.wallpaper_url || "",
+        wallpaper_dark_url: data.wallpaper_dark_url || "",
         header_subtitle: data.header_subtitle || "",
         whatsapp_destination: data.whatsapp_destination,
         whatsapp_message: data.whatsapp_message || "",
         qualification_threshold: data.qualification_threshold,
-        agenda_enabled: data.agenda_enabled,
-        agenda_times: data.agenda_times.join(", "),
-        agenda_days_ahead: data.agenda_days_ahead,
-        agenda_lead_hours: data.agenda_lead_hours,
-        agenda_slots_per_slot: data.agenda_slots_per_slot,
         active: data.active,
       });
       const drafts = data.questions.map(toQuestionDraft);
@@ -203,10 +195,6 @@ function Page() {
     if (!form) return;
     setSaving(true);
     try {
-      const times = meta.agenda_times
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => /^\d{2}:\d{2}$/.test(t));
       await updateLeadFormFn({
         data: {
           id: form.id,
@@ -217,15 +205,12 @@ function Page() {
           agent_avatar_url: meta.agent_avatar_url || null,
           primary_color: meta.primary_color,
           wallpaper_url: meta.wallpaper_url || null,
+          wallpaper_dark_url: meta.wallpaper_dark_url || null,
           header_subtitle: meta.header_subtitle || null,
           whatsapp_destination: meta.whatsapp_destination,
           whatsapp_message: meta.whatsapp_message || null,
           qualification_threshold: meta.qualification_threshold,
-          agenda_enabled: meta.agenda_enabled,
-          agenda_times: times,
-          agenda_days_ahead: meta.agenda_days_ahead,
-          agenda_lead_hours: meta.agenda_lead_hours,
-          agenda_slots_per_slot: meta.agenda_slots_per_slot,
+          agenda_enabled: false,
           active: meta.active,
         },
       });
@@ -504,11 +489,23 @@ function Page() {
             <StorageImageInput
               bucket="leads"
               folder="wallpapers"
-              name="wallpaper"
-              label="Wallpaper do chat (opcional)"
+              name="wallpaper_light"
+              label="Fundo do chat — modo claro"
               defaultValue={meta.wallpaper_url}
               onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
             />
+            <StorageImageInput
+              bucket="leads"
+              folder="wallpapers"
+              name="wallpaper_dark"
+              label="Fundo do chat — modo escuro"
+              defaultValue={meta.wallpaper_dark_url}
+              onValueChange={(url) => setMeta({ ...meta, wallpaper_dark_url: url })}
+            />
+            <p className="text-xs text-muted-foreground">
+              O app escolhe claro/escuro automaticamente pelo tema do celular do visitante (
+              <code>prefers-color-scheme</code>).
+            </p>
           </div>
 
           <Field label="Subtítulo do header">
@@ -568,49 +565,11 @@ function Page() {
               }
             />
           </Field>
-          <div className="flex items-center gap-6 pt-6">
-            <label className="flex items-center gap-2 text-sm">
-              <Switch
-                checked={meta.agenda_enabled}
-                onCheckedChange={(v) => setMeta({ ...meta, agenda_enabled: v })}
-              />
-              Agenda ativa
-            </label>
+          <div className="flex items-center gap-6 pt-6 sm:col-span-2">
             <label className="flex items-center gap-2 text-sm">
               <Switch checked={meta.active} onCheckedChange={(v) => setMeta({ ...meta, active: v })} />
               Formulário ativo
             </label>
-          </div>
-          <Field label="Horários da agenda (HH:MM separados por vírgula)">
-            <Input
-              value={meta.agenda_times}
-              onChange={(e) => setMeta({ ...meta, agenda_times: e.target.value })}
-            />
-          </Field>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Dias à frente">
-              <Input
-                type="number"
-                value={meta.agenda_days_ahead}
-                onChange={(e) => setMeta({ ...meta, agenda_days_ahead: Number(e.target.value) || 1 })}
-              />
-            </Field>
-            <Field label="Antecedência (h)">
-              <Input
-                type="number"
-                value={meta.agenda_lead_hours}
-                onChange={(e) => setMeta({ ...meta, agenda_lead_hours: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <Field label="Vagas/slot">
-              <Input
-                type="number"
-                value={meta.agenda_slots_per_slot}
-                onChange={(e) =>
-                  setMeta({ ...meta, agenda_slots_per_slot: Number(e.target.value) || 1 })
-                }
-              />
-            </Field>
           </div>
           <div className="sm:col-span-2">
             <Button onClick={saveMeta} disabled={saving}>

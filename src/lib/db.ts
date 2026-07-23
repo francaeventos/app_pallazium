@@ -13,8 +13,18 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+function getDb() {
+  const existing = globalForPrisma.prisma;
+  // Evita singleton stale após prisma generate (ex.: leadForm undefined)
+  const leadForm = existing ? (existing as { leadForm?: { findFirst?: unknown } }).leadForm : undefined;
+  if (existing && typeof leadForm?.findFirst === "function") {
+    return existing;
+  }
+  const client = createPrismaClient();
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+  return client;
 }
+
+export const db = getDb();

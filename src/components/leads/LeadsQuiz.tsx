@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  bookLeadSlotFn,
   completeLeadFn,
-  getPublicAgendaSlotsFn,
   getPublicLeadFormFn,
   upsertLeadPartialFn,
 } from "@/fns/leads/public";
@@ -20,7 +18,6 @@ import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
 type Question = PublicForm["questions"][number];
-type Slot = Awaited<ReturnType<typeof getPublicAgendaSlotsFn>>["slots"][number];
 
 type ChatBubble = {
   id: string;
@@ -31,7 +28,7 @@ type ChatBubble = {
   time: string;
 };
 
-type Phase = "quiz" | "diagnosis" | "agenda" | "done";
+type Phase = "quiz" | "diagnosis";
 
 const BOT_DELAY_MS = 900;
 
@@ -101,6 +98,20 @@ function stripHtmlToTitleBody(html: string): { title?: string; body: string } {
   return { body: html };
 }
 
+function usePrefersDark() {
+  const [prefersDark, setPrefersDark] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => setPrefersDark(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  return prefersDark;
+}
+
 export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [phase, setPhase] = useState<Phase>("quiz");
   const [stepIndex, setStepIndex] = useState(0);
@@ -111,10 +122,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [busy, setBusy] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
-  const [qualified, setQualified] = useState(false);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
-  const [bookedSlot, setBookedSlot] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
@@ -122,6 +129,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const listRef = useRef<HTMLDivElement>(null);
   const anonId = useMemo(() => (typeof window !== "undefined" ? getAnonId() : ""), []);
   const utm = useMemo(() => readUtms(), []);
+  const prefersDark = usePrefersDark();
   const questions = form.questions;
   const current = questions[stepIndex];
   const progress = phase === "quiz" ? Math.min(stepIndex / Math.max(questions.length, 1), 1) : 1;
@@ -135,14 +143,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     ["--sf-primary-dark" as string]: primaryDark,
     ["--sf-page-bg-light" as string]: primaryDark,
   };
-  const wallpaperStyle = form.wallpaperUrl
+
+  const activeWallpaper = prefersDark
+    ? form.wallpaperDarkUrl || form.wallpaperUrl
+    : form.wallpaperUrl || form.wallpaperDarkUrl;
+
+  const wallpaperStyle = activeWallpaper
     ? {
-        backgroundImage: `url(${form.wallpaperUrl})`,
+        backgroundImage: `url(${activeWallpaper})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
       }
     : undefined;
+
+  const whatsappHref = `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`;
 
   useEffect(() => {
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
@@ -188,13 +203,10 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       const botMsgs = current.botMessages || [];
       const msgs = botMsgs.map((html) => ({ html, isQuestion: false as boolean }));
       const prompt = current.prompt?.trim();
-      const alreadyInBot = prompt
-        ? botMsgs.some((m) => m.trim() === prompt)
-        : false;
+      const alreadyInBot = prompt ? botMsgs.some((m) => m.trim() === prompt) : false;
       if (prompt && !alreadyInBot) {
         msgs.push({ html: prompt, isQuestion: true });
       } else if (msgs.length > 0 && prompt && alreadyInBot) {
-        // última bolha do bot que já é a pergunta → marcar como question
         const lastIdx = msgs.length - 1;
         if (msgs[lastIdx].html.trim() === prompt) {
           msgs[lastIdx] = { ...msgs[lastIdx], isQuestion: true };
@@ -228,7 +240,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       });
       setLeadId(result.leadId);
       setDiagnosis(result.diagnosis);
-      setQualified(Boolean(result.qualified));
       pushDataLayer("quiz_complete", {
         lead_id: result.leadId,
         event_id: result.eventId,
@@ -236,7 +247,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         qualified: result.qualified,
         threshold: form.qualificationThreshold,
       });
-      // Conversão Pixel Lead só se score >= limiar
       if (result.qualified) {
         pushDataLayer("quiz_lead", {
           lead_id: result.leadId,
@@ -301,50 +311,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       return;
     }
     setStepIndex(nextIndex);
-  };
-
-  const openAgenda = async () => {
-    setBusy(true);
-    try {
-      const { slots: list } = await getPublicAgendaSlotsFn({ data: { slug: form.slug } });
-      setSlots(list.filter((s) => s.available));
-      setPhase("agenda");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const bookSlot = async (slot: Slot) => {
-    if (!leadId) return;
-    setBusy(true);
-    try {
-      const result = await bookLeadSlotFn({
-        data: {
-          slug: form.slug,
-          leadId,
-          slot: slot.id,
-          ...trackingMeta(),
-        },
-      });
-      setWhatsappUrl(result.whatsappUrl);
-      setBookedSlot(slot.label);
-      pushDataLayer("quiz_schedule", {
-        lead_id: result.leadId,
-        event_id: result.eventId,
-        slot: result.slot,
-        qualified,
-      });
-      if (qualified) {
-        trackPixel("Schedule", { content_name: slot.id }, result.eventId);
-      }
-      setPhase("done");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível agendar.");
-    } finally {
-      setBusy(false);
-    }
   };
 
   const showOptions = phase === "quiz" && current?.type === "choice" && !typing && !busy;
@@ -451,63 +417,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                 <h4>Diagnóstico</h4>
                 <strong>{diagnosis.title}</strong>
                 <p>{diagnosis.body}</p>
-                {form.agendaEnabled ? (
-                  <button type="button" className="sf-cta" onClick={openAgenda} disabled={busy}>
-                    Agendar degustação
-                  </button>
-                ) : (
-                  <a
-                    className="sf-cta wa"
-                    href={`https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Falar no WhatsApp
-                  </a>
-                )}
-              </div>
-            )}
-
-            {phase === "agenda" && (
-              <div className="sf-card">
-                <h4>Agenda</h4>
-                <strong>Escolha um horário</strong>
-                <p>Degustação no {form.brandName}</p>
-                {error && <p className="sf-error">{error}</p>}
-                <div className="sf-times">
-                  {slots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      className="sf-time"
-                      disabled={busy || !slot.available}
-                      onClick={() => bookSlot(slot)}
-                    >
-                      {slot.label}
-                    </button>
-                  ))}
-                </div>
-                {slots.length === 0 && (
-                  <p style={{ marginTop: 10, fontSize: 13.5, color: "var(--sf-bubble-text-secondary)" }}>
-                    Nenhum horário disponível no momento.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {phase === "done" && (
-              <div className="sf-card">
-                <h4>Confirmado</h4>
-                <strong>Degustação reservada</strong>
-                <p>
-                  {bookedSlot ? `Horário: ${bookedSlot}. ` : ""}
-                  Se quiser, já pode falar conosco no WhatsApp.
-                </p>
-                {whatsappUrl && (
-                  <a className="sf-cta wa" href={whatsappUrl} target="_blank" rel="noreferrer">
-                    Abrir WhatsApp
-                  </a>
-                )}
+                <a className="sf-cta wa" href={whatsappHref} target="_blank" rel="noreferrer">
+                  Falar no WhatsApp
+                </a>
               </div>
             )}
           </div>
@@ -515,7 +427,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           {phase === "quiz" && current && current.type !== "choice" && (
             <div className="sf-composer">
               {error && <p className="sf-error">{error}</p>}
-              {current.label && <div className="sf-flabel">{current.label}</div>}
               <form
                 className="sf-composer-row"
                 onSubmit={(e) => {

@@ -10,7 +10,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,14 +28,81 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, RefreshCw, Settings2, Webhook } from "lucide-react";
-import { format } from "date-fns";
+import {
+  Calendar,
+  Download,
+  Mail,
+  Phone,
+  RefreshCw,
+  Settings2,
+  Webhook,
+} from "lucide-react";
+import { format, isValid, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/leads/")({ component: Page });
 
 type Lead = Awaited<ReturnType<typeof listLeadsFn>>["leads"][number];
 type LeadDetail = Awaited<ReturnType<typeof getLeadFn>>["lead"];
+
+const STATUS_LABEL: Record<string, string> = {
+  parcial: "Parcial",
+  completo: "Completo",
+  agendado: "Agendado",
+  descartado: "Descartado",
+};
+
+const ANSWER_LABEL: Record<string, string> = {
+  nome: "Nome",
+  email: "E-mail",
+  whatsapp: "WhatsApp",
+  tipoEvento: "Tipo de evento",
+  convidados: "Convidados",
+  dataEvento: "Data do evento",
+  investimento: "Investimento",
+};
+
+const EVENT_LABEL: Record<string, string> = {
+  partial_created: "Contato iniciado",
+  completed: "Quiz concluído",
+  qualified: "Qualificado",
+  scheduled: "Horário reservado",
+  webhook_sent: "Webhook enviado",
+  webhook_failed: "Falha no webhook",
+  capi_sent: "Meta CAPI enviado",
+  capi_failed: "Falha no Meta CAPI",
+};
+
+function answerLabel(key: string) {
+  return ANSWER_LABEL[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+}
+
+function formatAnswerValue(key: string, value: unknown) {
+  if (value == null || value === "") return "—";
+  const str = String(value);
+  if (key === "dataEvento" || /^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const d = parseISO(str);
+    if (isValid(d)) return format(d, "dd/MM/yyyy", { locale: ptBR });
+  }
+  return str;
+}
+
+function WhatsAppLink({ phone }: { phone: string }) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return <span>{phone || "—"}</span>;
+  return (
+    <a
+      href={`https://wa.me/${digits}`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-primary hover:underline"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {phone}
+    </a>
+  );
+}
 
 function Page() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -38,6 +112,7 @@ function Page() {
   const [selected, setSelected] = useState<LeadDetail | null>(null);
   const [notes, setNotes] = useState("");
   const [editStatus, setEditStatus] = useState<Lead["status"]>("parcial");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -73,6 +148,7 @@ function Page() {
 
   const saveLead = async () => {
     if (!selected) return;
+    setSaving(true);
     try {
       await updateLeadFn({
         data: { id: selected.id, notes, status: editStatus as Lead["status"] },
@@ -82,6 +158,8 @@ function Page() {
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -110,6 +188,10 @@ function Page() {
       toast.error(error instanceof Error ? error.message : "Falha no webhook.");
     }
   };
+
+  const answerEntries = selected
+    ? Object.entries(selected.answers || {}).filter(([, v]) => v != null && String(v).trim() !== "")
+    : [];
 
   return (
     <div className="space-y-6">
@@ -187,14 +269,13 @@ function Page() {
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm")}
-                  {lead.slot ? ` · slot ${lead.slot}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">{lead.status}</Badge>
+                <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>
                 <Badge variant={lead.qualified ? "default" : "secondary"}>
-                  score {lead.score}
-                  {lead.qualified ? " · qualificado" : ""}
+                  Score {lead.score}
+                  {lead.qualified ? " · Qualificado" : ""}
                 </Badge>
               </div>
             </CardContent>
@@ -210,62 +291,149 @@ function Page() {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selected?.name || "Lead"}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-xl rounded-2xl border-gold/20 shadow-luxe">
           {selected && (
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                <p>{selected.email}</p>
-                <p>{selected.whatsapp}</p>
-                <p>
-                  Score {selected.score} · {selected.qualified ? "Qualificado" : "Não qualificado"}
-                </p>
+            <>
+              <DialogHeader className="border-b bg-card px-6 pb-4 pt-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 pr-6">
+                  <div>
+                    <DialogTitle className="font-serif text-2xl">
+                      {selected.name || "Lead sem nome"}
+                    </DialogTitle>
+                    <DialogDescription className="mt-1">
+                      Recebido em{" "}
+                      {format(new Date(selected.created_at), "dd MMM yyyy · HH:mm", {
+                        locale: ptBR,
+                      })}
+                    </DialogDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{STATUS_LABEL[selected.status] || selected.status}</Badge>
+                    <Badge variant={selected.qualified ? "default" : "secondary"}>
+                      Score {selected.score}
+                      {selected.qualified ? " · Qualificado" : " · Não qualificado"}
+                    </Badge>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="max-h-[65vh] space-y-6 overflow-y-auto px-6 py-5">
+                <section className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">E-mail</p>
+                      <p className="truncate text-sm font-medium">{selected.email || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+                    <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">WhatsApp</p>
+                      <p className="truncate text-sm font-medium">
+                        <WhatsAppLink phone={selected.whatsapp || ""} />
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                    Respostas do quiz
+                  </h3>
+                  {answerEntries.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma resposta registrada.</p>
+                  ) : (
+                    <dl className="divide-y rounded-xl border">
+                      {answerEntries.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="grid grid-cols-[minmax(7rem,38%)_1fr] gap-3 px-4 py-3 text-sm"
+                        >
+                          <dt className="text-muted-foreground">{answerLabel(key)}</dt>
+                          <dd className="font-medium text-foreground">
+                            {formatAnswerValue(key, value)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </section>
+
+                <section className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={editStatus}
+                      onValueChange={(v) => setEditStatus(v as Lead["status"])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="parcial">Parcial</SelectItem>
+                        <SelectItem value="completo">Completo</SelectItem>
+                        <SelectItem value="agendado">Agendado</SelectItem>
+                        <SelectItem value="descartado">Descartado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Notas internas</Label>
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Anotações da equipe…"
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                    Histórico
+                  </h3>
+                  {(selected.events || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem eventos ainda.</p>
+                  ) : (
+                    <ol className="relative space-y-0 border-l border-border pl-4">
+                      {(selected.events || []).map((ev) => (
+                        <li key={ev.id} className="relative pb-4 last:pb-0">
+                          <span className="absolute -left-[1.28rem] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" />
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <p className="text-sm font-medium">
+                              {EVENT_LABEL[ev.type] || ev.type}
+                            </p>
+                            <time className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(ev.created_at), "dd/MM/yyyy HH:mm")}
+                            </time>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </section>
               </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={editStatus} onValueChange={(v) => setEditStatus(v as Lead["status"])}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="parcial">Parcial</SelectItem>
-                    <SelectItem value="completo">Completo</SelectItem>
-                    <SelectItem value="agendado">Agendado</SelectItem>
-                    <SelectItem value="descartado">Descartado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Notas</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
-              </div>
-              <div>
-                <Label>Respostas</Label>
-                <pre className="mt-1 max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs">
-                  {JSON.stringify(selected.answers, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <Label>Eventos</Label>
-                <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-                  {(selected.events || []).map((ev) => (
-                    <li key={ev.id}>
-                      {ev.type} · {format(new Date(ev.created_at), "dd/MM HH:mm")}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={saveLead}>Salvar</Button>
-                {selected.qualified && (
-                  <Button variant="outline" onClick={resendWebhook}>
-                    Reenviar webhook
+
+              <DialogFooter className="gap-2 border-t bg-card px-6 py-4 sm:justify-between">
+                <div>
+                  {selected.qualified && (
+                    <Button variant="outline" onClick={resendWebhook}>
+                      <Webhook className="h-4 w-4" /> Reenviar webhook
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setSelected(null)}>
+                    Fechar
                   </Button>
-                )}
-              </div>
-            </div>
+                  <Button onClick={saveLead} disabled={saving}>
+                    {saving ? "Salvando…" : "Salvar"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
           )}
         </DialogContent>
       </Dialog>

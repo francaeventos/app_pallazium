@@ -246,6 +246,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
         agent_avatar_url: form.agentAvatarUrl,
         primary_color: form.primaryColor,
         wallpaper_url: form.wallpaperUrl,
+        wallpaper_dark_url: form.wallpaperDarkUrl,
         header_subtitle: form.headerSubtitle,
         whatsapp_destination: form.whatsappDestination,
         whatsapp_message: form.whatsappMessage,
@@ -324,6 +325,7 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
           .regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "Cor inválida")
           .optional(),
         wallpaper_url: z.string().trim().max(5000).nullable().optional(),
+        wallpaper_dark_url: z.string().trim().max(5000).nullable().optional(),
         header_subtitle: z.string().trim().max(160).nullable().optional(),
         whatsapp_destination: z.string().trim().min(10).max(30).optional(),
         whatsapp_message: z.string().trim().max(500).nullable().optional(),
@@ -353,6 +355,7 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         ...(rest.agent_avatar_url !== undefined ? { agentAvatarUrl: rest.agent_avatar_url } : {}),
         ...(rest.primary_color !== undefined ? { primaryColor: rest.primary_color } : {}),
         ...(rest.wallpaper_url !== undefined ? { wallpaperUrl: rest.wallpaper_url } : {}),
+        ...(rest.wallpaper_dark_url !== undefined ? { wallpaperDarkUrl: rest.wallpaper_dark_url } : {}),
         ...(rest.header_subtitle !== undefined ? { headerSubtitle: rest.header_subtitle } : {}),
         ...(rest.whatsapp_destination !== undefined
           ? { whatsappDestination: rest.whatsapp_destination }

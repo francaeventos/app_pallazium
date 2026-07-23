@@ -180,7 +180,7 @@ async function seedLeadForm() {
       whatsappDestination: process.env.VITE_WHATSAPP_SUPPORT || "5511999999999",
       whatsappMessage: "Quero agendar minha degustação no buffet",
       qualificationThreshold: 60,
-      agendaEnabled: true,
+      agendaEnabled: false,
       active: true,
     },
     create: {
@@ -194,7 +194,7 @@ async function seedLeadForm() {
       privacyUrl: "#",
       termsUrl: "#",
       qualificationThreshold: 60,
-      agendaEnabled: true,
+      agendaEnabled: false,
       agendaWeekdays: [1, 2, 3, 4, 5],
       agendaTimes: ["09:00", "11:00", "14:00", "16:00", "19:00"],
       agendaDaysAhead: 21,
