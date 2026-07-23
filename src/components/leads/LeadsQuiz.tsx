@@ -11,7 +11,8 @@ import {
   ensureGtm,
   ensureMetaPixel,
   pushDataLayer,
-  readCookie,
+  resolveFbc,
+  resolveFbp,
   trackPixel,
 } from "@/lib/leads/tracking";
 import { darkenHex } from "@/lib/leads/theme";
@@ -206,8 +207,8 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   }, [stepIndex, phase, current, pushBotMessages]);
 
   const trackingMeta = () => ({
-    fbp: readCookie("_fbp") || undefined,
-    fbc: readCookie("_fbc") || undefined,
+    fbp: resolveFbp(),
+    fbc: resolveFbc(),
     sourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
     utm,
     anonId,

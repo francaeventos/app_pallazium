@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { assertAdmin } from "@/lib/auth-session";
@@ -219,6 +220,21 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
       },
     });
     if (!form) throw new Error("Formulário não encontrado.");
+
+    let integrations = form.integrations;
+    if (!integrations) {
+      integrations = await db.leadIntegrationSettings.create({
+        data: {
+          formId: form.id,
+          gtmId: process.env.LEAD_GTM_ID || null,
+          metaPixelId: process.env.META_PIXEL_ID || null,
+          metaAccessToken: process.env.META_CAPI_TOKEN || null,
+          webhookUrl: process.env.LEAD_WEBHOOK_URL || null,
+          webhookSecret: process.env.LEAD_WEBHOOK_SECRET || null,
+        },
+      });
+    }
+
     return {
       form: {
         id: form.id,
@@ -273,24 +289,20 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           is_fallback: r.isFallback,
           active: r.active,
         })),
-        integrations: form.integrations
-          ? {
-              gtm_id: form.integrations.gtmId,
-              meta_pixel_id: form.integrations.metaPixelId,
-              meta_access_token: form.integrations.metaAccessToken
-                ? "••••••••"
-                : null,
-              has_meta_token: Boolean(form.integrations.metaAccessToken),
-              meta_test_event_code: form.integrations.metaTestEventCode,
-              webhook_url: form.integrations.webhookUrl,
-              webhook_secret: form.integrations.webhookSecret ? "••••••••" : null,
-              has_webhook_secret: Boolean(form.integrations.webhookSecret),
-              pixel_enabled: form.integrations.pixelEnabled,
-              gtm_enabled: form.integrations.gtmEnabled,
-              capi_enabled: form.integrations.capiEnabled,
-              webhook_enabled: form.integrations.webhookEnabled,
-            }
-          : null,
+        integrations: {
+          gtm_id: integrations.gtmId,
+          meta_pixel_id: integrations.metaPixelId,
+          meta_access_token: integrations.metaAccessToken ? "••••••••" : null,
+          has_meta_token: Boolean(integrations.metaAccessToken),
+          meta_test_event_code: integrations.metaTestEventCode,
+          webhook_url: integrations.webhookUrl,
+          webhook_secret: integrations.webhookSecret ? "••••••••" : null,
+          has_webhook_secret: Boolean(integrations.webhookSecret),
+          pixel_enabled: integrations.pixelEnabled,
+          gtm_enabled: integrations.gtmEnabled,
+          capi_enabled: integrations.capiEnabled,
+          webhook_enabled: integrations.webhookEnabled,
+        },
       },
     };
   });
@@ -567,10 +579,10 @@ export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
           : {};
 
     const payload = {
-      gtmId: data.gtm_id ?? null,
-      metaPixelId: data.meta_pixel_id ?? null,
-      metaTestEventCode: data.meta_test_event_code ?? null,
-      webhookUrl: data.webhook_url ?? null,
+      gtmId: data.gtm_id?.trim() || null,
+      metaPixelId: data.meta_pixel_id?.trim() || null,
+      metaTestEventCode: data.meta_test_event_code?.trim() || null,
+      webhookUrl: data.webhook_url?.trim() || null,
       pixelEnabled: data.pixel_enabled ?? true,
       gtmEnabled: data.gtm_enabled ?? true,
       capiEnabled: data.capi_enabled ?? true,
@@ -667,4 +679,89 @@ export const testLeadWebhookFn = createServerFn({ method: "POST" })
     });
     if (!result.ok) throw new Error(result.detail || `HTTP ${result.status}`);
     return { ok: true as const, detail: result.detail };
+  });
+
+export const testMetaCapiFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findUnique({
+      where: { id: data.form_id },
+      include: { integrations: true },
+    });
+    if (!form) throw new Error("Formulário não encontrado.");
+    const settings = form.integrations;
+    const pixelId = settings?.metaPixelId || process.env.META_PIXEL_ID;
+    const accessToken = settings?.metaAccessToken || process.env.META_CAPI_TOKEN;
+    if (!pixelId) throw new Error("Informe o Meta Pixel ID.");
+    if (!accessToken) throw new Error("Informe o Meta CAPI Access Token.");
+
+    const { sendMetaCapiEvent } = await import("@/lib/leads/tracking.server");
+    const eventId = randomUUID();
+    const result = await sendMetaCapiEvent({
+      eventName: "Lead",
+      eventId,
+      eventSourceUrl: "https://app.espacopallazium.com.br/leads",
+      pixelId,
+      accessToken,
+      testEventCode: settings?.metaTestEventCode || process.env.META_TEST_EVENT_CODE || null,
+      user: {
+        email: "teste@espacopallazium.com.br",
+        phone: "5511999999999",
+      },
+      customData: { lead_id: "test", score: 80, qualified: true, status: "completo" },
+    });
+    if (!result.ok) throw new Error(result.detail || "Falha no CAPI.");
+    return { ok: true as const, eventId, detail: result.detail };
+  });
+
+export const getLeadIntegrationHealthFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => slugSchema.parse(data ?? { slug: "leads" }))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findFirst({
+      where: { slug: data.slug },
+      include: { integrations: true },
+    });
+    if (!form) throw new Error("Formulário não encontrado.");
+
+    const events = await db.leadEvent.findMany({
+      where: {
+        lead: { formId: form.id },
+        type: { in: ["webhook_sent", "webhook_failed", "capi_sent", "capi_failed"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      include: { lead: { select: { id: true, name: true, email: true } } },
+    });
+
+    const i = form.integrations;
+    return {
+      status: {
+        gtm: Boolean(i?.gtmEnabled && (i.gtmId || process.env.LEAD_GTM_ID)),
+        pixel: Boolean(i?.pixelEnabled && (i.metaPixelId || process.env.META_PIXEL_ID)),
+        capi: Boolean(
+          i?.capiEnabled &&
+            (i.metaPixelId || process.env.META_PIXEL_ID) &&
+            (i.metaAccessToken || process.env.META_CAPI_TOKEN),
+        ),
+        webhook: Boolean(i?.webhookEnabled && (i.webhookUrl || process.env.LEAD_WEBHOOK_URL)),
+      },
+      recent_events: events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        lead_name: e.lead.name,
+        lead_email: e.lead.email,
+        created_at: e.createdAt.toISOString(),
+        payload: e.payload as Record<string, string | number | boolean | null>,
+      })),
+    };
   });

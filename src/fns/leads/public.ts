@@ -103,11 +103,26 @@ function publicFormShape(form: {
       options: q.options.map((o) => ({ id: o.id, label: o.label, sortOrder: o.sortOrder })),
     })),
     rules: form.rules,
-    tracking: {
-      gtmId: form.integrations?.gtmEnabled ? form.integrations.gtmId : null,
-      metaPixelId: form.integrations?.pixelEnabled ? form.integrations.metaPixelId : null,
-    },
+    tracking: resolvePublicTracking(form.integrations),
   };
+}
+
+function resolvePublicTracking(
+  integrations: {
+    gtmId: string | null;
+    metaPixelId: string | null;
+    pixelEnabled: boolean;
+    gtmEnabled: boolean;
+  } | null,
+) {
+  const gtmEnabled = integrations?.gtmEnabled ?? true;
+  const pixelEnabled = integrations?.pixelEnabled ?? true;
+  const gtmId =
+    (gtmEnabled ? integrations?.gtmId || process.env.LEAD_GTM_ID || null : null)?.trim() || null;
+  const metaPixelId =
+    (pixelEnabled ? integrations?.metaPixelId || process.env.META_PIXEL_ID || null : null)?.trim() ||
+    null;
+  return { gtmId, metaPixelId, gtmEnabled, pixelEnabled };
 }
 
 async function getActiveForm(slug: string) {
@@ -126,6 +141,21 @@ async function getActiveForm(slug: string) {
     },
   });
   if (!form) throw new Error("Formulário de leads não encontrado.");
+
+  if (!form.integrations) {
+    const created = await db.leadIntegrationSettings.create({
+      data: {
+        formId: form.id,
+        gtmId: process.env.LEAD_GTM_ID || null,
+        metaPixelId: process.env.META_PIXEL_ID || null,
+        metaAccessToken: process.env.META_CAPI_TOKEN || null,
+        webhookUrl: process.env.LEAD_WEBHOOK_URL || null,
+        webhookSecret: process.env.LEAD_WEBHOOK_SECRET || null,
+      },
+    });
+    return { ...form, integrations: created };
+  }
+
   return form;
 }
 
