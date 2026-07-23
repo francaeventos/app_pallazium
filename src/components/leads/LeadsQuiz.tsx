@@ -167,8 +167,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     shownStepsRef.current.add(stepIndex);
     let cancelled = false;
     (async () => {
-      const msgs = (current.botMessages || []).map((html) => ({ html, isQuestion: false }));
-      if (current.prompt) msgs.push({ html: current.prompt, isQuestion: true });
+      const botMsgs = current.botMessages || [];
+      const msgs = botMsgs.map((html) => ({ html, isQuestion: false as boolean }));
+      const prompt = current.prompt?.trim();
+      const alreadyInBot = prompt
+        ? botMsgs.some((m) => m.trim() === prompt)
+        : false;
+      if (prompt && !alreadyInBot) {
+        msgs.push({ html: prompt, isQuestion: true });
+      } else if (msgs.length > 0 && prompt && alreadyInBot) {
+        // última bolha do bot que já é a pergunta → marcar como question
+        const lastIdx = msgs.length - 1;
+        if (msgs[lastIdx].html.trim() === prompt) {
+          msgs[lastIdx] = { ...msgs[lastIdx], isQuestion: true };
+        }
+      }
       if (!cancelled && msgs.length) await pushBotMessages(msgs);
     })();
     return () => {
