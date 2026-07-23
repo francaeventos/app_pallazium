@@ -26,9 +26,16 @@ type ChatBubble = {
   html?: string;
   text?: string;
   isQuestion?: boolean;
+  time: string;
 };
 
 type Phase = "quiz" | "diagnosis" | "agenda" | "done";
+
+const BOT_DELAY_MS = 900;
+
+function nowTime() {
+  return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
 
 function interpolate(text: string, answers: Record<string, string>) {
   return text.replace(/\{(\w+)\}/g, (_, key: string) => answers[key] || "");
@@ -83,6 +90,15 @@ function validateAnswer(question: Question, value: string) {
   return null;
 }
 
+function stripHtmlToTitleBody(html: string): { title?: string; body: string } {
+  const plain = html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?b>/gi, "**");
+  const parts = plain.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    return { title: parts[0].replace(/\*\*/g, ""), body: parts.slice(1).join(" ") };
+  }
+  return { body: html };
+}
+
 export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [phase, setPhase] = useState<Phase>("quiz");
   const [stepIndex, setStepIndex] = useState(0);
@@ -108,9 +124,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const progress = phase === "quiz" ? Math.min(stepIndex / Math.max(questions.length, 1), 1) : 1;
   answersRef.current = answers;
 
-  const brandParts = form.brandName.split(/\s+/);
-  const brandMain = brandParts[0] || form.brandName;
-  const brandRest = brandParts.slice(1).join(" ");
+  const agentInitial = form.agentName.trim().slice(0, 1).toUpperCase() || "B";
 
   useEffect(() => {
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
@@ -123,25 +137,29 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [bubbles, typing, phase]);
+  }, [bubbles, typing, phase, current]);
 
-  const pushBotMessages = useCallback(async (messages: Array<{ html: string; isQuestion?: boolean }>) => {
-    for (const msg of messages) {
-      setTyping(true);
-      await new Promise((r) => setTimeout(r, 420));
-      setTyping(false);
-      setBubbles((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "bot",
-          html: interpolate(msg.html, answersRef.current),
-          isQuestion: msg.isQuestion,
-        },
-      ]);
-      await new Promise((r) => setTimeout(r, 110));
-    }
-  }, []);
+  const pushBotMessages = useCallback(
+    async (messages: Array<{ html: string; isQuestion?: boolean }>) => {
+      for (const msg of messages) {
+        setTyping(true);
+        await new Promise((r) => setTimeout(r, BOT_DELAY_MS));
+        setTyping(false);
+        setBubbles((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "bot",
+            html: interpolate(msg.html, answersRef.current),
+            isQuestion: msg.isQuestion,
+            time: nowTime(),
+          },
+        ]);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (phase !== "quiz" || !current) return;
@@ -206,7 +224,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setAnswers(nextAnswers);
     setBubbles((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: "user", text: value.trim() },
+      { id: crypto.randomUUID(), role: "user", text: value.trim(), time: nowTime() },
     ]);
     setInput("");
 
@@ -284,142 +302,95 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     }
   };
 
-  const agentInitial = form.agentName.trim().slice(0, 1).toUpperCase() || "B";
+  const showOptions = phase === "quiz" && current?.type === "choice" && !typing && !busy;
 
   return (
-    <div className="leads-bella">
-      <header className="lb-topbar">
-        <div className="lb-brand">
-          {brandMain}
-          {brandRest ? <> {brandRest}</> : null}
-          <span> · {form.agentName}</span>
-        </div>
-        <div className="lb-progress" aria-hidden>
-          <i style={{ width: `${Math.round(progress * 100)}%` }} />
-        </div>
-      </header>
-
-      <div ref={listRef} className="lb-chat">
-        {bubbles.map((b) =>
-          b.role === "bot" ? (
-            <div key={b.id} className="lb-row">
-              <div className="lb-avatar">{agentInitial}</div>
-              <div
-                className={`lb-bubble${b.isQuestion ? " q" : ""}`}
-                dangerouslySetInnerHTML={{ __html: b.html || "" }}
-              />
-            </div>
-          ) : (
-            <div key={b.id} className="lb-row me">
-              <div className="lb-bubble">{b.text}</div>
-            </div>
-          ),
-        )}
-
-        {typing && (
-          <div className="lb-row">
-            <div className="lb-avatar">{agentInitial}</div>
-            <div className="lb-bubble">
-              <div className="lb-typing">
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {phase === "diagnosis" && diagnosis && (
-          <div className="lb-row">
-            <div className="lb-avatar">{agentInitial}</div>
-            <div className="lb-diag">
-              <h4>Diagnóstico</h4>
-              <strong>{diagnosis.title}</strong>
-              <p>{diagnosis.body}</p>
-              {form.agendaEnabled ? (
-                <button type="button" className="lb-cta" onClick={openAgenda} disabled={busy}>
-                  Agendar degustação
-                </button>
-              ) : (
-                <a
-                  className="lb-cta wa"
-                  href={`https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Falar no WhatsApp
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
-        {phase === "agenda" && (
-          <div className="lb-agenda">
-            <div className="lb-agenda-head">
-              <h3>Escolha um horário</h3>
-              <p>Degustação no Espaço Pallazium</p>
-            </div>
-            <div className="lb-agenda-body">
-              {error && <p className="lb-error" style={{ marginLeft: 0 }}>{error}</p>}
-              <div className="lb-times">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    className="lb-time"
-                    disabled={busy || !slot.available}
-                    onClick={() => bookSlot(slot)}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-              </div>
-              {slots.length === 0 && (
-                <p style={{ textAlign: "center", color: "var(--lb-muted)", fontSize: 13, marginTop: 12 }}>
-                  Nenhum horário disponível no momento.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {phase === "done" && (
-          <div className="lb-row">
-            <div className="lb-avatar">{agentInitial}</div>
-            <div className="lb-diag">
-              <h4>Confirmado</h4>
-              <strong>Degustação reservada</strong>
-              <p>
-                {bookedSlot
-                  ? `Horário: ${bookedSlot}. `
-                  : ""}
-                Se quiser, já pode falar conosco no WhatsApp para alinhar os detalhes.
-              </p>
-              {whatsappUrl && (
-                <a className="lb-cta wa" href={whatsappUrl} target="_blank" rel="noreferrer">
-                  Abrir WhatsApp
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {phase === "quiz" && current && (
-        <div className="lb-composer">
-          <div className="lb-ibox">
-            {error && <p className="lb-error">{error}</p>}
-            {current.label && current.type !== "choice" && (
-              <div className="lb-flabel">{current.label}</div>
+    <div className="sf-root sf-page-frame-light">
+      <div className="sf-phone">
+        <header className="sf-header">
+          <div className="sf-avatar">
+            {form.agentAvatarUrl ? (
+              <img src={form.agentAvatarUrl} alt={form.agentName} />
+            ) : (
+              agentInitial
             )}
-            {current.type === "choice" ? (
-              <div className="lb-options">
+          </div>
+          <div className="sf-header-text">
+            <div className="sf-header-name">{form.agentName}</div>
+            <div className="sf-header-sub">
+              {form.agentTitle || "diagnóstico online"} · {form.brandName}
+            </div>
+          </div>
+          <div className="sf-progress" aria-hidden>
+            <i style={{ width: `${Math.round(progress * 100)}%` }} />
+          </div>
+        </header>
+
+        <div className="sf-body">
+          <div className="sf-wallpaper" aria-hidden />
+          <div ref={listRef} className="sf-scroll">
+            <div className="sf-date-chip">Hoje</div>
+
+            {bubbles.map((b) => {
+              if (b.role === "user") {
+                return (
+                  <div key={b.id} className="sf-row me">
+                    <div className="sf-bubble-user">
+                      {b.text}
+                      <div className="sf-meta">
+                        <span>{b.time}</span>
+                        <span className="checks">✓✓</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const parsed = stripHtmlToTitleBody(b.html || "");
+              return (
+                <div key={b.id} className="sf-row">
+                  <div className="sf-bubble-bot">
+                    {b.isQuestion || !parsed.title ? (
+                      <span dangerouslySetInnerHTML={{ __html: b.html || "" }} />
+                    ) : (
+                      <>
+                        <div>{parsed.title}</div>
+                        <div
+                          className="sf-bubble-body"
+                          dangerouslySetInnerHTML={{ __html: parsed.body }}
+                        />
+                      </>
+                    )}
+                    <div className="sf-meta">
+                      <span>{b.time}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {typing && (
+              <div className="sf-row">
+                <div className="sf-bubble-bot">
+                  <div className="sf-typing">
+                    digitando
+                    <span className="sf-typing-dots">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showOptions && (
+              <div className="sf-options">
                 {current.options.map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
-                    className="lb-opt"
+                    className="sf-option"
                     disabled={busy}
                     onClick={() => advance(opt.label)}
                   >
@@ -427,20 +398,89 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                   </button>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {phase === "diagnosis" && diagnosis && (
+              <div className="sf-card">
+                <h4>Diagnóstico</h4>
+                <strong>{diagnosis.title}</strong>
+                <p>{diagnosis.body}</p>
+                {form.agendaEnabled ? (
+                  <button type="button" className="sf-cta" onClick={openAgenda} disabled={busy}>
+                    Agendar degustação
+                  </button>
+                ) : (
+                  <a
+                    className="sf-cta wa"
+                    href={`https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Falar no WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
+
+            {phase === "agenda" && (
+              <div className="sf-card">
+                <h4>Agenda</h4>
+                <strong>Escolha um horário</strong>
+                <p>Degustação no {form.brandName}</p>
+                {error && <p className="sf-error">{error}</p>}
+                <div className="sf-times">
+                  {slots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      className="sf-time"
+                      disabled={busy || !slot.available}
+                      onClick={() => bookSlot(slot)}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+                {slots.length === 0 && (
+                  <p style={{ marginTop: 10, fontSize: 13.5, color: "var(--sf-bubble-text-secondary)" }}>
+                    Nenhum horário disponível no momento.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {phase === "done" && (
+              <div className="sf-card">
+                <h4>Confirmado</h4>
+                <strong>Degustação reservada</strong>
+                <p>
+                  {bookedSlot ? `Horário: ${bookedSlot}. ` : ""}
+                  Se quiser, já pode falar conosco no WhatsApp.
+                </p>
+                {whatsappUrl && (
+                  <a className="sf-cta wa" href={whatsappUrl} target="_blank" rel="noreferrer">
+                    Abrir WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {phase === "quiz" && current && current.type !== "choice" && (
+            <div className="sf-composer">
+              {error && <p className="sf-error">{error}</p>}
+              {current.label && <div className="sf-flabel">{current.label}</div>}
               <form
+                className="sf-composer-row"
                 onSubmit={(e) => {
                   e.preventDefault();
                   advance(input);
                 }}
               >
-                <div className={`lb-field${current.type === "tel" ? " phone" : ""}`}>
-                  {current.type === "tel" && (
-                    <div className="lb-cc">
-                      BR <b>+55</b>
-                    </div>
-                  )}
+                <div className="sf-input-wrap">
+                  {current.type === "tel" && <span className="cc">BR +55</span>}
                   <input
+                    className="sf-input"
                     type={
                       current.type === "email"
                         ? "email"
@@ -451,28 +491,28 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                             : "text"
                     }
                     value={input}
-                    placeholder={current.placeholder || ""}
-                    disabled={busy}
+                    placeholder={current.placeholder || "Digite sua resposta…"}
+                    disabled={busy || typing}
                     onChange={(e) => {
                       const v =
                         current.type === "tel" ? formatPhoneMask(e.target.value) : e.target.value;
                       setInput(v);
                     }}
                   />
-                  <button
-                    type="submit"
-                    className="lb-send"
-                    disabled={busy || !input.trim()}
-                    aria-label="Enviar"
-                  >
-                    →
-                  </button>
                 </div>
+                <button
+                  type="submit"
+                  className="sf-send"
+                  disabled={busy || typing || !input.trim()}
+                  aria-label="Enviar"
+                >
+                  ➤
+                </button>
               </form>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
