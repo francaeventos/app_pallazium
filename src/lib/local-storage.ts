@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { mirrorUploadToOrigin } from "@/lib/upload-sync";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "uploads";
 const PUBLIC_UPLOAD_URL = process.env.PUBLIC_UPLOAD_URL ?? "/uploads";
@@ -17,9 +18,12 @@ export async function saveUploadedFile(
   const filePath = path.join(dir, fileName);
   await writeFile(filePath, bytes);
 
+  const relativePath = `${bucket}/${fileName}`;
+  await mirrorUploadToOrigin(relativePath, bytes, contentType);
+
   return {
-    path: `${bucket}/${fileName}`,
-    publicUrl: `${PUBLIC_UPLOAD_URL}/${bucket}/${fileName}`,
+    path: relativePath,
+    publicUrl: `${PUBLIC_UPLOAD_URL}/${relativePath}`,
     contentType,
   };
 }

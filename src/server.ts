@@ -5,9 +5,12 @@ import path from "node:path";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { ebookIdFromPath, isEbookFileRoute, serveEbookPdf } from "./lib/ebook-file-server";
+import { handleUploadSyncRequest } from "./lib/upload-sync";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "uploads";
 const PUBLIC_UPLOAD_URL = process.env.PUBLIC_UPLOAD_URL ?? "/uploads";
+/** Origem remota dos arquivos quando o banco é compartilhado (ex.: VPS) e o disco local não tem o upload. */
+const PUBLIC_UPLOAD_ORIGIN = (process.env.PUBLIC_UPLOAD_ORIGIN ?? "").replace(/\/$/, "");
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -39,6 +42,10 @@ async function serveUpload(pathname: string): Promise<Response | null> {
       },
     });
   } catch {
+    // Mesmo Postgres da nuvem, disco diferente: avatar/wallpaper vivem na VPS.
+    if (PUBLIC_UPLOAD_ORIGIN) {
+      return Response.redirect(`${PUBLIC_UPLOAD_ORIGIN}${pathname}`, 302);
+    }
     return new Response("Not found", { status: 404 });
   }
 }
@@ -110,9 +117,20 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const { pathname } = new URL(request.url);
-      if (request.method === "GET") {
+      const syncResponse = await handleUploadSyncRequest(request);
+      if (syncResponse) return syncResponse;
+
+      if (request.method === "GET" || request.method === "HEAD") {
         const uploadResponse = await serveUpload(pathname);
-        if (uploadResponse) return uploadResponse;
+        if (uploadResponse) {
+          if (request.method === "HEAD") {
+            return new Response(null, {
+              status: uploadResponse.status,
+              headers: uploadResponse.headers,
+            });
+          }
+          return uploadResponse;
+        }
       }
       if (request.method === "GET" && isEbookFileRoute(pathname)) {
         return serveEbookPdf(ebookIdFromPath(pathname));
