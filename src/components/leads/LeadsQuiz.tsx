@@ -14,9 +14,7 @@ import {
   readCookie,
   trackPixel,
 } from "@/lib/leads/tracking";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
 type Question = PublicForm["questions"][number];
@@ -27,6 +25,7 @@ type ChatBubble = {
   role: "bot" | "user";
   html?: string;
   text?: string;
+  isQuestion?: boolean;
 };
 
 type Phase = "quiz" | "diagnosis" | "agenda" | "done";
@@ -65,7 +64,7 @@ function getAnonId() {
   return id;
 }
 
-function validateAnswer(question: Question, value: string, answers: Record<string, string>) {
+function validateAnswer(question: Question, value: string) {
   const trimmed = value.trim();
   if (question.required && !trimmed) return "Resposta obrigatória.";
   if (question.type === "text" && trimmed.length < 2) return "Me diz seu nome pra continuar.";
@@ -81,7 +80,6 @@ function validateAnswer(question: Question, value: string, answers: Record<strin
     if (Number.isNaN(d.getTime())) return "Data inválida. Tenta de novo.";
     if (d < today) return "Essa data já passou. Escolhe uma data futura.";
   }
-  void answers;
   return null;
 }
 
@@ -97,6 +95,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
+  const [bookedSlot, setBookedSlot] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
@@ -108,6 +107,10 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const current = questions[stepIndex];
   const progress = phase === "quiz" ? Math.min(stepIndex / Math.max(questions.length, 1), 1) : 1;
   answersRef.current = answers;
+
+  const brandParts = form.brandName.split(/\s+/);
+  const brandMain = brandParts[0] || form.brandName;
+  const brandRest = brandParts.slice(1).join(" ");
 
   useEffect(() => {
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
@@ -122,20 +125,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [bubbles, typing, phase]);
 
-  const pushBotMessages = useCallback(async (messages: string[]) => {
+  const pushBotMessages = useCallback(async (messages: Array<{ html: string; isQuestion?: boolean }>) => {
     for (const msg of messages) {
       setTyping(true);
-      await new Promise((r) => setTimeout(r, 450));
+      await new Promise((r) => setTimeout(r, 420));
       setTyping(false);
       setBubbles((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "bot",
-          html: interpolate(msg, answersRef.current),
+          html: interpolate(msg.html, answersRef.current),
+          isQuestion: msg.isQuestion,
         },
       ]);
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, 110));
     }
   }, []);
 
@@ -145,10 +149,8 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     shownStepsRef.current.add(stepIndex);
     let cancelled = false;
     (async () => {
-      const msgs = [...(current.botMessages || [])];
-      if (current.prompt && !msgs.includes(current.prompt)) {
-        msgs.push(current.prompt);
-      }
+      const msgs = (current.botMessages || []).map((html) => ({ html, isQuestion: false }));
+      if (current.prompt) msgs.push({ html: current.prompt, isQuestion: true });
       if (!cancelled && msgs.length) await pushBotMessages(msgs);
     })();
     return () => {
@@ -194,7 +196,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
 
   const advance = async (value: string) => {
     if (!current || busy) return;
-    const err = validateAnswer(current, value, answers);
+    const err = validateAnswer(current, value);
     if (err) {
       setError(err);
       return;
@@ -267,6 +269,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         },
       });
       setWhatsappUrl(result.whatsappUrl);
+      setBookedSlot(slot.label);
       pushDataLayer("quiz_schedule", {
         lead_id: result.leadId,
         event_id: result.eventId,
@@ -281,171 +284,193 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     }
   };
 
+  const agentInitial = form.agentName.trim().slice(0, 1).toUpperCase() || "B";
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-[radial-gradient(ellipse_at_top,#fff8f1,transparent_55%),linear-gradient(180deg,#f4efe8_0%,#ebe2d6_100%)]">
-      <header className="sticky top-0 z-10 border-b border-border/40 bg-[#f4efe8]/90 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
-            {form.agentName.slice(0, 1)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-serif text-lg leading-tight text-foreground">{form.brandName}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {form.agentName}
-              {form.agentTitle ? ` · ${form.agentTitle}` : ""}
-            </p>
-          </div>
+    <div className="leads-bella">
+      <header className="lb-topbar">
+        <div className="lb-brand">
+          {brandMain}
+          {brandRest ? <> {brandRest}</> : null}
+          <span> · {form.agentName}</span>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border/60">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
+        <div className="lb-progress" aria-hidden>
+          <i style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       </header>
 
-      <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
-        {bubbles.map((b) => (
-          <div
-            key={b.id}
-            className={cn(
-              "max-w-[88%] animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm",
-              b.role === "bot"
-                ? "bg-card text-foreground"
-                : "ml-auto bg-primary text-primary-foreground",
-            )}
-          >
-            {b.html ? (
-              <span dangerouslySetInnerHTML={{ __html: b.html }} />
-            ) : (
-              b.text
-            )}
-          </div>
-        ))}
+      <div ref={listRef} className="lb-chat">
+        {bubbles.map((b) =>
+          b.role === "bot" ? (
+            <div key={b.id} className="lb-row">
+              <div className="lb-avatar">{agentInitial}</div>
+              <div
+                className={`lb-bubble${b.isQuestion ? " q" : ""}`}
+                dangerouslySetInnerHTML={{ __html: b.html || "" }}
+              />
+            </div>
+          ) : (
+            <div key={b.id} className="lb-row me">
+              <div className="lb-bubble">{b.text}</div>
+            </div>
+          ),
+        )}
+
         {typing && (
-          <div className="w-fit rounded-2xl bg-card px-4 py-3 text-muted-foreground shadow-sm">
-            <span className="inline-flex gap-1">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:120ms]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:240ms]" />
-            </span>
+          <div className="lb-row">
+            <div className="lb-avatar">{agentInitial}</div>
+            <div className="lb-bubble">
+              <div className="lb-typing">
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
           </div>
         )}
 
         {phase === "diagnosis" && diagnosis && (
-          <div className="animate-in fade-in zoom-in-95 space-y-4 rounded-2xl border border-border/50 bg-card p-5 shadow-sm">
-            <p className="font-serif text-2xl text-foreground">{diagnosis.title}</p>
-            <p className="text-sm leading-relaxed text-muted-foreground">{diagnosis.body}</p>
-            {form.agendaEnabled ? (
-              <Button className="w-full" onClick={openAgenda} disabled={busy}>
-                Agendar degustação
-              </Button>
-            ) : (
-              <Button className="w-full" asChild>
+          <div className="lb-row">
+            <div className="lb-avatar">{agentInitial}</div>
+            <div className="lb-diag">
+              <h4>Diagnóstico</h4>
+              <strong>{diagnosis.title}</strong>
+              <p>{diagnosis.body}</p>
+              {form.agendaEnabled ? (
+                <button type="button" className="lb-cta" onClick={openAgenda} disabled={busy}>
+                  Agendar degustação
+                </button>
+              ) : (
                 <a
+                  className="lb-cta wa"
                   href={`https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Falar no WhatsApp
                 </a>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {phase === "agenda" && (
-          <div className="space-y-3">
-            <p className="font-serif text-xl">Escolha um horário</p>
-            <div className="grid gap-2">
-              {slots.map((slot) => (
-                <button
-                  key={slot.id}
-                  type="button"
-                  disabled={busy || !slot.available}
-                  onClick={() => bookSlot(slot)}
-                  className="rounded-xl border border-border/60 bg-card px-4 py-3 text-left text-sm transition hover:border-primary/50 hover:bg-primary/5 disabled:opacity-50"
-                >
-                  <span className="font-medium capitalize">{slot.label}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {slot.remaining} vaga{slot.remaining === 1 ? "" : "s"}
-                  </span>
-                </button>
-              ))}
+          <div className="lb-agenda">
+            <div className="lb-agenda-head">
+              <h3>Escolha um horário</h3>
+              <p>Degustação no Espaço Pallazium</p>
+            </div>
+            <div className="lb-agenda-body">
+              {error && <p className="lb-error" style={{ marginLeft: 0 }}>{error}</p>}
+              <div className="lb-times">
+                {slots.map((slot) => (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    className="lb-time"
+                    disabled={busy || !slot.available}
+                    onClick={() => bookSlot(slot)}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
               {slots.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum horário disponível no momento.</p>
+                <p style={{ textAlign: "center", color: "var(--lb-muted)", fontSize: 13, marginTop: 12 }}>
+                  Nenhum horário disponível no momento.
+                </p>
               )}
             </div>
           </div>
         )}
 
         {phase === "done" && (
-          <div className="space-y-4 rounded-2xl border border-border/50 bg-card p-5 shadow-sm">
-            <p className="font-serif text-2xl">Degustação reservada</p>
-            <p className="text-sm text-muted-foreground">
-              Recebemos seu horário. Se quiser, já pode falar com a gente no WhatsApp para confirmar os detalhes.
-            </p>
-            {whatsappUrl && (
-              <Button className="w-full" asChild>
-                <a href={whatsappUrl} target="_blank" rel="noreferrer">
+          <div className="lb-row">
+            <div className="lb-avatar">{agentInitial}</div>
+            <div className="lb-diag">
+              <h4>Confirmado</h4>
+              <strong>Degustação reservada</strong>
+              <p>
+                {bookedSlot
+                  ? `Horário: ${bookedSlot}. `
+                  : ""}
+                Se quiser, já pode falar conosco no WhatsApp para alinhar os detalhes.
+              </p>
+              {whatsappUrl && (
+                <a className="lb-cta wa" href={whatsappUrl} target="_blank" rel="noreferrer">
                   Abrir WhatsApp
                 </a>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {phase === "quiz" && current && (
-        <div className="border-t border-border/40 bg-[#f4efe8]/95 px-4 py-3 backdrop-blur">
-          {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
-          {current.type === "choice" ? (
-            <div className="grid gap-2">
-              {current.options.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => advance(opt.label)}
-                  className="rounded-xl border border-border/70 bg-card px-3 py-2.5 text-left text-sm transition hover:border-primary/40 hover:bg-primary/5"
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                advance(input);
-              }}
-            >
-              <Input
-                type={
-                  current.type === "email"
-                    ? "email"
-                    : current.type === "date"
-                      ? "date"
-                      : current.type === "tel"
-                        ? "tel"
-                        : "text"
-                }
-                value={input}
-                placeholder={current.placeholder || ""}
-                disabled={busy}
-                className="h-11 rounded-xl bg-card"
-                onChange={(e) => {
-                  const v =
-                    current.type === "tel" ? formatPhoneMask(e.target.value) : e.target.value;
-                  setInput(v);
+        <div className="lb-composer">
+          <div className="lb-ibox">
+            {error && <p className="lb-error">{error}</p>}
+            {current.label && current.type !== "choice" && (
+              <div className="lb-flabel">{current.label}</div>
+            )}
+            {current.type === "choice" ? (
+              <div className="lb-options">
+                {current.options.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className="lb-opt"
+                    disabled={busy}
+                    onClick={() => advance(opt.label)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  advance(input);
                 }}
-              />
-              <Button type="submit" disabled={busy || !input.trim()} className="h-11 px-5">
-                Enviar
-              </Button>
-            </form>
-          )}
+              >
+                <div className={`lb-field${current.type === "tel" ? " phone" : ""}`}>
+                  {current.type === "tel" && (
+                    <div className="lb-cc">
+                      BR <b>+55</b>
+                    </div>
+                  )}
+                  <input
+                    type={
+                      current.type === "email"
+                        ? "email"
+                        : current.type === "date"
+                          ? "date"
+                          : current.type === "tel"
+                            ? "tel"
+                            : "text"
+                    }
+                    value={input}
+                    placeholder={current.placeholder || ""}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const v =
+                        current.type === "tel" ? formatPhoneMask(e.target.value) : e.target.value;
+                      setInput(v);
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    className="lb-send"
+                    disabled={busy || !input.trim()}
+                    aria-label="Enviar"
+                  >
+                    →
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

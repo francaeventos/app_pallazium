@@ -360,9 +360,9 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
         key: z.string().trim().min(1).max(60),
         type: z.enum(["text", "email", "tel", "choice", "date"]),
         label: z.string().trim().max(120).nullable().optional(),
-        prompt: z.string().trim().max(500).nullable().optional(),
-        bot_messages: z.array(z.string()).optional(),
-        placeholder: z.string().trim().max(120).nullable().optional(),
+        prompt: z.string().trim().max(2000).nullable().optional(),
+        bot_messages: z.array(z.string().max(4000)).optional(),
+        placeholder: z.string().trim().max(200).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
         required: z.boolean().default(true),
         score_bonus: z.number().int().min(0).max(100).default(0),
@@ -439,6 +439,75 @@ export const deleteLeadOptionFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await guardAdmin(context);
     await db.leadFormOption.delete({ where: { id: data.id } });
+    return { ok: true as const };
+  });
+
+export const reorderLeadQuestionsFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        ordered_ids: z.array(z.string().uuid()).min(1),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.$transaction(
+      data.ordered_ids.map((id, index) =>
+        db.leadFormQuestion.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+    return { ok: true as const };
+  });
+
+export const saveLeadRuleFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        form_id: z.string().uuid(),
+        title: z.string().trim().min(2).max(200),
+        body: z.string().trim().min(2).max(4000),
+        match_key: z.string().trim().max(60).nullable().optional(),
+        match_value: z.string().trim().max(200).nullable().optional(),
+        sort_order: z.number().int().min(0).default(0),
+        is_fallback: z.boolean().default(false),
+        active: z.boolean().default(true),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const payload = {
+      formId: data.form_id,
+      title: data.title,
+      body: data.body,
+      matchKey: data.match_key ?? null,
+      matchValue: data.match_value ?? null,
+      sortOrder: data.sort_order,
+      isFallback: data.is_fallback,
+      active: data.active,
+    };
+    if (data.id) {
+      await db.leadFormRule.update({ where: { id: data.id }, data: payload });
+    } else {
+      await db.leadFormRule.create({ data: payload });
+    }
+    return { ok: true as const };
+  });
+
+export const deleteLeadRuleFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.leadFormRule.delete({ where: { id: data.id } });
     return { ok: true as const };
   });
 
