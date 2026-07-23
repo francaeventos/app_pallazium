@@ -1,0 +1,586 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { requireAuth } from "@/integrations/auth/auth-middleware";
+import { assertAdmin } from "@/lib/auth-session";
+import {
+  recordLeadEvent,
+  serializeLeadForWebhook,
+} from "@/lib/leads/service";
+import { sendLeadWebhook } from "@/lib/leads/webhook";
+
+async function guardAdmin(context: { userId?: string }) {
+  const userId = context.userId;
+  if (!userId) throw new Error("Sessão inválida.");
+  await assertAdmin(userId);
+}
+
+const slugSchema = z.object({ slug: z.string().trim().min(1).default("leads") });
+const idSchema = z.object({ id: z.string().uuid() });
+
+function leadRecord(lead: {
+  id: string;
+  formId: string;
+  name: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  status: string;
+  score: number;
+  qualified: boolean;
+  answers: unknown;
+  utm: unknown;
+  slot: string | null;
+  sourceUrl: string | null;
+  notes: string | null;
+  scheduledAt: Date | null;
+  completedAt: Date | null;
+  qualifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  events?: Array<{ id: string; type: string; payload: unknown; createdAt: Date }>;
+}) {
+  return {
+    id: lead.id,
+    form_id: lead.formId,
+    name: lead.name,
+    email: lead.email,
+    whatsapp: lead.whatsapp,
+    status: lead.status,
+    score: lead.score,
+    qualified: lead.qualified,
+    answers: (lead.answers ?? {}) as Record<string, string | number | boolean | null>,
+    utm: (lead.utm ?? {}) as Record<string, string | number | boolean | null>,
+    slot: lead.slot,
+    source_url: lead.sourceUrl,
+    notes: lead.notes,
+    scheduled_at: lead.scheduledAt?.toISOString() ?? null,
+    completed_at: lead.completedAt?.toISOString() ?? null,
+    qualified_at: lead.qualifiedAt?.toISOString() ?? null,
+    created_at: lead.createdAt.toISOString(),
+    updated_at: lead.updatedAt.toISOString(),
+    events: lead.events?.map((e) => ({
+      id: e.id,
+      type: e.type,
+      payload: (e.payload ?? {}) as Record<string, string | number | boolean | null>,
+      created_at: e.createdAt.toISOString(),
+    })),
+  };
+}
+
+export const listLeadsFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        slug: z.string().optional(),
+        status: z.enum(["parcial", "completo", "agendado", "descartado"]).optional(),
+        qualified: z.enum(["true", "false", "all"]).optional(),
+        q: z.string().optional(),
+      })
+      .parse(data ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findFirst({
+      where: { slug: data.slug || "leads" },
+    });
+    if (!form) return { leads: [] };
+
+    const leads = await db.lead.findMany({
+      where: {
+        formId: form.id,
+        ...(data.status ? { status: data.status } : {}),
+        ...(data.qualified === "true"
+          ? { qualified: true }
+          : data.qualified === "false"
+            ? { qualified: false }
+            : {}),
+        ...(data.q
+          ? {
+              OR: [
+                { name: { contains: data.q, mode: "insensitive" } },
+                { email: { contains: data.q, mode: "insensitive" } },
+                { whatsapp: { contains: data.q.replace(/\D/g, "") } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+
+    return { leads: leads.map(leadRecord) };
+  });
+
+export const getLeadFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const lead = await db.lead.findUnique({
+      where: { id: data.id },
+      include: { events: { orderBy: { createdAt: "desc" }, take: 50 } },
+    });
+    if (!lead) throw new Error("Lead não encontrado.");
+    return { lead: leadRecord(lead) };
+  });
+
+export const updateLeadFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["parcial", "completo", "agendado", "descartado"]).optional(),
+        notes: z.string().max(5000).optional(),
+        qualified: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const lead = await db.lead.update({
+      where: { id: data.id },
+      data: {
+        ...(data.status ? { status: data.status } : {}),
+        ...(data.notes !== undefined ? { notes: data.notes } : {}),
+        ...(data.qualified !== undefined
+          ? {
+              qualified: data.qualified,
+              qualifiedAt: data.qualified ? new Date() : null,
+            }
+          : {}),
+      },
+    });
+    return { lead: leadRecord(lead) };
+  });
+
+export const exportLeadsCsvFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => slugSchema.parse(data ?? { slug: "leads" }))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findFirst({ where: { slug: data.slug } });
+    if (!form) return { csv: "id\n" };
+
+    const leads = await db.lead.findMany({
+      where: { formId: form.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const headers = [
+      "id",
+      "name",
+      "email",
+      "whatsapp",
+      "status",
+      "score",
+      "qualified",
+      "slot",
+      "utm_source",
+      "utm_campaign",
+      "created_at",
+    ];
+    const lines = [headers.join(",")];
+    for (const lead of leads) {
+      const utm = (lead.utm as Record<string, string>) || {};
+      const row = [
+        lead.id,
+        lead.name,
+        lead.email,
+        lead.whatsapp,
+        lead.status,
+        String(lead.score),
+        String(lead.qualified),
+        lead.slot,
+        utm.utm_source,
+        utm.utm_campaign,
+        lead.createdAt.toISOString(),
+      ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`);
+      lines.push(row.join(","));
+    }
+    return { csv: lines.join("\n") };
+  });
+
+export const getAdminLeadFormFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data) => slugSchema.parse(data ?? { slug: "leads" }))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findFirst({
+      where: { slug: data.slug },
+      include: {
+        questions: {
+          orderBy: { sortOrder: "asc" },
+          include: { options: { orderBy: { sortOrder: "asc" } } },
+        },
+        rules: { orderBy: { sortOrder: "asc" } },
+        integrations: true,
+      },
+    });
+    if (!form) throw new Error("Formulário não encontrado.");
+    return {
+      form: {
+        id: form.id,
+        slug: form.slug,
+        title: form.title,
+        brand_name: form.brandName,
+        agent_name: form.agentName,
+        agent_title: form.agentTitle,
+        agent_avatar_url: form.agentAvatarUrl,
+        whatsapp_destination: form.whatsappDestination,
+        whatsapp_message: form.whatsappMessage,
+        privacy_url: form.privacyUrl,
+        terms_url: form.termsUrl,
+        qualification_threshold: form.qualificationThreshold,
+        agenda_enabled: form.agendaEnabled,
+        agenda_weekdays: form.agendaWeekdays,
+        agenda_times: form.agendaTimes,
+        agenda_days_ahead: form.agendaDaysAhead,
+        agenda_lead_hours: form.agendaLeadHours,
+        agenda_slots_per_slot: form.agendaSlotsPerSlot,
+        active: form.active,
+        questions: form.questions.map((q) => ({
+          id: q.id,
+          key: q.key,
+          type: q.type,
+          label: q.label,
+          prompt: q.prompt,
+          bot_messages: q.botMessages,
+          placeholder: q.placeholder,
+          sort_order: q.sortOrder,
+          required: q.required,
+          score_bonus: q.scoreBonus,
+          active: q.active,
+          options: q.options.map((o) => ({
+            id: o.id,
+            label: o.label,
+            score_points: o.scorePoints,
+            sort_order: o.sortOrder,
+            active: o.active,
+          })),
+        })),
+        rules: form.rules.map((r) => ({
+          id: r.id,
+          title: r.title,
+          body: r.body,
+          match_key: r.matchKey,
+          match_value: r.matchValue,
+          sort_order: r.sortOrder,
+          is_fallback: r.isFallback,
+          active: r.active,
+        })),
+        integrations: form.integrations
+          ? {
+              gtm_id: form.integrations.gtmId,
+              meta_pixel_id: form.integrations.metaPixelId,
+              meta_access_token: form.integrations.metaAccessToken
+                ? "••••••••"
+                : null,
+              has_meta_token: Boolean(form.integrations.metaAccessToken),
+              meta_test_event_code: form.integrations.metaTestEventCode,
+              webhook_url: form.integrations.webhookUrl,
+              webhook_secret: form.integrations.webhookSecret ? "••••••••" : null,
+              has_webhook_secret: Boolean(form.integrations.webhookSecret),
+              pixel_enabled: form.integrations.pixelEnabled,
+              gtm_enabled: form.integrations.gtmEnabled,
+              capi_enabled: form.integrations.capiEnabled,
+              webhook_enabled: form.integrations.webhookEnabled,
+            }
+          : null,
+      },
+    };
+  });
+
+export const updateLeadFormFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        title: z.string().trim().min(2).max(120).optional(),
+        brand_name: z.string().trim().min(2).max(120).optional(),
+        agent_name: z.string().trim().min(2).max(80).optional(),
+        agent_title: z.string().trim().max(120).nullable().optional(),
+        whatsapp_destination: z.string().trim().min(10).max(30).optional(),
+        whatsapp_message: z.string().trim().max(500).nullable().optional(),
+        privacy_url: z.string().trim().max(500).nullable().optional(),
+        terms_url: z.string().trim().max(500).nullable().optional(),
+        qualification_threshold: z.number().int().min(0).max(200).optional(),
+        agenda_enabled: z.boolean().optional(),
+        agenda_weekdays: z.array(z.number().int().min(0).max(6)).optional(),
+        agenda_times: z.array(z.string().regex(/^\d{2}:\d{2}$/)).optional(),
+        agenda_days_ahead: z.number().int().min(1).max(90).optional(),
+        agenda_lead_hours: z.number().int().min(0).max(72).optional(),
+        agenda_slots_per_slot: z.number().int().min(1).max(50).optional(),
+        active: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const { id, ...rest } = data;
+    await db.leadForm.update({
+      where: { id },
+      data: {
+        ...(rest.title !== undefined ? { title: rest.title } : {}),
+        ...(rest.brand_name !== undefined ? { brandName: rest.brand_name } : {}),
+        ...(rest.agent_name !== undefined ? { agentName: rest.agent_name } : {}),
+        ...(rest.agent_title !== undefined ? { agentTitle: rest.agent_title } : {}),
+        ...(rest.whatsapp_destination !== undefined
+          ? { whatsappDestination: rest.whatsapp_destination }
+          : {}),
+        ...(rest.whatsapp_message !== undefined ? { whatsappMessage: rest.whatsapp_message } : {}),
+        ...(rest.privacy_url !== undefined ? { privacyUrl: rest.privacy_url } : {}),
+        ...(rest.terms_url !== undefined ? { termsUrl: rest.terms_url } : {}),
+        ...(rest.qualification_threshold !== undefined
+          ? { qualificationThreshold: rest.qualification_threshold }
+          : {}),
+        ...(rest.agenda_enabled !== undefined ? { agendaEnabled: rest.agenda_enabled } : {}),
+        ...(rest.agenda_weekdays !== undefined ? { agendaWeekdays: rest.agenda_weekdays } : {}),
+        ...(rest.agenda_times !== undefined ? { agendaTimes: rest.agenda_times } : {}),
+        ...(rest.agenda_days_ahead !== undefined ? { agendaDaysAhead: rest.agenda_days_ahead } : {}),
+        ...(rest.agenda_lead_hours !== undefined ? { agendaLeadHours: rest.agenda_lead_hours } : {}),
+        ...(rest.agenda_slots_per_slot !== undefined
+          ? { agendaSlotsPerSlot: rest.agenda_slots_per_slot }
+          : {}),
+        ...(rest.active !== undefined ? { active: rest.active } : {}),
+      },
+    });
+    return { ok: true as const };
+  });
+
+export const saveLeadQuestionFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        form_id: z.string().uuid(),
+        key: z.string().trim().min(1).max(60),
+        type: z.enum(["text", "email", "tel", "choice", "date"]),
+        label: z.string().trim().max(120).nullable().optional(),
+        prompt: z.string().trim().max(500).nullable().optional(),
+        bot_messages: z.array(z.string()).optional(),
+        placeholder: z.string().trim().max(120).nullable().optional(),
+        sort_order: z.number().int().min(0).default(0),
+        required: z.boolean().default(true),
+        score_bonus: z.number().int().min(0).max(100).default(0),
+        active: z.boolean().default(true),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const payload = {
+      formId: data.form_id,
+      key: data.key,
+      type: data.type,
+      label: data.label ?? null,
+      prompt: data.prompt ?? null,
+      botMessages: data.bot_messages ?? [],
+      placeholder: data.placeholder ?? null,
+      sortOrder: data.sort_order,
+      required: data.required,
+      scoreBonus: data.score_bonus,
+      active: data.active,
+    };
+    if (data.id) {
+      await db.leadFormQuestion.update({ where: { id: data.id }, data: payload });
+    } else {
+      await db.leadFormQuestion.create({ data: payload });
+    }
+    return { ok: true as const };
+  });
+
+export const deleteLeadQuestionFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.leadFormQuestion.delete({ where: { id: data.id } });
+    return { ok: true as const };
+  });
+
+export const saveLeadOptionFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        question_id: z.string().uuid(),
+        label: z.string().trim().min(1).max(200),
+        score_points: z.number().int().min(0).max(200).default(0),
+        sort_order: z.number().int().min(0).default(0),
+        active: z.boolean().default(true),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const payload = {
+      questionId: data.question_id,
+      label: data.label,
+      scorePoints: data.score_points,
+      sortOrder: data.sort_order,
+      active: data.active,
+    };
+    if (data.id) {
+      await db.leadFormOption.update({ where: { id: data.id }, data: payload });
+    } else {
+      await db.leadFormOption.create({ data: payload });
+    }
+    return { ok: true as const };
+  });
+
+export const deleteLeadOptionFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.leadFormOption.delete({ where: { id: data.id } });
+    return { ok: true as const };
+  });
+
+export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        gtm_id: z.string().trim().max(40).nullable().optional(),
+        meta_pixel_id: z.string().trim().max(40).nullable().optional(),
+        meta_access_token: z.string().trim().max(500).nullable().optional(),
+        meta_test_event_code: z.string().trim().max(80).nullable().optional(),
+        webhook_url: z.string().trim().max(500).nullable().optional(),
+        webhook_secret: z.string().trim().max(200).nullable().optional(),
+        pixel_enabled: z.boolean().optional(),
+        gtm_enabled: z.boolean().optional(),
+        capi_enabled: z.boolean().optional(),
+        webhook_enabled: z.boolean().optional(),
+        clear_meta_token: z.boolean().optional(),
+        clear_webhook_secret: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const existing = await db.leadIntegrationSettings.findUnique({
+      where: { formId: data.form_id },
+    });
+
+    const tokenUpdate =
+      data.clear_meta_token
+        ? { metaAccessToken: null }
+        : data.meta_access_token && data.meta_access_token !== "••••••••"
+          ? { metaAccessToken: data.meta_access_token }
+          : {};
+    const secretUpdate =
+      data.clear_webhook_secret
+        ? { webhookSecret: null }
+        : data.webhook_secret && data.webhook_secret !== "••••••••"
+          ? { webhookSecret: data.webhook_secret }
+          : {};
+
+    const payload = {
+      gtmId: data.gtm_id ?? null,
+      metaPixelId: data.meta_pixel_id ?? null,
+      metaTestEventCode: data.meta_test_event_code ?? null,
+      webhookUrl: data.webhook_url ?? null,
+      pixelEnabled: data.pixel_enabled ?? true,
+      gtmEnabled: data.gtm_enabled ?? true,
+      capiEnabled: data.capi_enabled ?? true,
+      webhookEnabled: data.webhook_enabled ?? true,
+      ...tokenUpdate,
+      ...secretUpdate,
+    };
+
+    if (existing) {
+      await db.leadIntegrationSettings.update({
+        where: { formId: data.form_id },
+        data: payload,
+      });
+    } else {
+      await db.leadIntegrationSettings.create({
+        data: { formId: data.form_id, ...payload },
+      });
+    }
+    return { ok: true as const };
+  });
+
+export const resendLeadWebhookFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const lead = await db.lead.findUnique({
+      where: { id: data.id },
+      include: { form: { include: { integrations: true } } },
+    });
+    if (!lead) throw new Error("Lead não encontrado.");
+    if (!lead.qualified) throw new Error("Lead não está qualificado.");
+
+    const settings = lead.form.integrations;
+    const url = settings?.webhookUrl || process.env.LEAD_WEBHOOK_URL;
+    if (!url) throw new Error("Webhook URL não configurada.");
+
+    const result = await sendLeadWebhook({
+      url,
+      secret: settings?.webhookSecret || process.env.LEAD_WEBHOOK_SECRET,
+      payload: serializeLeadForWebhook(lead, lead.form.slug),
+    });
+    await recordLeadEvent(lead.id, result.ok ? "webhook_sent" : "webhook_failed", {
+      status: result.status,
+      detail: result.detail,
+      manual: true,
+    });
+    if (!result.ok) throw new Error(result.detail || "Falha no webhook.");
+    return { ok: true as const };
+  });
+
+export const testLeadWebhookFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        webhook_url: z.string().url().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const form = await db.leadForm.findUnique({
+      where: { id: data.form_id },
+      include: { integrations: true },
+    });
+    if (!form) throw new Error("Formulário não encontrado.");
+    const url =
+      data.webhook_url || form.integrations?.webhookUrl || process.env.LEAD_WEBHOOK_URL;
+    if (!url) throw new Error("Informe a URL do webhook.");
+
+    const result = await sendLeadWebhook({
+      url,
+      secret: form.integrations?.webhookSecret || process.env.LEAD_WEBHOOK_SECRET,
+      payload: {
+        id: "00000000-0000-0000-0000-000000000000",
+        formSlug: form.slug,
+        name: "Lead Teste",
+        email: "teste@espacopallazium.com.br",
+        whatsapp: "5511999999999",
+        status: "completo",
+        score: 80,
+        qualified: true,
+        answers: { tipoEvento: "Casamento", investimento: "acima de R$ 40 mil" },
+        utm: { utm_source: "test" },
+        slot: null,
+        sourceUrl: null,
+        scheduledAt: null,
+        completedAt: new Date().toISOString(),
+        qualifiedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+    });
+    if (!result.ok) throw new Error(result.detail || `HTTP ${result.status}`);
+    return { ok: true as const, detail: result.detail };
+  });

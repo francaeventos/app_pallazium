@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
@@ -32,6 +33,7 @@ import { Route as AuthenticatedAdminReferenciasRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminPortfolioRouteImport } from './routes/_authenticated/admin/portfolio'
 import { Route as AuthenticatedAdminParceirosRouteImport } from './routes/_authenticated/admin/parceiros'
 import { Route as AuthenticatedAdminNotificacoesRouteImport } from './routes/_authenticated/admin/notificacoes'
+import { Route as AuthenticatedAdminLeadsRouteImport } from './routes/_authenticated/admin/leads'
 import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_authenticated/admin/interesses'
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
 import { Route as AuthenticatedAdminEbooksRouteImport } from './routes/_authenticated/admin/ebooks'
@@ -41,11 +43,18 @@ import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
+import { Route as AuthenticatedAdminLeadsIntegracoesRouteImport } from './routes/_authenticated/admin/leads.integracoes'
+import { Route as AuthenticatedAdminLeadsFormularioRouteImport } from './routes/_authenticated/admin/leads.formulario'
 import { Route as AuthenticatedAdminChecklistEventIdRouteImport } from './routes/_authenticated/admin/checklist.$eventId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -170,6 +179,11 @@ const AuthenticatedAdminNotificacoesRoute =
     path: '/notificacoes',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminLeadsRoute = AuthenticatedAdminLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminInteressesRoute =
   AuthenticatedAdminInteressesRouteImport.update({
     id: '/interesses',
@@ -223,6 +237,18 @@ const AuthenticatedAdminChecklistIndexRoute =
     path: '/checklist/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminLeadsIntegracoesRoute =
+  AuthenticatedAdminLeadsIntegracoesRouteImport.update({
+    id: '/integracoes',
+    path: '/integracoes',
+    getParentRoute: () => AuthenticatedAdminLeadsRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioRoute =
+  AuthenticatedAdminLeadsFormularioRouteImport.update({
+    id: '/formulario',
+    path: '/formulario',
+    getParentRoute: () => AuthenticatedAdminLeadsRoute,
+  } as any)
 const AuthenticatedAdminChecklistEventIdRoute =
   AuthenticatedAdminChecklistEventIdRouteImport.update({
     id: '/checklist/$eventId',
@@ -232,6 +258,7 @@ const AuthenticatedAdminChecklistEventIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/app': typeof AuthenticatedAppRouteWithChildren
@@ -244,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/leads': typeof AuthenticatedAdminLeadsRouteWithChildren
   '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
   '/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
@@ -262,10 +290,13 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
+  '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
@@ -276,6 +307,7 @@ export interface FileRoutesByTo {
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/admin/leads': typeof AuthenticatedAdminLeadsRouteWithChildren
   '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
   '/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
@@ -294,12 +326,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
+  '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
@@ -312,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
   '/_authenticated/admin/interesses': typeof AuthenticatedAdminInteressesRoute
+  '/_authenticated/admin/leads': typeof AuthenticatedAdminLeadsRouteWithChildren
   '/_authenticated/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/_authenticated/admin/parceiros': typeof AuthenticatedAdminParceirosRoute
   '/_authenticated/admin/portfolio': typeof AuthenticatedAdminPortfolioRoute
@@ -330,12 +366,15 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
+  '/_authenticated/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/leads'
     | '/login'
     | '/admin'
     | '/app'
@@ -348,6 +387,7 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/eventos'
     | '/admin/interesses'
+    | '/admin/leads'
     | '/admin/notificacoes'
     | '/admin/parceiros'
     | '/admin/portfolio'
@@ -366,10 +406,13 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/admin/checklist/$eventId'
+    | '/admin/leads/formulario'
+    | '/admin/leads/integracoes'
     | '/admin/checklist/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/leads'
     | '/login'
     | '/convite/$token'
     | '/admin/acessos'
@@ -380,6 +423,7 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/eventos'
     | '/admin/interesses'
+    | '/admin/leads'
     | '/admin/notificacoes'
     | '/admin/parceiros'
     | '/admin/portfolio'
@@ -398,11 +442,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/admin/checklist/$eventId'
+    | '/admin/leads/formulario'
+    | '/admin/leads/integracoes'
     | '/admin/checklist'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/leads'
     | '/login'
     | '/_authenticated/admin'
     | '/_authenticated/app'
@@ -415,6 +462,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/ebooks'
     | '/_authenticated/admin/eventos'
     | '/_authenticated/admin/interesses'
+    | '/_authenticated/admin/leads'
     | '/_authenticated/admin/notificacoes'
     | '/_authenticated/admin/parceiros'
     | '/_authenticated/admin/portfolio'
@@ -433,12 +481,15 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/app/'
     | '/_authenticated/admin/checklist/$eventId'
+    | '/_authenticated/admin/leads/formulario'
+    | '/_authenticated/admin/leads/integracoes'
     | '/_authenticated/admin/checklist/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
 }
@@ -450,6 +501,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -606,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNotificacoesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/leads': {
+      id: '/_authenticated/admin/leads'
+      path: '/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/interesses': {
       id: '/_authenticated/admin/interesses'
       path: '/interesses'
@@ -669,6 +734,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminChecklistIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/leads/integracoes': {
+      id: '/_authenticated/admin/leads/integracoes'
+      path: '/integracoes'
+      fullPath: '/admin/leads/integracoes'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsIntegracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsRoute
+    }
+    '/_authenticated/admin/leads/formulario': {
+      id: '/_authenticated/admin/leads/formulario'
+      path: '/formulario'
+      fullPath: '/admin/leads/formulario'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsRoute
+    }
     '/_authenticated/admin/checklist/$eventId': {
       id: '/_authenticated/admin/checklist/$eventId'
       path: '/checklist/$eventId'
@@ -679,6 +758,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminLeadsRouteChildren {
+  AuthenticatedAdminLeadsFormularioRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+  AuthenticatedAdminLeadsIntegracoesRoute: typeof AuthenticatedAdminLeadsIntegracoesRoute
+}
+
+const AuthenticatedAdminLeadsRouteChildren: AuthenticatedAdminLeadsRouteChildren =
+  {
+    AuthenticatedAdminLeadsFormularioRoute:
+      AuthenticatedAdminLeadsFormularioRoute,
+    AuthenticatedAdminLeadsIntegracoesRoute:
+      AuthenticatedAdminLeadsIntegracoesRoute,
+  }
+
+const AuthenticatedAdminLeadsRouteWithChildren =
+  AuthenticatedAdminLeadsRoute._addFileChildren(
+    AuthenticatedAdminLeadsRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAcessosRoute: typeof AuthenticatedAdminAcessosRoute
   AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
@@ -688,6 +785,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminEbooksRoute: typeof AuthenticatedAdminEbooksRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
   AuthenticatedAdminInteressesRoute: typeof AuthenticatedAdminInteressesRoute
+  AuthenticatedAdminLeadsRoute: typeof AuthenticatedAdminLeadsRouteWithChildren
   AuthenticatedAdminNotificacoesRoute: typeof AuthenticatedAdminNotificacoesRoute
   AuthenticatedAdminParceirosRoute: typeof AuthenticatedAdminParceirosRoute
   AuthenticatedAdminPortfolioRoute: typeof AuthenticatedAdminPortfolioRoute
@@ -707,6 +805,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminEbooksRoute: AuthenticatedAdminEbooksRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
   AuthenticatedAdminInteressesRoute: AuthenticatedAdminInteressesRoute,
+  AuthenticatedAdminLeadsRoute: AuthenticatedAdminLeadsRouteWithChildren,
   AuthenticatedAdminNotificacoesRoute: AuthenticatedAdminNotificacoesRoute,
   AuthenticatedAdminParceirosRoute: AuthenticatedAdminParceirosRoute,
   AuthenticatedAdminPortfolioRoute: AuthenticatedAdminPortfolioRoute,
@@ -769,6 +868,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   ConviteTokenRoute: ConviteTokenRoute,
 }
