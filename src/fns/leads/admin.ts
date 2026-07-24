@@ -185,7 +185,13 @@ export const exportLeadsCsvFn = createServerFn({ method: "GET" })
       "qualified",
       "slot",
       "utm_source",
+      "utm_medium",
       "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "gclid",
+      "fbclid",
+      "source_url",
       "created_at",
     ];
     const lines = [headers.join(",")];
@@ -201,7 +207,13 @@ export const exportLeadsCsvFn = createServerFn({ method: "GET" })
         String(lead.qualified),
         lead.slot,
         utm.utm_source,
+        utm.utm_medium,
         utm.utm_campaign,
+        utm.utm_term,
+        utm.utm_content,
+        utm.gclid,
+        utm.fbclid,
+        lead.sourceUrl,
         lead.createdAt.toISOString(),
       ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`);
       lines.push(row.join(","));

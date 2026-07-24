@@ -249,6 +249,52 @@
   margin-bottom: 0.35rem;
 }
 
+.sf-resume-banner {
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem 0.75rem;
+  margin: 0 auto 0.75rem;
+  max-width: 92%;
+  padding: 0.45rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1f2c34;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--sf-shadow-bubble);
+  text-align: center;
+}
+
+.sf-resume-reset,
+.sf-restart-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--sf-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sf-restart-link {
+  display: block;
+  width: 100%;
+  margin-top: 0.65rem;
+  text-align: center;
+  color: #667781;
+  text-decoration: none;
+}
+
+.sf-restart-link:hover {
+  text-decoration: underline;
+}
+
 .sf-row {
   display: flex;
   align-items: flex-end;

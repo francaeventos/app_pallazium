@@ -38,6 +38,7 @@ import {
   Webhook,
 } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
+import { UTM_KEYS, UTM_LABELS, utmHasValues, type UtmKey } from "@/lib/leads/utm";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { temperatureLabel, type LeadTemperature } from "@/lib/leads/score";
@@ -214,6 +215,11 @@ function Page() {
   const answerEntries = selected
     ? Object.entries(selected.answers || {}).filter(([, v]) => v != null && String(v).trim() !== "")
     : [];
+  const utmEntries = selected
+    ? UTM_KEYS.map((key) => [key, selected.utm?.[key]] as const).filter(
+        ([, v]) => v != null && String(v).trim() !== "",
+      )
+    : [];
 
   return (
     <div className="space-y-6">
@@ -291,6 +297,14 @@ function Page() {
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm")}
+                  {utmHasValues(lead.utm)
+                    ? ` · ${
+                        [lead.utm.utm_source, lead.utm.utm_campaign]
+                          .filter(Boolean)
+                          .map(String)
+                          .join(" / ") || "utm"
+                      }`
+                    : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -382,6 +396,36 @@ function Page() {
                       ))}
                     </dl>
                   )}
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                    UTM / atribuição
+                  </h3>
+                  {utmEntries.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma UTM capturada nesta visita.
+                    </p>
+                  ) : (
+                    <dl className="divide-y rounded-xl border">
+                      {utmEntries.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="grid grid-cols-[minmax(7rem,38%)_1fr] gap-3 px-4 py-3 text-sm"
+                        >
+                          <dt className="text-muted-foreground">
+                            {UTM_LABELS[key as UtmKey] || key}
+                          </dt>
+                          <dd className="break-all font-medium text-foreground">{String(value)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {selected.source_url ? (
+                    <p className="break-all text-xs text-muted-foreground">
+                      URL: {selected.source_url}
+                    </p>
+                  ) : null}
                 </section>
 
                 <section className="grid gap-4 sm:grid-cols-2">

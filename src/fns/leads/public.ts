@@ -14,6 +14,7 @@ import {
   scoreLeadAnswers,
 } from "@/lib/leads/service";
 import { needsAnswer } from "@/lib/leads/question-types";
+import { mergeUtmFirstTouch, type UtmParams } from "@/lib/leads/utm";
 
 const slugSchema = z.object({ slug: z.string().trim().min(1).default("leads") });
 
@@ -29,6 +30,11 @@ const utmSchema = z
   })
   .passthrough()
   .default({});
+
+function asUtm(value: unknown): UtmParams {
+  if (!value || typeof value !== "object") return {};
+  return value as UtmParams;
+}
 
 function publicFormShape(form: {
   id: string;
@@ -276,7 +282,8 @@ export const upsertLeadPartialFn = createServerFn({ method: "POST" })
       email: data.email ?? lead?.email ?? null,
       whatsapp,
       answers: answers as Prisma.InputJsonValue,
-      utm: (data.utm ?? {}) as Prisma.InputJsonValue,
+      // First-touch: não apaga UTMs já gravados se a visita seguinte vier sem querystring
+      utm: mergeUtmFirstTouch(asUtm(lead?.utm), asUtm(data.utm)) as Prisma.InputJsonValue,
       fbp: data.fbp ?? lead?.fbp ?? null,
       fbc: data.fbc ?? lead?.fbc ?? null,
       sourceUrl: data.sourceUrl || lead?.sourceUrl || null,
@@ -354,7 +361,7 @@ export const completeLeadFn = createServerFn({ method: "POST" })
       email,
       whatsapp,
       answers: answers as Prisma.InputJsonValue,
-      utm: (data.utm ?? {}) as Prisma.InputJsonValue,
+      utm: mergeUtmFirstTouch(asUtm(lead?.utm), asUtm(data.utm)) as Prisma.InputJsonValue,
       fbp: data.fbp ?? lead?.fbp ?? null,
       fbc: data.fbc ?? lead?.fbc ?? null,
       sourceUrl: data.sourceUrl || lead?.sourceUrl || null,

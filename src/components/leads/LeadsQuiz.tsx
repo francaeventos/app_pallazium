@@ -20,6 +20,15 @@ import {
   resolveNextStepIndex,
 } from "@/lib/leads/question-types";
 import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml, resolveRedirectUrl } from "@/lib/leads/variables";
+import {
+  clearQuizProgress,
+  hasRecoverableContact,
+  questionSignature,
+  restoreQuizProgress,
+  saveQuizProgress,
+  type QuizProgressBubble,
+} from "@/lib/leads/progress-storage";
+import { captureLeadUtm } from "@/lib/leads/utm";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -46,26 +55,6 @@ function interpolate(text: string, answers: Record<string, string>) {
 
 function formatBubbleHtml(text: string, answers: Record<string, string>) {
   return formatLeadMessageHtml(interpolate(text, answers));
-}
-
-function readUtms(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const params = new URLSearchParams(window.location.search);
-  const keys = [
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_term",
-    "utm_content",
-    "gclid",
-    "fbclid",
-  ];
-  const out: Record<string, string> = {};
-  for (const key of keys) {
-    const value = params.get(key);
-    if (value) out[key] = value;
-  }
-  return out;
 }
 
 function getAnonId() {
@@ -137,6 +126,8 @@ function usePrefersDark() {
 }
 
 export function LeadsQuiz({ form }: { form: PublicForm }) {
+  const [bootstrapped, setBootstrapped] = useState(false);
+  const [resumed, setResumed] = useState(false);
   const [phase, setPhase] = useState<Phase>("quiz");
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -150,18 +141,25 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [multiSelected, setMultiSelected] = useState<string[]>([]);
   const [redirectReady, setRedirectReady] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [flowSession, setFlowSession] = useState(0);
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
+  const shownKeysRef = useRef<Set<string>>(new Set());
   const redirectOpenedRef = useRef(false);
   const answersRef = useRef(answers);
+  const leadIdRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const anonId = useMemo(() => (typeof window !== "undefined" ? getAnonId() : ""), []);
-  const utm = useMemo(() => readUtms(), []);
   const prefersDark = usePrefersDark();
   const questions = form.questions;
   const current = questions[stepIndex];
   const progress = phase === "quiz" ? Math.min(stepIndex / Math.max(questions.length, 1), 1) : 1;
   answersRef.current = answers;
+  leadIdRef.current = leadId;
+
+  useEffect(() => {
+    captureLeadUtm(form.slug);
+  }, [form.slug]);
 
   const agentInitial = form.agentName.trim().slice(0, 1).toUpperCase() || "B";
   const primary = form.primaryColor || "#128C7E";
@@ -190,6 +188,53 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     interpolate(form.whatsappMessage || "Olá!", answers),
   )}`;
 
+  const persistProgress = useCallback(
+    (patch: {
+      answers: Record<string, string>;
+      stepIndex: number;
+      phase: Phase;
+      leadId?: string | null;
+      diagnosis?: { title: string; body: string } | null;
+      bubbles: QuizProgressBubble[];
+    }) => {
+      if (patch.phase !== "diagnosis" && !hasRecoverableContact(patch.answers)) return;
+      saveQuizProgress({
+        v: 1,
+        slug: form.slug,
+        leadId: patch.leadId ?? leadIdRef.current,
+        answers: patch.answers,
+        stepIndex: patch.stepIndex,
+        phase: patch.phase,
+        diagnosis: patch.diagnosis ?? null,
+        bubbles: patch.bubbles,
+        shownSteps: Array.from(shownStepsRef.current),
+        updatedAt: Date.now(),
+        questionSignature: questionSignature(questions),
+      });
+    },
+    [form.slug, questions],
+  );
+
+  useEffect(() => {
+    const saved = restoreQuizProgress(form.slug, form.questions);
+    if (saved) {
+      setAnswers(saved.answers);
+      setStepIndex(saved.stepIndex);
+      setLeadId(saved.leadId);
+      setBubbles(saved.bubbles || []);
+      setPhase(saved.phase);
+      setDiagnosis(saved.diagnosis);
+      shownStepsRef.current = new Set(saved.shownSteps);
+      shownKeysRef.current = new Set(
+        saved.shownSteps.map((step) => `0:${step}`),
+      );
+      setResumed(saved.phase === "quiz");
+    }
+    setBootstrapped(true);
+    // Só na montagem / troca de formulário — evita loop com nova referência de questions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.slug]);
+
   useEffect(() => {
     if (form.seoTitle && typeof document !== "undefined") {
       document.title = form.seoTitle;
@@ -197,13 +242,14 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   }, [form.seoTitle]);
 
   useEffect(() => {
+    if (!bootstrapped) return;
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
     if (form.tracking.metaPixelId) ensureMetaPixel(form.tracking.metaPixelId);
     if (!startedRef.current) {
       startedRef.current = true;
-      pushDataLayer("quiz_started", { form: form.slug });
+      pushDataLayer("quiz_started", { form: form.slug, resumed });
     }
-  }, [form]);
+  }, [form, bootstrapped, resumed]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -217,25 +263,38 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         setTyping(true);
         await new Promise((r) => setTimeout(r, botDelayMs));
         setTyping(false);
-        setBubbles((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "bot",
-            html: formatBubbleHtml(msg.html, answersRef.current),
-            isQuestion: msg.isQuestion,
-            time: nowTime(),
-          },
-        ]);
+        setBubbles((prev) => {
+          const next = [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "bot" as const,
+              html: formatBubbleHtml(msg.html, answersRef.current),
+              isQuestion: msg.isQuestion,
+              time: nowTime(),
+            },
+          ];
+          if (hasRecoverableContact(answersRef.current)) {
+            persistProgress({
+              answers: answersRef.current,
+              stepIndex,
+              phase: "quiz",
+              bubbles: next,
+            });
+          }
+          return next;
+        });
         await new Promise((r) => setTimeout(r, 120));
       }
     },
-    [botDelayMs],
+    [botDelayMs, persistProgress, stepIndex],
   );
 
   useEffect(() => {
-    if (phase !== "quiz" || !current) return;
-    if (shownStepsRef.current.has(stepIndex)) return;
+    if (!bootstrapped || phase !== "quiz" || !current) return;
+    const shownKey = `${flowSession}:${stepIndex}`;
+    if (shownKeysRef.current.has(shownKey)) return;
+    shownKeysRef.current.add(shownKey);
     shownStepsRef.current.add(stepIndex);
     let cancelled = false;
     (async () => {
@@ -259,26 +318,30 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     return () => {
       cancelled = true;
     };
-  }, [stepIndex, phase, current, pushBotMessages]);
+  }, [bootstrapped, flowSession, stepIndex, phase, current, pushBotMessages]);
 
   useEffect(() => {
+    if (!bootstrapped) return;
     setMultiSelected([]);
     setInput("");
     setError(null);
     setRedirectReady(false);
     setRedirectCountdown(null);
     redirectOpenedRef.current = false;
-  }, [stepIndex]);
+  }, [stepIndex, bootstrapped]);
 
   const trackingMeta = () => ({
     fbp: resolveFbp(),
     fbc: resolveFbc(),
     sourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
-    utm,
+    utm: captureLeadUtm(form.slug),
     anonId,
   });
 
-  const finishQuiz = async (nextAnswers: Record<string, string>) => {
+  const finishQuiz = async (
+    nextAnswers: Record<string, string>,
+    nextBubbles: ChatBubble[],
+  ) => {
     setBusy(true);
     try {
       const result = await completeLeadFn({
@@ -308,6 +371,14 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         trackPixel("Lead", { content_name: form.slug, value: result.score }, result.eventId);
       }
       setPhase("diagnosis");
+      persistProgress({
+        answers: nextAnswers,
+        stepIndex,
+        phase: "diagnosis",
+        leadId: result.leadId,
+        diagnosis: result.diagnosis,
+        bubbles: nextBubbles,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
     } finally {
@@ -324,6 +395,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       return;
     }
     setError(null);
+    setResumed(false);
     const stored =
       isContentOnlyType(current.type)
         ? current.type === "redirect"
@@ -331,11 +403,15 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           : "ok"
         : value.trim();
     const nextAnswers = { ...answers, [current.key]: stored };
+    const userBubble: ChatBubble = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text: displayValue,
+      time: nowTime(),
+    };
+    const nextBubbles = [...bubbles, userBubble];
     setAnswers(nextAnswers);
-    setBubbles((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), role: "user", text: displayValue, time: nowTime() },
-    ]);
+    setBubbles(nextBubbles);
     setInput("");
     setMultiSelected([]);
 
@@ -347,40 +423,65 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       }
     }
 
-    if (current.key === "whatsapp" || current.type === "tel") {
-      const phone = nextAnswers.whatsapp || (current.key === "whatsapp" ? stored : "");
-      if (phone) {
-        setBusy(true);
-        try {
-          const partial = await upsertLeadPartialFn({
-            data: {
-              slug: form.slug,
-              leadId: leadId || undefined,
-              name: nextAnswers.nome,
-              email: nextAnswers.email,
-              whatsapp: phone,
-              answers: nextAnswers,
-              ...trackingMeta(),
-            },
-          });
-          setLeadId(partial.leadId);
-          pushDataLayer("quiz_partial", { lead_id: partial.leadId });
-        } catch (e) {
+    let nextLeadId = leadId;
+    const phone =
+      nextAnswers.whatsapp ||
+      ((current.key === "whatsapp" || current.type === "tel") ? stored : "");
+    const shouldUpsertPartial =
+      Boolean(phone && phone.trim().length >= 8) &&
+      (current.key === "whatsapp" ||
+        current.type === "tel" ||
+        (hasRecoverableContact(nextAnswers) && Boolean(leadId)));
+
+    if (shouldUpsertPartial && phone) {
+      setBusy(true);
+      try {
+        const partial = await upsertLeadPartialFn({
+          data: {
+            slug: form.slug,
+            leadId: leadId || undefined,
+            name: nextAnswers.nome,
+            email: nextAnswers.email,
+            whatsapp: phone,
+            answers: nextAnswers,
+            ...trackingMeta(),
+          },
+        });
+        nextLeadId = partial.leadId;
+        setLeadId(partial.leadId);
+        pushDataLayer("quiz_partial", { lead_id: partial.leadId });
+      } catch (e) {
+        if (current.key === "whatsapp" || current.type === "tel") {
           setError(e instanceof Error ? e.message : "Erro ao salvar contato.");
           setBusy(false);
           return;
-        } finally {
-          setBusy(false);
         }
+      } finally {
+        setBusy(false);
       }
     }
 
     const branchKey = optionNextKey || current.nextKey;
     const next = resolveNextStepIndex(questions, stepIndex, branchKey);
     if (next === "end") {
-      await finishQuiz(nextAnswers);
+      persistProgress({
+        answers: nextAnswers,
+        stepIndex,
+        phase: "quiz",
+        leadId: nextLeadId,
+        bubbles: nextBubbles,
+      });
+      await finishQuiz(nextAnswers, nextBubbles);
       return;
     }
+
+    persistProgress({
+      answers: nextAnswers,
+      stepIndex: next,
+      phase: "quiz",
+      leadId: nextLeadId,
+      bubbles: nextBubbles,
+    });
     setStepIndex(next);
   };
 
@@ -413,6 +514,25 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     return () => window.clearInterval(tick);
   }, [redirectReady, phase, current, busy]);
 
+  const restartFromScratch = () => {
+    if (!window.confirm("Apagar o progresso salvo neste navegador e começar de novo?")) return;
+    clearQuizProgress(form.slug);
+    shownStepsRef.current = new Set();
+    shownKeysRef.current = new Set();
+    setFlowSession((s) => s + 1);
+    setAnswers({});
+    setBubbles([]);
+    setStepIndex(0);
+    setLeadId(null);
+    setDiagnosis(null);
+    setPhase("quiz");
+    setResumed(false);
+    setError(null);
+    setInput("");
+    setMultiSelected([]);
+    setRedirectReady(false);
+    setRedirectCountdown(null);
+  };
   const showSingleChoice =
     phase === "quiz" &&
     current &&
@@ -442,6 +562,25 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     current.type !== "confirm" &&
     !typing;
 
+  if (!bootstrapped) {
+    return (
+      <div className="leads-quiz-app sf-root sf-page-frame-light" style={themeStyle}>
+        <div className="sf-phone">
+          <header className="sf-header">
+            <div className="sf-avatar">{agentInitial}</div>
+            <div className="sf-header-text">
+              <div className="sf-header-name">{form.agentName}</div>
+              <div className="sf-header-sub">Carregando…</div>
+            </div>
+          </header>
+          <div className="sf-body">
+            <div className="sf-wallpaper" aria-hidden style={wallpaperStyle} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="leads-quiz-app sf-root sf-page-frame-light" style={themeStyle}>
       <div className="sf-phone">
@@ -469,6 +608,15 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           <div className="sf-wallpaper" aria-hidden style={wallpaperStyle} />
           <div ref={listRef} className="sf-scroll">
             <div className="sf-date-chip">Hoje</div>
+
+            {resumed ? (
+              <div className="sf-resume-banner" role="status">
+                Continuamos de onde você parou
+                <button type="button" className="sf-resume-reset" onClick={restartFromScratch}>
+                  Começar de novo
+                </button>
+              </div>
+            ) : null}
 
             {bubbles.map((b) => {
               if (b.role === "user") {
@@ -656,6 +804,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                 <a className="sf-cta wa" href={whatsappHref} target="_blank" rel="noreferrer">
                   Falar no WhatsApp
                 </a>
+                <button type="button" className="sf-restart-link" onClick={restartFromScratch}>
+                  Preencher de novo
+                </button>
               </div>
             )}
           </div>
