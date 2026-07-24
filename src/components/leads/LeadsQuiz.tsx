@@ -19,7 +19,7 @@ import {
   isContentOnlyType,
   resolveNextStepIndex,
 } from "@/lib/leads/question-types";
-import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml } from "@/lib/leads/variables";
+import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml, resolveRedirectUrl } from "@/lib/leads/variables";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -148,8 +148,11 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
   const [typing, setTyping] = useState(false);
   const [multiSelected, setMultiSelected] = useState<string[]>([]);
+  const [redirectReady, setRedirectReady] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
+  const redirectOpenedRef = useRef(false);
   const answersRef = useRef(answers);
   const listRef = useRef<HTMLDivElement>(null);
   const anonId = useMemo(() => (typeof window !== "undefined" ? getAnonId() : ""), []);
@@ -249,6 +252,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         }
       }
       if (!cancelled && msgs.length) await pushBotMessages(msgs);
+      if (!cancelled && current.type === "redirect") {
+        setRedirectReady(true);
+      }
     })();
     return () => {
       cancelled = true;
@@ -259,6 +265,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setMultiSelected([]);
     setInput("");
     setError(null);
+    setRedirectReady(false);
+    setRedirectCountdown(null);
+    redirectOpenedRef.current = false;
   }, [stepIndex]);
 
   const trackingMeta = () => ({
@@ -331,8 +340,11 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setMultiSelected([]);
 
     if (current.type === "redirect" && current.placeholder?.trim()) {
-      const url = interpolate(current.placeholder.trim(), nextAnswers);
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (!redirectOpenedRef.current) {
+        redirectOpenedRef.current = true;
+        const url = resolveRedirectUrl(current.placeholder.trim(), nextAnswers);
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
     }
 
     if (current.key === "whatsapp" || current.type === "tel") {
@@ -372,6 +384,35 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setStepIndex(next);
   };
 
+  const advanceRef = useRef(advance);
+  advanceRef.current = advance;
+
+  useEffect(() => {
+    if (!redirectReady || phase !== "quiz" || !current || current.type !== "redirect" || busy) {
+      return;
+    }
+    if (!current.placeholder?.trim()) return;
+
+    const delaySec = Math.max(0, current.redirectDelaySec ?? 3);
+    if (delaySec <= 0) {
+      void advanceRef.current("ok");
+      return;
+    }
+
+    let remaining = delaySec;
+    setRedirectCountdown(remaining);
+    const tick = window.setInterval(() => {
+      remaining -= 1;
+      setRedirectCountdown(remaining);
+      if (remaining <= 0) {
+        window.clearInterval(tick);
+        void advanceRef.current("ok");
+      }
+    }, 1000);
+
+    return () => window.clearInterval(tick);
+  }, [redirectReady, phase, current, busy]);
+
   const showSingleChoice =
     phase === "quiz" &&
     current &&
@@ -383,9 +424,12 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     !busy;
   const showMulti =
     phase === "quiz" && current?.type === "multi" && !typing && !busy;
+  const showRedirectAction =
+    phase === "quiz" && current?.type === "redirect" && redirectReady && !typing && !busy;
   const showContentAction =
     phase === "quiz" &&
     current &&
+    current.type !== "redirect" &&
     (isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm") &&
     !typing &&
     !busy;
@@ -526,6 +570,22 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                   onClick={() => advance(multiSelected.join(" | "))}
                 >
                   Confirmar seleção
+                </button>
+              </div>
+            )}
+
+            {showRedirectAction && current && (
+              <div className="sf-options">
+                {redirectCountdown != null && redirectCountdown > 0 ? (
+                  <p className="sf-lgpd-links">Abrindo em {redirectCountdown}s…</p>
+                ) : null}
+                <button
+                  type="button"
+                  className="sf-cta"
+                  disabled={busy}
+                  onClick={() => advance("ok")}
+                >
+                  Abrir agora
                 </button>
               </div>
             )}

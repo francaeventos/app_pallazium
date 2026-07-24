@@ -1,9 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import {
-  LeadFormEditorChrome,
-  LeadFormEditorProvider,
-} from "@/components/leads/form-editor/LeadFormEditor";
+import { LeadFormEditorChrome } from "@/components/leads/form-editor/LeadFormEditor";
+import { LeadFormEditorProvider } from "@/components/leads/form-editor/editor-context";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/leads/formulario")({

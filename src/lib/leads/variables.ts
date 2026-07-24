@@ -85,3 +85,18 @@ export const CORE_VARIABLE_CHIPS = [
   { token: "{{email}}", label: "email" },
   { token: "{{br}}", label: "quebra de linha" },
 ] as const;
+
+/** Monta URL de redirect com variáveis ({{br}} → %0A para WhatsApp). */
+export function resolveRedirectUrl(
+  template: string,
+  answers: Record<string, string>,
+) {
+  const raw = interpolateLeadTemplate(template, buildLeadTemplateVars(answers));
+  return raw.replace(/\r?\n/g, "%0A");
+}
+
+/** Modelo pronto de link WhatsApp (Ativa Dash). */
+export function defaultWhatsAppRedirectTemplate(phoneDigits: string) {
+  const phone = phoneDigits.replace(/\D/g, "") || "5511999999999";
+  return `https://wa.me/${phone}?text=Olá, eu sou {{nome}} e preciso de um orçamento.{{br}}Telefone: {{telefone}}{{br}}E-mail: {{email}}`;
+}

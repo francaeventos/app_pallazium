@@ -97,7 +97,7 @@ export function defaultPromptForType(type: LeadQuestionTypeValue) {
     case "confirm":
       return "Confere se está tudo certo?";
     case "redirect":
-      return "Vou te redirecionar agora.";
+      return "✅ Obrigado pelas informações!";
     case "lgpd":
       return "Você aceita a política de privacidade para continuar?";
     case "number":

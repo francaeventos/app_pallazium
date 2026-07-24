@@ -1,37 +1,27 @@
 import {
   Link,
-  useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 import {
-  deleteLeadOptionFn,
-  deleteLeadQuestionFn,
-  deleteLeadRuleFn,
-  getAdminLeadFormFn,
-  reorderLeadQuestionsFn,
-  saveLeadOptionFn,
-  saveLeadQuestionFn,
-  saveLeadRuleFn,
   testLeadWebhookFn,
   testMetaCapiFn,
-  updateLeadFormFn,
-  updateLeadIntegrationsFn,
 } from "@/fns/leads/admin";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { StorageImageInput } from "@/components/StorageImageInput";
-import { VariableChips } from "@/components/leads/form-editor/VariableChips";
+import {
+  Field,
+  parseBotMessages,
+  useLeadFormEditor,
+  type QuestionDraft,
+  type QuestionType,
+} from "@/components/leads/form-editor/editor-context";
 import { MessageFormatBar } from "@/components/leads/form-editor/MessageFormatToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,20 +38,18 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LEAD_PRIMARY_PRESETS, darkenHex } from "@/lib/leads/theme";
 import { temperatureLabel, type ConversionMinTemperature } from "@/lib/leads/score";
 import {
   BLOCK_MENU,
   FLOW_END,
   TYPE_LABEL,
   defaultOptionsForType,
-  defaultPromptForType,
   hasChoiceOptions,
   isContentOnlyType,
   resolveNextStepIndex,
-  type LeadQuestionTypeValue,
 } from "@/lib/leads/question-types";
-import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, formatLeadMessageHtml, interpolateLeadTemplate } from "@/lib/leads/variables";
+import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, defaultWhatsAppRedirectTemplate, formatLeadMessageHtml, interpolateLeadTemplate, resolveRedirectUrl } from "@/lib/leads/variables";
+import { VariableChips } from "@/components/leads/form-editor/VariableChips";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -91,127 +79,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type FormData = Awaited<ReturnType<typeof getAdminLeadFormFn>>["form"];
-type Question = FormData["questions"][number];
-type Rule = FormData["rules"][number];
-type QuestionType = LeadQuestionTypeValue;
-
-type QuestionDraft = {
-  id?: string;
-  key: string;
-  type: QuestionType;
-  label: string;
-  prompt: string;
-  bot_messages_text: string;
-  placeholder: string;
-  next_key: string;
-  sort_order: number;
-  required: boolean;
-  score_bonus: number;
-  active: boolean;
-  options: Array<{
-    id?: string;
-    label: string;
-    score_points: number;
-    next_key: string;
-    sort_order: number;
-    active: boolean;
-    _deleted?: boolean;
-  }>;
-};
-
-type RuleDraft = {
-  id?: string;
-  title: string;
-  body: string;
-  match_key: string;
-  match_value: string;
-  sort_order: number;
-  is_fallback: boolean;
-  active: boolean;
-};
-
-type MetaState = {
-  title: string;
-  brand_name: string;
-  agent_name: string;
-  agent_title: string;
-  agent_avatar_url: string;
-  primary_color: string;
-  wallpaper_url: string;
-  wallpaper_dark_url: string;
-  header_subtitle: string;
-  whatsapp_destination: string;
-  whatsapp_message: string;
-  qualification_threshold: number;
-  score_cold_max: number;
-  score_warm_max: number;
-  score_hot_max: number;
-  bot_delay_ms: number;
-  seo_title: string;
-  seo_description: string;
-  page_bg_light: string;
-  page_bg_dark: string;
-  active: boolean;
-};
-
-type IntegrationsState = {
-  gtm_id: string;
-  ga_measurement_id: string;
-  google_ads_id: string;
-  google_ads_conversion_label: string;
-  meta_pixel_id: string;
-  meta_access_token: string;
-  meta_test_event_code: string;
-  webhook_url: string;
-  webhook_secret: string;
-  conversion_min_temperature: ConversionMinTemperature;
-  pixel_enabled: boolean;
-  gtm_enabled: boolean;
-  capi_enabled: boolean;
-  webhook_enabled: boolean;
-  has_meta_token: boolean;
-  has_webhook_secret: boolean;
-};
-
-type LeadFormEditorContextValue = {
-  form: FormData;
-  meta: MetaState;
-  setMeta: Dispatch<SetStateAction<MetaState>>;
-  integrations: IntegrationsState;
-  setIntegrations: Dispatch<SetStateAction<IntegrationsState>>;
-  questions: QuestionDraft[];
-  setQuestions: Dispatch<SetStateAction<QuestionDraft[]>>;
-  rules: RuleDraft[];
-  setRules: Dispatch<SetStateAction<RuleDraft[]>>;
-  expandedId: string | null;
-  setExpandedId: Dispatch<SetStateAction<string | null>>;
-  expandedRuleId: string | null;
-  setExpandedRuleId: Dispatch<SetStateAction<string | null>>;
-  savingMeta: boolean;
-  savingQuestionId: string | null;
-  savingRuleId: string | null;
-  savingIntegrations: boolean;
-  maxScoreHint: number;
-  questionKeys: string[];
-  activeQuestions: number;
-  activeRules: number;
-  primaryDark: string;
-  agentInitial: string;
-  saveMeta: () => Promise<void>;
-  saveIntegrations: () => Promise<void>;
-  updateQuestionLocal: (index: number, patch: Partial<QuestionDraft>) => void;
-  saveQuestion: (index: number) => Promise<void>;
-  addQuestion: (type?: QuestionType) => void;
-  removeQuestion: (index: number) => Promise<void>;
-  moveQuestion: (index: number, dir: -1 | 1) => Promise<void>;
-  saveRule: (index: number) => Promise<void>;
-  addRule: () => void;
-  removeRule: (index: number) => Promise<void>;
-};
-
-const LeadFormEditorContext = createContext<LeadFormEditorContextValue | null>(null);
-
 const NAV_ITEMS = [
   { to: "/admin/leads/formulario/score", label: "Score", icon: Gauge },
   { to: "/admin/leads/formulario/visual", label: "Visual", icon: Palette },
@@ -223,31 +90,6 @@ const NAV_ITEMS = [
 const navPillClass =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground";
 const navPillActiveClass = "bg-background text-foreground shadow-sm";
-
-function toQuestionDraft(q: Question): QuestionDraft {
-  return {
-    id: q.id,
-    key: q.key,
-    type: q.type as QuestionType,
-    label: q.label || "",
-    prompt: q.prompt || "",
-    bot_messages_text: (q.bot_messages || []).join("\n\n"),
-    placeholder: q.placeholder || "",
-    next_key: q.next_key || "",
-    sort_order: q.sort_order,
-    required: q.required,
-    score_bonus: q.score_bonus,
-    active: q.active,
-    options: q.options.map((o) => ({
-      id: o.id,
-      label: o.label,
-      score_points: o.score_points,
-      next_key: o.next_key || "",
-      sort_order: o.sort_order,
-      active: o.active,
-    })),
-  };
-}
 
 function NextKeySelect({
   value,
@@ -280,504 +122,6 @@ function NextKeySelect({
   );
 }
 
-function toRuleDraft(r: Rule): RuleDraft {
-  return {
-    id: r.id,
-    title: r.title,
-    body: r.body,
-    match_key: r.match_key || "",
-    match_value: r.match_value || "",
-    sort_order: r.sort_order,
-    is_fallback: r.is_fallback,
-    active: r.active,
-  };
-}
-
-function parseBotMessages(text: string) {
-  return text
-    .split(/\n\s*\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-export function useLeadFormEditor() {
-  const ctx = useContext(LeadFormEditorContext);
-  if (!ctx) {
-    throw new Error("useLeadFormEditor must be used within LeadFormEditorProvider");
-  }
-  return ctx;
-}
-
-export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
-  const [form, setForm] = useState<FormData | null>(null);
-  const [meta, setMeta] = useState<MetaState>({
-    title: "",
-    brand_name: "",
-    agent_name: "",
-    agent_title: "",
-    agent_avatar_url: "",
-    primary_color: "#128C7E",
-    wallpaper_url: "",
-    wallpaper_dark_url: "",
-    header_subtitle: "",
-    whatsapp_destination: "",
-    whatsapp_message: "",
-    qualification_threshold: 50,
-    score_cold_max: 24,
-    score_warm_max: 49,
-    score_hot_max: 74,
-    bot_delay_ms: 850,
-    seo_title: "",
-    seo_description: "",
-    page_bg_light: "#1A5C4F",
-    page_bg_dark: "#0B141A",
-    active: true,
-  });
-  const [integrations, setIntegrations] = useState<IntegrationsState>({
-    gtm_id: "",
-    ga_measurement_id: "",
-    google_ads_id: "",
-    google_ads_conversion_label: "",
-    meta_pixel_id: "",
-    meta_access_token: "",
-    meta_test_event_code: "",
-    webhook_url: "",
-    webhook_secret: "",
-    conversion_min_temperature: "quente",
-    pixel_enabled: true,
-    gtm_enabled: true,
-    capi_enabled: true,
-    webhook_enabled: true,
-    has_meta_token: false,
-    has_webhook_secret: false,
-  });
-  const [questions, setQuestions] = useState<QuestionDraft[]>([]);
-  const [rules, setRules] = useState<RuleDraft[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
-  const [savingMeta, setSavingMeta] = useState(false);
-  const [savingQuestionId, setSavingQuestionId] = useState<string | null>(null);
-  const [savingRuleId, setSavingRuleId] = useState<string | null>(null);
-  const [savingIntegrations, setSavingIntegrations] = useState(false);
-
-  const load = async () => {
-    try {
-      const { form: data } = await getAdminLeadFormFn({ data: { slug: "leads" } });
-      setForm(data);
-      setMeta({
-        title: data.title,
-        brand_name: data.brand_name,
-        agent_name: data.agent_name,
-        agent_title: data.agent_title || "",
-        agent_avatar_url: data.agent_avatar_url || "",
-        primary_color: data.primary_color || "#128C7E",
-        wallpaper_url: data.wallpaper_url || "",
-        wallpaper_dark_url: data.wallpaper_dark_url || "",
-        header_subtitle: data.header_subtitle || "",
-        whatsapp_destination: data.whatsapp_destination,
-        whatsapp_message: data.whatsapp_message || "",
-        qualification_threshold: data.qualification_threshold,
-        score_cold_max: data.score_cold_max,
-        score_warm_max: data.score_warm_max,
-        score_hot_max: data.score_hot_max,
-        bot_delay_ms: data.bot_delay_ms,
-        seo_title: data.seo_title || "",
-        seo_description: data.seo_description || "",
-        page_bg_light: data.page_bg_light || "#1A5C4F",
-        page_bg_dark: data.page_bg_dark || "#0B141A",
-        active: data.active,
-      });
-      setIntegrations({
-        gtm_id: data.integrations.gtm_id || "",
-        ga_measurement_id: data.integrations.ga_measurement_id || "",
-        google_ads_id: data.integrations.google_ads_id || "",
-        google_ads_conversion_label: data.integrations.google_ads_conversion_label || "",
-        meta_pixel_id: data.integrations.meta_pixel_id || "",
-        meta_access_token: "",
-        meta_test_event_code: data.integrations.meta_test_event_code || "",
-        webhook_url: data.integrations.webhook_url || "",
-        webhook_secret: "",
-        conversion_min_temperature:
-          (data.integrations.conversion_min_temperature as ConversionMinTemperature) || "quente",
-        pixel_enabled: data.integrations.pixel_enabled,
-        gtm_enabled: data.integrations.gtm_enabled,
-        capi_enabled: data.integrations.capi_enabled,
-        webhook_enabled: data.integrations.webhook_enabled,
-        has_meta_token: data.integrations.has_meta_token,
-        has_webhook_secret: data.integrations.has_webhook_secret,
-      });
-      const drafts = data.questions.map(toQuestionDraft);
-      setQuestions(drafts);
-      setRules(data.rules.map(toRuleDraft));
-      if (!expandedId && drafts[0]?.id) setExpandedId(drafts[0].id);
-      if (!expandedRuleId && data.rules[0]?.id) setExpandedRuleId(data.rules[0].id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao carregar formulário.");
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const maxScoreHint = useMemo(() => {
-    let max = 0;
-    for (const q of questions) {
-      if (!q.active) continue;
-      const opts = q.options.filter((o) => !o._deleted && o.active);
-      if (q.type === "multi") {
-        max += opts.reduce((sum, o) => sum + o.score_points, 0);
-      } else if (hasChoiceOptions(q.type)) {
-        max += Math.max(0, ...opts.map((o) => o.score_points));
-      } else {
-        max += q.score_bonus;
-      }
-    }
-    return max;
-  }, [questions]);
-
-  const questionKeys = useMemo(
-    () => questions.filter((q) => q.key.trim()).map((q) => q.key.trim()),
-    [questions],
-  );
-
-  const activeQuestions = questions.filter((q) => q.active).length;
-  const activeRules = rules.filter((r) => r.active).length;
-  const primaryDark = darkenHex(meta.primary_color);
-  const agentInitial = (meta.agent_name || "B").trim().slice(0, 1).toUpperCase();
-
-  const saveMeta = async () => {
-    if (!form) return;
-    setSavingMeta(true);
-    try {
-      await updateLeadFormFn({
-        data: {
-          id: form.id,
-          title: meta.title,
-          brand_name: meta.brand_name,
-          agent_name: meta.agent_name,
-          agent_title: meta.agent_title || null,
-          agent_avatar_url: meta.agent_avatar_url || null,
-          primary_color: meta.primary_color,
-          wallpaper_url: meta.wallpaper_url || null,
-          wallpaper_dark_url: meta.wallpaper_dark_url || null,
-          header_subtitle: meta.header_subtitle || null,
-          whatsapp_destination: meta.whatsapp_destination,
-          whatsapp_message: meta.whatsapp_message || null,
-          score_cold_max: meta.score_cold_max,
-          score_warm_max: meta.score_warm_max,
-          score_hot_max: meta.score_hot_max,
-          bot_delay_ms: meta.bot_delay_ms,
-          seo_title: meta.seo_title || null,
-          seo_description: meta.seo_description || null,
-          page_bg_light: meta.page_bg_light || null,
-          page_bg_dark: meta.page_bg_dark || null,
-          agenda_enabled: false,
-          active: meta.active,
-        },
-      });
-      toast.success("Configuração salva");
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar.");
-    } finally {
-      setSavingMeta(false);
-    }
-  };
-
-  const saveIntegrations = async () => {
-    if (!form) return;
-    setSavingIntegrations(true);
-    try {
-      await updateLeadIntegrationsFn({
-        data: {
-          form_id: form.id,
-          gtm_id: integrations.gtm_id.trim() || null,
-          ga_measurement_id: integrations.ga_measurement_id.trim() || null,
-          google_ads_id: integrations.google_ads_id.trim() || null,
-          google_ads_conversion_label: integrations.google_ads_conversion_label.trim() || null,
-          meta_pixel_id: integrations.meta_pixel_id.trim() || null,
-          meta_access_token: integrations.meta_access_token.trim() || undefined,
-          meta_test_event_code: integrations.meta_test_event_code.trim() || null,
-          webhook_url: integrations.webhook_url.trim() || null,
-          webhook_secret: integrations.webhook_secret.trim() || undefined,
-          conversion_min_temperature: integrations.conversion_min_temperature,
-          pixel_enabled: integrations.pixel_enabled,
-          gtm_enabled: integrations.gtm_enabled,
-          capi_enabled: integrations.capi_enabled,
-          webhook_enabled: integrations.webhook_enabled,
-        },
-      });
-      toast.success("Integrações salvas — já valem em /leads");
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar integrações.");
-    } finally {
-      setSavingIntegrations(false);
-    }
-  };
-
-  const updateQuestionLocal = (index: number, patch: Partial<QuestionDraft>) => {
-    setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
-  };
-
-  const saveQuestion = async (index: number) => {
-    if (!form) return;
-    const q = questions[index];
-    if (!q.key.trim()) {
-      toast.error("Informe a chave da pergunta (ex.: investimento).");
-      return;
-    }
-    const savingKey = q.id || q.key;
-    setSavingQuestionId(savingKey);
-    try {
-      await saveLeadQuestionFn({
-        data: {
-          id: q.id,
-          form_id: form.id,
-          key: q.key.trim(),
-          type: q.type,
-          label: q.label || null,
-          prompt: q.prompt || null,
-          bot_messages: parseBotMessages(q.bot_messages_text),
-          placeholder: q.placeholder || null,
-          next_key: q.next_key || null,
-          sort_order: index,
-          required: q.required,
-          score_bonus: q.score_bonus,
-          active: q.active,
-        },
-      });
-
-      const { form: refreshed } = await getAdminLeadFormFn({ data: { slug: "leads" } });
-      const saved = refreshed.questions.find((x) => x.key === q.key.trim());
-      if (!saved) throw new Error("Pergunta salva, mas não encontrada.");
-
-      for (const opt of q.options) {
-        if (opt._deleted && opt.id) {
-          await deleteLeadOptionFn({ data: { id: opt.id } });
-          continue;
-        }
-        if (opt._deleted) continue;
-        if (!opt.label.trim()) continue;
-        await saveLeadOptionFn({
-          data: {
-            id: opt.id,
-            question_id: saved.id,
-            label: opt.label.trim(),
-            score_points: Number(opt.score_points) || 0,
-            next_key: opt.next_key || null,
-            sort_order: opt.sort_order,
-            active: opt.active,
-          },
-        });
-      }
-
-      toast.success(`Bloco “${q.key}” salvo`);
-      await load();
-      setExpandedId(saved.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar pergunta.");
-    } finally {
-      setSavingQuestionId(null);
-    }
-  };
-
-  const addQuestion = (type: QuestionType = "choice") => {
-    const key = `bloco_${Date.now().toString().slice(-4)}`;
-    const draft: QuestionDraft = {
-      key,
-      type,
-      label: "",
-      prompt: defaultPromptForType(type),
-      bot_messages_text: type === "message" ? "Olá! 👋" : "",
-      placeholder: type === "redirect" ? "https://" : "",
-      next_key: "",
-      sort_order: questions.length,
-      required: type !== "message" && type !== "redirect",
-      score_bonus: 0,
-      active: true,
-      options: defaultOptionsForType(type),
-    };
-    setQuestions((prev) => [...prev, draft]);
-    setExpandedId(key);
-  };
-
-  const removeQuestion = async (index: number) => {
-    const q = questions[index];
-    if (!window.confirm(`Remover o bloco “${q.key}”?`)) return;
-    if (!q.id) {
-      setQuestions((prev) => prev.filter((_, i) => i !== index));
-      return;
-    }
-    try {
-      await deleteLeadQuestionFn({ data: { id: q.id } });
-      toast.success("Bloco removido");
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao remover.");
-    }
-  };
-
-  const moveQuestion = async (index: number, dir: -1 | 1) => {
-    const next = index + dir;
-    if (next < 0 || next >= questions.length) return;
-    const ordered = [...questions];
-    const tmp = ordered[index];
-    ordered[index] = ordered[next];
-    ordered[next] = tmp;
-    setQuestions(ordered);
-
-    if (!form) return;
-    const ids = ordered.map((q) => q.id).filter(Boolean) as string[];
-    if (ids.length !== ordered.length) {
-      toast.message("Salve os blocos novos antes de reordenar no banco.");
-      return;
-    }
-    try {
-      await reorderLeadQuestionsFn({ data: { form_id: form.id, ordered_ids: ids } });
-      toast.success("Ordem atualizada");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao reordenar.");
-      load();
-    }
-  };
-
-  const saveRule = async (index: number) => {
-    if (!form) return;
-    const r = rules[index];
-    const savingKey = r.id || `new-${index}`;
-    setSavingRuleId(savingKey);
-    try {
-      await saveLeadRuleFn({
-        data: {
-          id: r.id,
-          form_id: form.id,
-          title: r.title,
-          body: r.body,
-          match_key: r.match_key || null,
-          match_value: r.match_value || null,
-          sort_order: index,
-          is_fallback: r.is_fallback,
-          active: r.active,
-        },
-      });
-      toast.success("Regra de diagnóstico salva");
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar regra.");
-    } finally {
-      setSavingRuleId(null);
-    }
-  };
-
-  const addRule = () => {
-    const nextIndex = rules.length;
-    setRules((prev) => [
-      ...prev,
-      {
-        title: "Novo diagnóstico",
-        body: "Texto do diagnóstico…",
-        match_key: questionKeys[0] || "tipoEvento",
-        match_value: "",
-        sort_order: prev.length,
-        is_fallback: false,
-        active: true,
-      },
-    ]);
-    setExpandedRuleId(`rule-${nextIndex}`);
-    void navigate({ to: "/admin/leads/formulario/diagnostico" });
-  };
-
-  const removeRule = async (index: number) => {
-    const r = rules[index];
-    if (!window.confirm("Remover esta regra?")) return;
-    if (!r.id) {
-      setRules((prev) => prev.filter((_, i) => i !== index));
-      return;
-    }
-    try {
-      await deleteLeadRuleFn({ data: { id: r.id } });
-      toast.success("Regra removida");
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao remover regra.");
-    }
-  };
-
-  if (!form) {
-    return (
-      <div className="mx-auto max-w-7xl space-y-4 p-4 lg:p-8">
-        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-80 animate-pulse rounded bg-muted" />
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-          <div className="h-96 animate-pulse rounded-2xl bg-muted" />
-          <div className="h-96 animate-pulse rounded-2xl bg-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  const value: LeadFormEditorContextValue = {
-    form,
-    meta,
-    setMeta,
-    integrations,
-    setIntegrations,
-    questions,
-    setQuestions,
-    rules,
-    setRules,
-    expandedId,
-    setExpandedId,
-    expandedRuleId,
-    setExpandedRuleId,
-    savingMeta,
-    savingQuestionId,
-    savingRuleId,
-    savingIntegrations,
-    maxScoreHint,
-    questionKeys,
-    activeQuestions,
-    activeRules,
-    primaryDark,
-    agentInitial,
-    saveMeta,
-    saveIntegrations,
-    updateQuestionLocal,
-    saveQuestion,
-    addQuestion,
-    removeQuestion,
-    moveQuestion,
-    saveRule,
-    addRule,
-    removeRule,
-  };
-
-  return (
-    <LeadFormEditorContext.Provider value={value}>{children}</LeadFormEditorContext.Provider>
-  );
-}
-
-export function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
-  );
-}
 
 export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
   const {
@@ -1064,6 +408,170 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
 
                   {open && (
                     <CardContent className="space-y-4 border-t pt-4">
+                      {q.type === "redirect" ? (
+                        <div className="space-y-4">
+                          <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+                            <Field label="Título">
+                              <Input
+                                value={q.prompt}
+                                placeholder="✅ Obrigado pelas informações!"
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, { prompt: e.target.value })
+                                }
+                              />
+                              <VariableChips
+                                tokens={CORE_VARIABLE_CHIPS}
+                                onInsert={(token) =>
+                                  updateQuestionLocal(index, {
+                                    prompt: q.prompt ? `${q.prompt} ${token}` : token,
+                                  })
+                                }
+                              />
+                            </Field>
+                            <Field label="Pontos (+/-)">
+                              <Input
+                                type="number"
+                                value={q.score_bonus}
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, {
+                                    score_bonus: Number(e.target.value) || 0,
+                                  })
+                                }
+                              />
+                            </Field>
+                          </div>
+
+                          <Field
+                            label="Descrição"
+                            hint="Mensagens do bot antes do redirecionamento (blocos separados por linha em branco)."
+                          >
+                            <Textarea
+                              value={q.bot_messages_text}
+                              rows={4}
+                              className="font-mono text-xs"
+                              placeholder="Em breve te chamamos no WhatsApp…"
+                              onChange={(e) =>
+                                updateQuestionLocal(index, {
+                                  bot_messages_text: e.target.value,
+                                })
+                              }
+                            />
+                            <MessageFormatBar
+                              value={q.bot_messages_text}
+                              onChange={(bot_messages_text) =>
+                                updateQuestionLocal(index, { bot_messages_text })
+                              }
+                              tokens={CORE_VARIABLE_CHIPS}
+                            />
+                          </Field>
+
+                          <Field label="URL de redirecionamento">
+                            <VariableChips
+                              tokens={CORE_VARIABLE_CHIPS}
+                              onInsert={(token) =>
+                                updateQuestionLocal(index, {
+                                  placeholder: q.placeholder
+                                    ? `${q.placeholder}${token}`
+                                    : token,
+                                })
+                              }
+                            />
+                            <Textarea
+                              value={q.placeholder}
+                              rows={4}
+                              className="mt-2 font-mono text-xs"
+                              placeholder="https://wa.me/55...?text=Olá, eu sou {{nome}}..."
+                              onChange={(e) =>
+                                updateQuestionLocal(index, { placeholder: e.target.value })
+                              }
+                            />
+                          </Field>
+
+                          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium">Modelo pronto (selecionável)</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  updateQuestionLocal(index, {
+                                    placeholder: defaultWhatsAppRedirectTemplate(
+                                      meta.whatsapp_destination,
+                                    ),
+                                  })
+                                }
+                              >
+                                Usar / copiar modelo
+                              </Button>
+                            </div>
+                            <p className="break-all font-mono text-[11px] text-muted-foreground">
+                              {defaultWhatsAppRedirectTemplate(meta.whatsapp_destination)}
+                            </p>
+                          </div>
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field
+                              label="Atraso do redirecionamento (segundos)"
+                              hint="0 = imediato. Ex.: 3 = mostra a mensagem e só depois abre o link."
+                            >
+                              <Input
+                                type="number"
+                                min={0}
+                                max={120}
+                                value={q.redirect_delay_sec}
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, {
+                                    redirect_delay_sec: Math.max(
+                                      0,
+                                      Math.min(120, Number(e.target.value) || 0),
+                                    ),
+                                  })
+                                }
+                              />
+                            </Field>
+                            <div className="flex flex-wrap items-end gap-6 pb-1">
+                              <label className="flex items-center gap-2 text-sm">
+                                <Switch
+                                  checked={q.active}
+                                  onCheckedChange={(v) =>
+                                    updateQuestionLocal(index, { active: v })
+                                  }
+                                />
+                                Ativa
+                              </label>
+                            </div>
+                          </div>
+
+                          <details className="rounded-lg border px-3 py-2 text-sm">
+                            <summary className="cursor-pointer text-muted-foreground">
+                              Avançado (chave e saída)
+                            </summary>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <Field label="Chave (interna)">
+                                <Input
+                                  value={q.key}
+                                  onChange={(e) =>
+                                    updateQuestionLocal(index, {
+                                      key: e.target.value.replace(/\s+/g, ""),
+                                    })
+                                  }
+                                />
+                              </Field>
+                              <Field label="Condição de saída">
+                                <NextKeySelect
+                                  value={q.next_key}
+                                  currentKey={q.key}
+                                  questionKeys={questionKeys}
+                                  onChange={(next_key) =>
+                                    updateQuestionLocal(index, { next_key })
+                                  }
+                                />
+                              </Field>
+                            </div>
+                          </details>
+                        </div>
+                      ) : (
                       <div className="grid gap-4 sm:grid-cols-2">
                         <Field label="Chave (interna, sem espaços)">
                           <Input
@@ -1108,26 +616,14 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                             onChange={(e) => updateQuestionLocal(index, { label: e.target.value })}
                           />
                         </Field>
-                        {q.type === "redirect" ? (
-                          <Field label="URL de redirecionamento">
-                            <Input
-                              value={q.placeholder}
-                              placeholder="https://wa.me/..."
-                              onChange={(e) =>
-                                updateQuestionLocal(index, { placeholder: e.target.value })
-                              }
-                            />
-                          </Field>
-                        ) : (
-                          <Field label="Placeholder">
-                            <Input
-                              value={q.placeholder}
-                              onChange={(e) =>
-                                updateQuestionLocal(index, { placeholder: e.target.value })
-                              }
-                            />
-                          </Field>
-                        )}
+                        <Field label="Placeholder">
+                          <Input
+                            value={q.placeholder}
+                            onChange={(e) =>
+                              updateQuestionLocal(index, { placeholder: e.target.value })
+                            }
+                          />
+                        </Field>
                         <div className="sm:col-span-2">
                           <Field label="Pergunta no chat (prompt)">
                             <Textarea
@@ -1202,6 +698,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                           </label>
                         </div>
                       </div>
+                      )}
 
                       {hasChoiceOptions(q.type) && (
                         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
@@ -1399,262 +896,6 @@ export function LeadFormScorePanel() {
         </Button>
       </CardContent>
     </Card>
-  );
-}
-
-export function LeadFormVisualPanel() {
-  const { meta, setMeta, maxScoreHint, primaryDark, agentInitial, savingMeta, saveMeta } =
-    useLeadFormEditor();
-
-  return (
-    <div className="space-y-4">
-      <Card className="border-gold/15 shadow-soft">
-        <CardHeader>
-          <CardTitle className="font-serif text-xl">Cor e imagens</CardTitle>
-          <CardDescription>
-            Avatar e fundos. O app escolhe claro/escuro pelo tema do celular do visitante.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="space-y-3">
-            <Label>Cor primária</Label>
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                type="color"
-                value={meta.primary_color}
-                onChange={(e) => setMeta({ ...meta, primary_color: e.target.value })}
-                className="h-11 w-14 cursor-pointer rounded-lg border bg-transparent p-1"
-              />
-              <Input
-                className="max-w-[140px] font-mono uppercase"
-                value={meta.primary_color}
-                onChange={(e) => setMeta({ ...meta, primary_color: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {LEAD_PRIMARY_PRESETS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  title={color}
-                  aria-label={`Usar cor ${color}`}
-                  onClick={() => setMeta({ ...meta, primary_color: color })}
-                  className={`h-8 w-8 rounded-full border-2 shadow ring-1 ring-black/10 transition ${
-                    meta.primary_color.toLowerCase() === color.toLowerCase()
-                      ? "border-foreground scale-110"
-                      : "border-white"
-                  }`}
-                  style={{ background: color }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border shadow-md">
-            <div className="border-b bg-muted/30 px-3 py-2">
-              <p className="text-sm font-medium">Preview ao vivo</p>
-              <p className="text-xs text-muted-foreground">
-                Header, chat e fundo da página (claro).
-              </p>
-            </div>
-            <div className="p-3 sm:p-4" style={{ background: meta.page_bg_light || "#1A5C4F" }}>
-              <div className="overflow-hidden rounded-xl shadow-lg">
-                <div style={{ background: meta.wallpaper_url ? undefined : "#e5ddd5" }}>
-                  <div
-                    className="flex items-center gap-3 px-3 py-3 text-white"
-                    style={{
-                      background: `linear-gradient(180deg, ${meta.primary_color} 0%, ${primaryDark} 100%)`,
-                    }}
-                  >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-sm font-semibold ring-2 ring-white/30">
-                      {meta.agent_avatar_url ? (
-                        <img
-                          src={meta.agent_avatar_url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        agentInitial
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {meta.agent_name || "Agente"}
-                      </p>
-                      <p className="truncate text-[11px] opacity-80">
-                        {meta.header_subtitle || meta.agent_title || "Estou online"}
-                        {meta.brand_name ? ` · ${meta.brand_name}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="relative min-h-[140px] p-3"
-                    style={
-                      meta.wallpaper_url
-                        ? {
-                            backgroundImage: `url(${meta.wallpaper_url})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
-                  >
-                    <div className="absolute inset-0 bg-black/5" />
-                    <div className="relative space-y-2">
-                      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-xs shadow-sm">
-                        Olá! Eu sou a {meta.agent_name || "assistente"} do{" "}
-                        {meta.brand_name || "espaço"}.
-                      </div>
-                      <div
-                        className="ml-auto max-w-[70%] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-white shadow-sm"
-                        style={{ background: meta.primary_color }}
-                      >
-                        Sim, quero!
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="border-t bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              Quiz pode somar até{" "}
-              <span className="font-medium text-foreground">{maxScoreHint} pts</span>.
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StorageImageInput
-              bucket="leads"
-              folder="avatars"
-              name="agent_avatar"
-              label="Avatar"
-              hideFolderHint
-              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
-              defaultValue={meta.agent_avatar_url}
-              onValueChange={(url) => setMeta({ ...meta, agent_avatar_url: url })}
-            />
-            <StorageImageInput
-              bucket="leads"
-              folder="wallpapers"
-              name="wallpaper_light"
-              label="Fundo claro"
-              hideFolderHint
-              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
-              defaultValue={meta.wallpaper_url}
-              onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
-            />
-            <StorageImageInput
-              bucket="leads"
-              folder="wallpapers"
-              name="wallpaper_dark"
-              label="Fundo escuro"
-              hideFolderHint
-              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
-              defaultValue={meta.wallpaper_dark_url}
-              onValueChange={(url) => setMeta({ ...meta, wallpaper_dark_url: url })}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Fundo da página (claro)</Label>
-              <input
-                type="color"
-                value={meta.page_bg_light}
-                onChange={(e) => setMeta({ ...meta, page_bg_light: e.target.value })}
-                className="h-10 w-full cursor-pointer rounded-lg border bg-transparent p-1"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Fundo da página (escuro)</Label>
-              <input
-                type="color"
-                value={meta.page_bg_dark}
-                onChange={(e) => setMeta({ ...meta, page_bg_dark: e.target.value })}
-                className="h-10 w-full cursor-pointer rounded-lg border bg-transparent p-1"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-gold/15 shadow-soft">
-        <CardHeader>
-          <CardTitle className="font-serif text-xl">SEO</CardTitle>
-          <CardDescription>
-            Título e descrição usados na aba do navegador e em compartilhamentos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Field label={`Título SEO (${meta.seo_title.length}/60)`}>
-            <Input
-              maxLength={60}
-              value={meta.seo_title}
-              onChange={(e) => setMeta({ ...meta, seo_title: e.target.value })}
-              placeholder="Diagnóstico do evento — Espaço Pallazium"
-            />
-          </Field>
-          <Field label={`Descrição SEO (${meta.seo_description.length}/160)`}>
-            <Textarea
-              rows={3}
-              maxLength={160}
-              value={meta.seo_description}
-              onChange={(e) => setMeta({ ...meta, seo_description: e.target.value })}
-              placeholder="Conheça a Bella Festa e prepare uma proposta personalizada para o seu evento."
-            />
-          </Field>
-        </CardContent>
-      </Card>
-
-      <Card className="border-gold/15 shadow-soft">
-        <CardHeader>
-          <CardTitle className="font-serif text-xl">WhatsApp</CardTitle>
-          <CardDescription>Para onde o visitante é enviado ao final do chat.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Field
-            label="Número do WhatsApp da equipe"
-            hint="Só números, com DDI. Ex.: 5511999999999."
-          >
-            <Input
-              value={meta.whatsapp_destination}
-              placeholder="5511999999999"
-              onChange={(e) => setMeta({ ...meta, whatsapp_destination: e.target.value })}
-            />
-          </Field>
-          <div className="space-y-1.5">
-            <Label>Mensagem pronta do WhatsApp</Label>
-            <Input
-              value={meta.whatsapp_message}
-              onChange={(e) => setMeta({ ...meta, whatsapp_message: e.target.value })}
-            />
-            <VariableChips
-              tokens={CORE_VARIABLE_CHIPS}
-              onInsert={(token) =>
-                setMeta({
-                  ...meta,
-                  whatsapp_message: meta.whatsapp_message
-                    ? `${meta.whatsapp_message} ${token}`
-                    : token,
-                })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button className="w-full" onClick={saveMeta} disabled={savingMeta}>
-        <Save className="h-4 w-4" />
-        {savingMeta ? "Salvando…" : "Salvar visual"}
-      </Button>
-
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden">
-        <Button className="w-full" onClick={saveMeta} disabled={savingMeta}>
-          <Save className="h-4 w-4" />
-          {savingMeta ? "Salvando…" : "Salvar visual"}
-        </Button>
-      </div>
-    </div>
   );
 }
 
@@ -1903,11 +1144,26 @@ export function LeadFormSimulatorPanel() {
                   </div>
                 ) : isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm" ? (
                   <div className="flex shrink-0 flex-col gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur">
+                    {current.type === "redirect" && current.placeholder?.trim() ? (
+                      <p className="text-center text-[11px] text-muted-foreground">
+                        Atraso: {current.redirect_delay_sec ?? 3}s · abre o link no quiz real
+                      </p>
+                    ) : null}
                     <Button
                       type="button"
-                      onClick={() =>
-                        advance(current.type === "lgpd" ? "sim" : "ok")
-                      }
+                      onClick={() => {
+                        if (current.type === "redirect" && current.placeholder?.trim()) {
+                          const url = resolveRedirectUrl(
+                            current.placeholder.trim(),
+                            {
+                              ...answers,
+                              [current.key]: current.placeholder,
+                            },
+                          );
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }
+                        advance(current.type === "lgpd" ? "sim" : "ok");
+                      }}
                       style={{ background: meta.primary_color }}
                       className="text-white"
                     >
@@ -1915,7 +1171,9 @@ export function LeadFormSimulatorPanel() {
                         ? "Aceito continuar"
                         : current.type === "confirm"
                           ? "Confirmar"
-                          : "Continuar"}
+                          : current.type === "redirect"
+                            ? "Abrir link"
+                            : "Continuar"}
                     </Button>
                   </div>
                 ) : current.type === "multi" ? (

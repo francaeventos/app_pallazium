@@ -64,6 +64,7 @@ function publicFormShape(form: {
     prompt: string | null;
     botMessages: string[];
     placeholder: string | null;
+    redirectDelaySec: number;
     nextKey: string | null;
     sortOrder: number;
     required: boolean;
@@ -118,6 +119,7 @@ function publicFormShape(form: {
       prompt: q.prompt,
       botMessages: q.botMessages,
       placeholder: q.placeholder,
+      redirectDelaySec: q.redirectDelaySec,
       nextKey: q.nextKey,
       sortOrder: q.sortOrder,
       required: q.required,

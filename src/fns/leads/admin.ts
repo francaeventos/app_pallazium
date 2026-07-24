@@ -9,7 +9,10 @@ import {
   serializeLeadForWebhook,
 } from "@/lib/leads/service";
 import { sendLeadWebhook } from "@/lib/leads/webhook";
-import { LEAD_QUESTION_TYPES } from "@/lib/leads/question-types";
+import {
+  LEAD_QUESTION_TYPES,
+  type LeadQuestionTypeValue,
+} from "@/lib/leads/question-types";
 
 async function guardAdmin(context: { userId?: string }) {
   const userId = context.userId;
@@ -279,6 +282,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           prompt: q.prompt,
           bot_messages: q.botMessages,
           placeholder: q.placeholder,
+          redirect_delay_sec: q.redirectDelaySec,
           next_key: q.nextKey || "",
           sort_order: q.sortOrder,
           required: q.required,
@@ -440,7 +444,8 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
         label: z.string().trim().max(120).nullable().optional(),
         prompt: z.string().trim().max(2000).nullable().optional(),
         bot_messages: z.array(z.string().max(4000)).optional(),
-        placeholder: z.string().trim().max(2000).nullable().optional(),
+        placeholder: z.string().trim().max(4000).nullable().optional(),
+        redirect_delay_sec: z.number().int().min(0).max(120).optional(),
         next_key: z.string().trim().max(60).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
         required: z.boolean().default(true),
@@ -451,14 +456,14 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await guardAdmin(context);
-    const payload = {
-      formId: data.form_id,
+    const fields = {
       key: data.key,
-      type: data.type,
+      type: data.type as LeadQuestionTypeValue,
       label: data.label ?? null,
       prompt: data.prompt ?? null,
       botMessages: data.bot_messages ?? [],
       placeholder: data.placeholder ?? null,
+      redirectDelaySec: data.redirect_delay_sec ?? 3,
       nextKey: data.next_key?.trim() || null,
       sortOrder: data.sort_order,
       required: data.required,
@@ -466,9 +471,12 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
       active: data.active,
     };
     if (data.id) {
-      await db.leadFormQuestion.update({ where: { id: data.id }, data: payload });
+      // Prisma UpdateInput rejeita FK escalar `formId` — só campos + relação `form`.
+      await db.leadFormQuestion.update({ where: { id: data.id }, data: fields });
     } else {
-      await db.leadFormQuestion.create({ data: payload });
+      await db.leadFormQuestion.create({
+        data: { ...fields, form: { connect: { id: data.form_id } } },
+      });
     }
     return { ok: true as const };
   });
@@ -499,8 +507,7 @@ export const saveLeadOptionFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await guardAdmin(context);
-    const payload = {
-      questionId: data.question_id,
+    const fields = {
       label: data.label,
       scorePoints: data.score_points,
       nextKey: data.next_key?.trim() || null,
@@ -508,9 +515,11 @@ export const saveLeadOptionFn = createServerFn({ method: "POST" })
       active: data.active,
     };
     if (data.id) {
-      await db.leadFormOption.update({ where: { id: data.id }, data: payload });
+      await db.leadFormOption.update({ where: { id: data.id }, data: fields });
     } else {
-      await db.leadFormOption.create({ data: payload });
+      await db.leadFormOption.create({
+        data: { ...fields, question: { connect: { id: data.question_id } } },
+      });
     }
     return { ok: true as const };
   });
@@ -566,8 +575,7 @@ export const saveLeadRuleFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await guardAdmin(context);
-    const payload = {
-      formId: data.form_id,
+    const fields = {
       title: data.title,
       body: data.body,
       matchKey: data.match_key ?? null,
@@ -577,9 +585,11 @@ export const saveLeadRuleFn = createServerFn({ method: "POST" })
       active: data.active,
     };
     if (data.id) {
-      await db.leadFormRule.update({ where: { id: data.id }, data: payload });
+      await db.leadFormRule.update({ where: { id: data.id }, data: fields });
     } else {
-      await db.leadFormRule.create({ data: payload });
+      await db.leadFormRule.create({
+        data: { ...fields, form: { connect: { id: data.form_id } } },
+      });
     }
     return { ok: true as const };
   });

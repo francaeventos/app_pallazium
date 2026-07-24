@@ -565,6 +565,8 @@ model LeadFormQuestion {
   prompt       String?
   botMessages  String[]         @default([]) @map("bot_messages")
   placeholder  String?
+  /// Atraso em segundos antes de abrir a URL (bloco redirect). 0 = imediato.
+  redirectDelaySec Int          @default(3) @map("redirect_delay_sec")
   /// Próximo bloco por chave; vazio = ordem padrão; "__end__" = diagnóstico.
   nextKey      String?          @map("next_key")
   sortOrder    Int              @default(0) @map("sort_order")
