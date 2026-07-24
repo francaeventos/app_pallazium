@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LEAD_PRIMARY_PRESETS } from "@/lib/leads/theme";
-import { CORE_VARIABLE_CHIPS } from "@/lib/leads/variables";
+import { buildFlowVariableChips } from "@/lib/leads/variables";
 import { Save } from "lucide-react";
 
 export function LeadFormVisualPanel() {
-  const { meta, setMeta, maxScoreHint, primaryDark, agentInitial, savingMeta, saveMeta } =
+  const { meta, setMeta, maxScoreHint, primaryDark, agentInitial, savingMeta, saveMeta, questionKeys } =
     useLeadFormEditor();
+  const flowChips = buildFlowVariableChips(questionKeys);
 
   return (
     <div className="space-y-4">
@@ -240,7 +241,7 @@ export function LeadFormVisualPanel() {
               onChange={(e) => setMeta({ ...meta, whatsapp_message: e.target.value })}
             />
             <VariableChips
-              tokens={CORE_VARIABLE_CHIPS}
+              tokens={flowChips}
               onInsert={(token) =>
                 setMeta({
                   ...meta,

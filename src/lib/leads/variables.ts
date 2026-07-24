@@ -29,6 +29,14 @@ export function buildLeadTemplateVars(answers: Record<string, string>) {
     vars.whatsapp = answers.whatsapp;
   }
   if (answers.email) vars.email = answers.email;
+  if (answers.tipoEvento) {
+    vars.tipoEvento = answers.tipoEvento;
+    vars.tipoevento = answers.tipoEvento;
+  }
+  if (answers.dataEvento) {
+    vars.dataEvento = answers.dataEvento;
+    vars.dataevento = answers.dataEvento;
+  }
   return vars;
 }
 
@@ -83,8 +91,50 @@ export const CORE_VARIABLE_CHIPS = [
   { token: "{{nome}}", label: "nome" },
   { token: "{{telefone}}", label: "telefone" },
   { token: "{{email}}", label: "email" },
+  { token: "{{tipoEvento}}", label: "tipo evento" },
+  { token: "{{dataEvento}}", label: "data evento" },
   { token: "{{br}}", label: "quebra de linha" },
 ] as const;
+
+const VARIABLE_LABELS: Record<string, string> = {
+  nome: "nome",
+  telefone: "telefone",
+  whatsapp: "whatsapp",
+  email: "email",
+  tipoEvento: "tipo evento",
+  dataEvento: "data evento",
+  convidados: "convidados",
+  investimento: "investimento",
+  br: "quebra de linha",
+};
+
+/** Chips fixos + variáveis do fluxo (chaves dos blocos). */
+export function buildFlowVariableChips(questionKeys: string[]) {
+  const seen = new Set<string>();
+  const chips: Array<{ token: string; label: string }> = [];
+
+  const push = (key: string, label?: string) => {
+    const normalized = key.trim();
+    if (!normalized || seen.has(normalized.toLowerCase())) return;
+    seen.add(normalized.toLowerCase());
+    chips.push({
+      token: `{{${normalized}}}`,
+      label: label || VARIABLE_LABELS[normalized] || normalized,
+    });
+  };
+
+  for (const chip of CORE_VARIABLE_CHIPS) {
+    const key = chip.token.replace(/^\{\{|\}\}$/g, "");
+    push(key, chip.label);
+  }
+
+  for (const key of questionKeys) {
+    if (!key || key.startsWith("bloco_")) continue;
+    push(key);
+  }
+
+  return chips;
+}
 
 /** Monta URL de redirect com variáveis ({{br}} → %0A para WhatsApp). */
 export function resolveRedirectUrl(
@@ -98,5 +148,5 @@ export function resolveRedirectUrl(
 /** Modelo pronto de link WhatsApp (Ativa Dash). */
 export function defaultWhatsAppRedirectTemplate(phoneDigits: string) {
   const phone = phoneDigits.replace(/\D/g, "") || "5511999999999";
-  return `https://wa.me/${phone}?text=Olá, eu sou {{nome}} e preciso de um orçamento.{{br}}Telefone: {{telefone}}{{br}}E-mail: {{email}}`;
+  return `https://wa.me/${phone}?text=Olá, eu sou {{nome}} e preciso de um orçamento.{{br}}Tipo: {{tipoEvento}}{{br}}Data: {{dataEvento}}{{br}}Telefone: {{telefone}}{{br}}E-mail: {{email}}`;
 }

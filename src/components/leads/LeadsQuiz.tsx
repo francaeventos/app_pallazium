@@ -22,7 +22,6 @@ import {
 } from "@/lib/leads/question-types";
 import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml, resolveRedirectUrl } from "@/lib/leads/variables";
 import {
-  clearQuizProgress,
   hasRecoverableContact,
   questionSignature,
   restoreQuizProgress,
@@ -45,7 +44,14 @@ type ChatBubble = {
   time: string;
 };
 
-type Phase = "quiz" | "diagnosis";
+type Phase = "quiz" | "closing";
+
+type ClosingCard = {
+  title: string;
+  body: string;
+  url: string;
+  delaySec: number;
+};
 
 function nowTime() {
   return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -131,16 +137,16 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
+  const [closing, setClosing] = useState<ClosingCard | null>(null);
   const [typing, setTyping] = useState(false);
   const [multiSelected, setMultiSelected] = useState<string[]>([]);
-  const [redirectReady, setRedirectReady] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
-  const [flowSession, setFlowSession] = useState(0);
+  const flowSession = 0;
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
   const shownKeysRef = useRef<Set<string>>(new Set());
   const redirectOpenedRef = useRef(false);
+  const closingStartedRef = useRef(false);
   const answersRef = useRef(answers);
   const leadIdRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -179,20 +185,16 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       }
     : undefined;
 
-  const whatsappHref = `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
-    interpolate(form.whatsappMessage || "Olá!", answers),
-  )}`;
-
   const persistProgress = useCallback(
     (patch: {
       answers: Record<string, string>;
       stepIndex: number;
       phase: Phase;
       leadId?: string | null;
-      diagnosis?: { title: string; body: string } | null;
+      closing?: ClosingCard | null;
       bubbles: QuizProgressBubble[];
     }) => {
-      if (patch.phase !== "diagnosis" && !hasRecoverableContact(patch.answers)) return;
+      if (patch.phase !== "closing" && !hasRecoverableContact(patch.answers)) return;
       saveQuizProgress({
         v: 1,
         slug: form.slug,
@@ -200,7 +202,8 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         answers: patch.answers,
         stepIndex: patch.stepIndex,
         phase: patch.phase,
-        diagnosis: patch.diagnosis ?? null,
+        diagnosis: null,
+        closing: patch.closing ?? null,
         bubbles: patch.bubbles,
         shownSteps: Array.from(shownStepsRef.current),
         updatedAt: Date.now(),
@@ -217,16 +220,36 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       setStepIndex(saved.stepIndex);
       setLeadId(saved.leadId);
       setBubbles(saved.bubbles || []);
-      setPhase(saved.phase);
-      setDiagnosis(saved.diagnosis);
+      const nextPhase = saved.phase === "diagnosis" ? "closing" : saved.phase;
+      const isClosing = nextPhase === "closing";
+      setPhase(isClosing ? "closing" : "quiz");
+      if (saved.closing) {
+        setClosing(saved.closing);
+        closingStartedRef.current = true;
+        redirectOpenedRef.current = true;
+      } else if (isClosing && saved.diagnosis) {
+        const fallbackUrl = `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
+          interpolateLeadTemplate(
+            form.whatsappMessage || "Olá!",
+            buildLeadTemplateVars(saved.answers),
+          ),
+        )}`;
+        setClosing({
+          title: saved.diagnosis.title,
+          body: saved.diagnosis.body,
+          url: fallbackUrl,
+          delaySec: 3,
+        });
+        closingStartedRef.current = true;
+        redirectOpenedRef.current = true;
+      }
       shownStepsRef.current = new Set(saved.shownSteps);
       shownKeysRef.current = new Set(
         saved.shownSteps.map((step) => `0:${step}`),
       );
-      setResumed(saved.phase === "quiz");
+      setResumed(!isClosing);
     }
     setBootstrapped(true);
-    // Só na montagem / troca de formulário — evita loop com nova referência de questions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.slug]);
 
@@ -285,12 +308,135 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     [botDelayMs, persistProgress, stepIndex],
   );
 
+  const trackingMeta = () => ({
+    fbp: resolveFbp(),
+    fbc: resolveFbc(),
+    sourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
+    utm: captureLeadUtm(form.slug),
+    anonId,
+  });
+
+  const completeLeadInBackground = useCallback(
+    async (nextAnswers: Record<string, string>, card: ClosingCard, nextBubbles: ChatBubble[]) => {
+      try {
+        const result = await completeLeadFn({
+          data: {
+            slug: form.slug,
+            leadId: leadIdRef.current || undefined,
+            answers: nextAnswers,
+            ...trackingMeta(),
+          },
+        });
+        setLeadId(result.leadId);
+        pushDataLayer("quiz_complete", {
+          lead_id: result.leadId,
+          event_id: result.eventId,
+          score: result.score,
+          qualified: result.qualified,
+          threshold: form.qualificationThreshold,
+        });
+        if (result.qualified) {
+          pushDataLayer("quiz_lead", {
+            lead_id: result.leadId,
+            event_id: result.eventId,
+            score: result.score,
+            qualified: true,
+          });
+          trackPixel("Lead", { content_name: form.slug, value: result.score }, result.eventId);
+        }
+        persistProgress({
+          answers: nextAnswers,
+          stepIndex,
+          phase: "closing",
+          leadId: result.leadId,
+          closing: card,
+          bubbles: nextBubbles,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form.qualificationThreshold, form.slug, persistProgress, stepIndex],
+  );
+
+  const buildClosingCard = useCallback(
+    (question: Question, nextAnswers: Record<string, string>): ClosingCard => {
+      const title = interpolate(
+        question.prompt?.trim() || "Uma proposta sob medida para o seu evento",
+        nextAnswers,
+      );
+      const body = interpolate(
+        (question.botMessages || []).map((m) => m.trim()).filter(Boolean).join("\n\n") ||
+          "Com base no que você compartilhou, vamos alinhar os detalhes no WhatsApp.",
+        nextAnswers,
+      );
+      const rawUrl = question.placeholder?.trim();
+      const url = rawUrl
+        ? resolveRedirectUrl(rawUrl, nextAnswers)
+        : `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
+            interpolate(form.whatsappMessage || "Olá!", nextAnswers),
+          )}`;
+      return {
+        title,
+        body,
+        url,
+        delaySec: Math.max(0, question.redirectDelaySec ?? 3),
+      };
+    },
+    [form.whatsappDestination, form.whatsappMessage],
+  );
+
+  const beginClosingFromQuestion = useCallback(
+    (
+      question: Question,
+      nextAnswers: Record<string, string>,
+      nextBubbles: ChatBubble[],
+    ) => {
+      if (closingStartedRef.current) return;
+      closingStartedRef.current = true;
+      redirectOpenedRef.current = false;
+
+      const withAnswer = {
+        ...nextAnswers,
+        [question.key]: question.placeholder?.trim() || "redirect",
+      };
+      const card = buildClosingCard(question, withAnswer);
+      setAnswers(withAnswer);
+      setBubbles(nextBubbles);
+      setClosing(card);
+      setPhase("closing");
+      setResumed(false);
+      persistProgress({
+        answers: withAnswer,
+        stepIndex,
+        phase: "closing",
+        closing: card,
+        bubbles: nextBubbles,
+      });
+      void completeLeadInBackground(withAnswer, card, nextBubbles);
+    },
+    [buildClosingCard, completeLeadInBackground, persistProgress, stepIndex],
+  );
+
+  const openClosingUrl = useCallback((url: string) => {
+    if (redirectOpenedRef.current || !url) return;
+    redirectOpenedRef.current = true;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
+
   useEffect(() => {
     if (!bootstrapped || phase !== "quiz" || !current) return;
     const shownKey = `${flowSession}:${stepIndex}`;
     if (shownKeysRef.current.has(shownKey)) return;
     shownKeysRef.current.add(shownKey);
     shownStepsRef.current.add(stepIndex);
+
+    if (current.type === "redirect") {
+      beginClosingFromQuestion(current, answersRef.current, bubbles);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       const botMsgs = current.botMessages || [];
@@ -306,79 +452,50 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         }
       }
       if (!cancelled && msgs.length) await pushBotMessages(msgs);
-      if (!cancelled && current.type === "redirect") {
-        setRedirectReady(true);
-      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [bootstrapped, flowSession, stepIndex, phase, current, pushBotMessages]);
+    // bubbles only needed once when entering a redirect step (guarded by shownKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootstrapped, flowSession, stepIndex, phase, current, pushBotMessages, beginClosingFromQuestion]);
 
   useEffect(() => {
     if (!bootstrapped) return;
     setMultiSelected([]);
     setInput("");
     setError(null);
-    setRedirectReady(false);
-    setRedirectCountdown(null);
-    redirectOpenedRef.current = false;
   }, [stepIndex, bootstrapped]);
-
-  const trackingMeta = () => ({
-    fbp: resolveFbp(),
-    fbc: resolveFbc(),
-    sourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
-    utm: captureLeadUtm(form.slug),
-    anonId,
-  });
 
   const finishQuiz = async (
     nextAnswers: Record<string, string>,
     nextBubbles: ChatBubble[],
   ) => {
-    setBusy(true);
-    try {
-      const result = await completeLeadFn({
-        data: {
-          slug: form.slug,
-          leadId: leadId || undefined,
-          answers: nextAnswers,
-          ...trackingMeta(),
-        },
-      });
-      setLeadId(result.leadId);
-      setDiagnosis(result.diagnosis);
-      pushDataLayer("quiz_complete", {
-        lead_id: result.leadId,
-        event_id: result.eventId,
-        score: result.score,
-        qualified: result.qualified,
-        threshold: form.qualificationThreshold,
-      });
-      if (result.qualified) {
-        pushDataLayer("quiz_lead", {
-          lead_id: result.leadId,
-          event_id: result.eventId,
-          score: result.score,
-          qualified: true,
-        });
-        trackPixel("Lead", { content_name: form.slug, value: result.score }, result.eventId);
-      }
-      setPhase("diagnosis");
-      persistProgress({
-        answers: nextAnswers,
-        stepIndex,
-        phase: "diagnosis",
-        leadId: result.leadId,
-        diagnosis: result.diagnosis,
-        bubbles: nextBubbles,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
-    } finally {
-      setBusy(false);
+    const redirectQuestion = [...questions].reverse().find((q) => q.type === "redirect");
+    if (redirectQuestion) {
+      beginClosingFromQuestion(redirectQuestion, nextAnswers, nextBubbles);
+      return;
     }
+
+    const card: ClosingCard = {
+      title: "Obrigado pelas informações!",
+      body: "Vamos continuar a conversa no WhatsApp para alinhar os detalhes do seu evento.",
+      url: `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
+        interpolate(form.whatsappMessage || "Olá!", nextAnswers),
+      )}`,
+      delaySec: 3,
+    };
+    closingStartedRef.current = true;
+    setClosing(card);
+    setPhase("closing");
+    persistProgress({
+      answers: nextAnswers,
+      stepIndex,
+      phase: "closing",
+      closing: card,
+      bubbles: nextBubbles,
+    });
+    void completeLeadInBackground(nextAnswers, card, nextBubbles);
   };
 
   const advance = async (value: string, optionNextKey?: string | null) => {
@@ -416,14 +533,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setBubbles(nextBubbles);
     setInput("");
     setMultiSelected([]);
-
-    if (current.type === "redirect" && current.placeholder?.trim()) {
-      if (!redirectOpenedRef.current) {
-        redirectOpenedRef.current = true;
-        const url = resolveRedirectUrl(current.placeholder.trim(), nextAnswers);
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
-    }
 
     let nextLeadId = leadId;
     const phone =
@@ -487,18 +596,16 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     setStepIndex(next);
   };
 
-  const advanceRef = useRef(advance);
-  advanceRef.current = advance;
-
   useEffect(() => {
-    if (!redirectReady || phase !== "quiz" || !current || current.type !== "redirect" || busy) {
+    if (phase !== "closing" || !closing) return;
+    if (redirectOpenedRef.current) {
+      setRedirectCountdown(0);
       return;
     }
-    if (!current.placeholder?.trim()) return;
-
-    const delaySec = Math.max(0, current.redirectDelaySec ?? 3);
+    const delaySec = Math.max(0, closing.delaySec);
     if (delaySec <= 0) {
-      void advanceRef.current("ok");
+      openClosingUrl(closing.url);
+      setRedirectCountdown(0);
       return;
     }
 
@@ -509,32 +616,13 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       setRedirectCountdown(remaining);
       if (remaining <= 0) {
         window.clearInterval(tick);
-        void advanceRef.current("ok");
+        openClosingUrl(closing.url);
       }
     }, 1000);
 
     return () => window.clearInterval(tick);
-  }, [redirectReady, phase, current, busy]);
+  }, [phase, closing, openClosingUrl]);
 
-  const restartFromScratch = () => {
-    if (!window.confirm("Apagar o progresso salvo neste navegador e começar de novo?")) return;
-    clearQuizProgress(form.slug);
-    shownStepsRef.current = new Set();
-    shownKeysRef.current = new Set();
-    setFlowSession((s) => s + 1);
-    setAnswers({});
-    setBubbles([]);
-    setStepIndex(0);
-    setLeadId(null);
-    setDiagnosis(null);
-    setPhase("quiz");
-    setResumed(false);
-    setError(null);
-    setInput("");
-    setMultiSelected([]);
-    setRedirectReady(false);
-    setRedirectCountdown(null);
-  };
   const showSingleChoice =
     phase === "quiz" &&
     current &&
@@ -546,8 +634,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     !busy;
   const showMulti =
     phase === "quiz" && current?.type === "multi" && !typing && !busy;
-  const showRedirectAction =
-    phase === "quiz" && current?.type === "redirect" && redirectReady && !typing && !busy;
   const showMediaAction =
     phase === "quiz" && current?.type === "media" && !typing && !busy;
   const showContentAction =
@@ -618,9 +704,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
             {resumed ? (
               <div className="sf-resume-banner" role="status">
                 Continuamos de onde você parou
-                <button type="button" className="sf-resume-reset" onClick={restartFromScratch}>
-                  Começar de novo
-                </button>
               </div>
             ) : null}
 
@@ -746,22 +829,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
               </div>
             )}
 
-            {showRedirectAction && current && (
-              <div className="sf-options">
-                {redirectCountdown != null && redirectCountdown > 0 ? (
-                  <p className="sf-lgpd-links">Abrindo em {redirectCountdown}s…</p>
-                ) : null}
-                <button
-                  type="button"
-                  className="sf-cta"
-                  disabled={busy}
-                  onClick={() => advance("ok")}
-                >
-                  Abrir agora
-                </button>
-              </div>
-            )}
-
             {showContentAction && current && (
               <div className="sf-options">
                 {current.type === "lgpd" ? (
@@ -811,29 +878,34 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                 )}
               </div>
             )}
+          </div>
 
-            {phase === "diagnosis" && diagnosis && (
-              <div className="sf-card">
-                <h4>Diagnóstico</h4>
+          {phase === "closing" && closing ? (
+            <div className="sf-closing-overlay" role="dialog" aria-modal="true">
+              <div className="sf-closing-card">
                 <strong
                   dangerouslySetInnerHTML={{
-                    __html: formatBubbleHtml(diagnosis.title, answers),
+                    __html: formatBubbleHtml(closing.title, answers),
                   }}
                 />
                 <p
                   dangerouslySetInnerHTML={{
-                    __html: formatBubbleHtml(diagnosis.body, answers),
+                    __html: formatBubbleHtml(closing.body, answers),
                   }}
                 />
-                <a className="sf-cta wa" href={whatsappHref} target="_blank" rel="noreferrer">
+                <button
+                  type="button"
+                  className="sf-cta wa"
+                  onClick={() => openClosingUrl(closing.url)}
+                >
                   Falar no WhatsApp
-                </a>
-                <button type="button" className="sf-restart-link" onClick={restartFromScratch}>
-                  Preencher de novo
                 </button>
+                {redirectCountdown != null && redirectCountdown > 0 ? (
+                  <p className="sf-closing-countdown">Abrindo WhatsApp em {redirectCountdown}s…</p>
+                ) : null}
               </div>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           {showTextInput && current && (
             <div className="sf-composer">

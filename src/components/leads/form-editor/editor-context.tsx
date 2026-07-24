@@ -22,6 +22,7 @@ import {
   updateLeadIntegrationsFn,
 } from "@/fns/leads/admin";
 import { Label } from "@/components/ui/label";
+import { AppConfirmDialog } from "@/components/AppConfirmDialog";
 import { darkenHex } from "@/lib/leads/theme";
 import { type ConversionMinTemperature } from "@/lib/leads/score";
 import {
@@ -146,7 +147,7 @@ export type LeadFormEditorContextValue = {
   saveIntegrations: () => Promise<void>;
   updateQuestionLocal: (index: number, patch: Partial<QuestionDraft>) => void;
   saveQuestion: (index: number) => Promise<void>;
-  addQuestion: (type?: QuestionType) => void;
+  addQuestion: (type?: QuestionType, afterIndex?: number) => void;
   removeQuestion: (index: number) => Promise<void>;
   moveQuestion: (index: number, dir: -1 | 1) => Promise<void>;
   saveRule: (index: number) => Promise<void>;
@@ -277,6 +278,26 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
   const [rules, setRules] = useState<RuleDraft[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
+
+  const askConfirm = (opts: {
+    title: string;
+    description: string;
+    confirmLabel?: string;
+  }) =>
+    new Promise<boolean>((resolve) => {
+      setConfirmDialog({ ...opts, resolve });
+    });
+
+  const closeConfirm = (ok: boolean) => {
+    confirmDialog?.resolve(ok);
+    setConfirmDialog(null);
+  };
   const [savingMeta, setSavingMeta] = useState(false);
   const [savingQuestionId, setSavingQuestionId] = useState<string | null>(null);
   const [savingRuleId, setSavingRuleId] = useState<string | null>(null);
@@ -498,6 +519,20 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
       }
 
       toast.success(`Bloco “${q.key}” salvo`);
+
+      const orderedIds = questions
+        .map((item, i) => (i === index ? saved.id : item.id))
+        .filter(Boolean) as string[];
+      if (form && orderedIds.length === questions.length) {
+        try {
+          await reorderLeadQuestionsFn({
+            data: { form_id: form.id, ordered_ids: orderedIds },
+          });
+        } catch {
+          // load abaixo ainda sincroniza o melhor possível
+        }
+      }
+
       await load();
       setExpandedId(saved.id);
     } catch (error) {
@@ -507,9 +542,13 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addQuestion = (type: QuestionType = "choice") => {
+  const addQuestion = (type: QuestionType = "choice", afterIndex?: number) => {
     const localId = `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const key = `bloco_${Date.now().toString().slice(-4)}`;
+    const insertAt =
+      afterIndex == null
+        ? questions.length
+        : Math.min(Math.max(afterIndex + 1, 0), questions.length);
     const draft: QuestionDraft = {
       localId,
       key,
@@ -520,19 +559,28 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
       placeholder: type === "redirect" ? "https://" : "",
       redirect_delay_sec: 3,
       next_key: "",
-      sort_order: questions.length,
+      sort_order: insertAt,
       required: type !== "message" && type !== "redirect" && type !== "media",
       score_bonus: 0,
       active: true,
       options: defaultOptionsForType(type),
     };
-    setQuestions((prev) => [...prev, draft]);
+    setQuestions((prev) => {
+      const next = [...prev];
+      next.splice(insertAt, 0, draft);
+      return next.map((q, i) => ({ ...q, sort_order: i }));
+    });
     setExpandedId(localId);
   };
 
   const removeQuestion = async (index: number) => {
     const q = questions[index];
-    if (!window.confirm(`Remover o bloco “${q.key}”?`)) return;
+    const ok = await askConfirm({
+      title: "Remover bloco?",
+      description: `Tem certeza que deseja remover o bloco “${q.prompt || q.label || q.key}”? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Remover",
+    });
+    if (!ok) return;
     if (!q.id) {
       setQuestions((prev) => prev.filter((_, i) => i !== index));
       return;
@@ -618,7 +666,12 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
 
   const removeRule = async (index: number) => {
     const r = rules[index];
-    if (!window.confirm("Remover esta regra?")) return;
+    const ok = await askConfirm({
+      title: "Remover regra?",
+      description: `Tem certeza que deseja remover a regra “${r.title}”? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Remover",
+    });
+    if (!ok) return;
     if (!r.id) {
       setRules((prev) => prev.filter((_, i) => i !== index));
       return;
@@ -682,6 +735,17 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LeadFormEditorContext.Provider value={value}>{children}</LeadFormEditorContext.Provider>
+    <LeadFormEditorContext.Provider value={value}>
+      {children}
+      <AppConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.title || ""}
+        description={confirmDialog?.description || ""}
+        confirmLabel={confirmDialog?.confirmLabel || "Confirmar"}
+        destructive
+        onConfirm={() => closeConfirm(true)}
+        onCancel={() => closeConfirm(false)}
+      />
+    </LeadFormEditorContext.Provider>
   );
 }

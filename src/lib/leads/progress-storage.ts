@@ -13,8 +13,14 @@ export type QuizProgressSnapshot = {
   leadId: string | null;
   answers: Record<string, string>;
   stepIndex: number;
-  phase: "quiz" | "diagnosis";
+  phase: "quiz" | "closing" | "diagnosis";
   diagnosis: { title: string; body: string } | null;
+  closing?: {
+    title: string;
+    body: string;
+    url: string;
+    delaySec: number;
+  } | null;
   bubbles: QuizProgressBubble[];
   shownSteps: number[];
   updatedAt: number;
@@ -60,7 +66,13 @@ export function loadQuizProgress(slug: string): QuizProgressSnapshot | null {
 
 export function saveQuizProgress(snapshot: QuizProgressSnapshot) {
   if (typeof window === "undefined") return;
-  if (!hasRecoverableContact(snapshot.answers) && snapshot.phase !== "diagnosis") return;
+  if (
+    !hasRecoverableContact(snapshot.answers) &&
+    snapshot.phase !== "diagnosis" &&
+    snapshot.phase !== "closing"
+  ) {
+    return;
+  }
   try {
     localStorage.setItem(
       storageKey(snapshot.slug),
@@ -90,7 +102,7 @@ export function restoreQuizProgress(
 ): QuizProgressSnapshot | null {
   const saved = loadQuizProgress(slug);
   if (!saved) return null;
-  if (!hasRecoverableContact(saved.answers) && saved.phase !== "diagnosis") {
+  if (!hasRecoverableContact(saved.answers) && saved.phase !== "diagnosis" && saved.phase !== "closing") {
     clearQuizProgress(slug);
     return null;
   }
@@ -106,7 +118,8 @@ export function restoreQuizProgress(
       return value == null || String(value).trim() === "";
     });
     if (firstUnanswered < 0) {
-      phase = "diagnosis";
+      phase = saved.phase === "quiz" ? "closing" : saved.phase;
+      if (phase === "diagnosis") phase = "closing";
       stepIndex = Math.max(questions.length - 1, 0);
     } else {
       phase = "quiz";

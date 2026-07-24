@@ -228,7 +228,7 @@ function Page() {
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-6 lg:p-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-serif text-3xl">Leads</h1>
@@ -295,7 +295,7 @@ function Page() {
             className="cursor-pointer transition hover:border-primary/40"
             onClick={() => openLead(lead.id)}
           >
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
               <div>
                 <p className="font-medium">{lead.name || "Sem nome"}</p>
                 <p className="text-sm text-muted-foreground">

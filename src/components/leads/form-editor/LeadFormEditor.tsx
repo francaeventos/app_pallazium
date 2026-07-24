@@ -51,7 +51,7 @@ import {
   isContentOnlyType,
   resolveNextStepIndex,
 } from "@/lib/leads/question-types";
-import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, defaultWhatsAppRedirectTemplate, formatLeadMessageHtml, interpolateLeadTemplate, resolveRedirectUrl } from "@/lib/leads/variables";
+import { CORE_VARIABLE_CHIPS, buildFlowVariableChips, buildLeadTemplateVars, defaultWhatsAppRedirectTemplate, formatLeadMessageHtml, interpolateLeadTemplate, resolveRedirectUrl } from "@/lib/leads/variables";
 import { formatDateMaskBr } from "@/lib/leads/date";
 import { VariableChips } from "@/components/leads/form-editor/VariableChips";
 import { cn } from "@/lib/utils";
@@ -231,6 +231,54 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
   );
 }
 
+function AddBlockMenu({
+  onAdd,
+  label = "Adicionar bloco",
+  size = "default",
+  variant = "default",
+  align = "end",
+  className,
+}: {
+  onAdd: (type: QuestionType) => void;
+  label?: string;
+  size?: "default" | "sm";
+  variant?: "default" | "outline" | "ghost" | "secondary";
+  align?: "start" | "center" | "end";
+  className?: string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size={size} variant={variant} className={className}>
+          <Plus className="h-4 w-4" /> {label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={align} className="max-h-[70vh] w-56 overflow-y-auto">
+        {BLOCK_MENU.map((section, si) => (
+          <div key={section.section}>
+            {si > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {section.section}
+            </DropdownMenuLabel>
+            {section.items.map((item) => (
+              <DropdownMenuItem
+                key={item.type}
+                onClick={() => onAdd(item.type)}
+                className="flex flex-col items-start gap-0.5"
+              >
+                <span>{item.label}</span>
+                {item.hint ? (
+                  <span className="text-[11px] text-muted-foreground">{item.hint}</span>
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
   const {
     meta,
@@ -248,6 +296,8 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
     removeQuestion,
     moveQuestion,
   } = useLeadFormEditor();
+
+  const flowChips = buildFlowVariableChips(questionKeys);
 
   return (
     <div className={cn("space-y-5", compact && "min-w-0")}>
@@ -318,35 +368,11 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
             </p>
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size={compact ? "sm" : "default"}>
-                <Plus className="h-4 w-4" /> {compact ? "Bloco" : "Adicionar bloco"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-[70vh] w-56 overflow-y-auto">
-              {BLOCK_MENU.map((section, si) => (
-                <div key={section.section}>
-                  {si > 0 ? <DropdownMenuSeparator /> : null}
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {section.section}
-                  </DropdownMenuLabel>
-                  {section.items.map((item) => (
-                    <DropdownMenuItem
-                      key={item.type}
-                      onClick={() => addQuestion(item.type)}
-                      className="flex flex-col items-start gap-0.5"
-                    >
-                      <span>{item.label}</span>
-                      {item.hint ? (
-                        <span className="text-[11px] text-muted-foreground">{item.hint}</span>
-                      ) : null}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AddBlockMenu
+            size={compact ? "sm" : "default"}
+            label={compact ? "Bloco" : "Adicionar bloco"}
+            onAdd={(type) => addQuestion(type)}
+          />
         </div>
 
         {questions.length === 0 ? (
@@ -358,7 +384,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
             onAction={() => addQuestion("buttons")}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {questions.map((q, index) => {
               const panelId = q.localId;
               const open = expandedId === panelId;
@@ -367,8 +393,8 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                 ...q.options.filter((o) => !o._deleted).map((o) => o.score_points),
               );
               return (
+                <div key={panelId} className="space-y-1">
                 <Card
-                  key={panelId}
                   className={`border-gold/10 transition hover:border-primary/30 ${
                     !q.active ? "opacity-60" : ""
                   } ${open ? "border-primary/40 shadow-soft" : ""}`}
@@ -426,7 +452,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                                 }
                               />
                               <VariableChips
-                                tokens={CORE_VARIABLE_CHIPS}
+                                tokens={flowChips}
                                 onInsert={(token) =>
                                   updateQuestionLocal(index, {
                                     prompt: q.prompt ? `${q.prompt} ${token}` : token,
@@ -467,13 +493,13 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                               onChange={(bot_messages_text) =>
                                 updateQuestionLocal(index, { bot_messages_text })
                               }
-                              tokens={CORE_VARIABLE_CHIPS}
+                              tokens={flowChips}
                             />
                           </Field>
 
                           <Field label="URL de redirecionamento">
                             <VariableChips
-                              tokens={CORE_VARIABLE_CHIPS}
+                              tokens={flowChips}
                               onInsert={(token) =>
                                 updateQuestionLocal(index, {
                                   placeholder: q.placeholder
@@ -924,6 +950,17 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                     </CardContent>
                   )}
                 </Card>
+                <div className="flex justify-center py-1">
+                  <AddBlockMenu
+                    size="sm"
+                    variant="ghost"
+                    align="center"
+                    label="Adicionar bloco"
+                    className="h-8 text-muted-foreground hover:text-foreground"
+                    onAdd={(type) => addQuestion(type, index)}
+                  />
+                </div>
+                </div>
               );
             })}
           </div>
