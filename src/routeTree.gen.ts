@@ -47,6 +47,12 @@ import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminLeadsIntegracoesRouteImport } from './routes/_authenticated/admin/leads.integracoes'
 import { Route as AuthenticatedAdminLeadsFormularioRouteImport } from './routes/_authenticated/admin/leads.formulario'
 import { Route as AuthenticatedAdminChecklistEventIdRouteImport } from './routes/_authenticated/admin/checklist.$eventId'
+import { Route as AuthenticatedAdminLeadsFormularioIndexRouteImport } from './routes/_authenticated/admin/leads.formulario.index'
+import { Route as AuthenticatedAdminLeadsFormularioVisualRouteImport } from './routes/_authenticated/admin/leads.formulario.visual'
+import { Route as AuthenticatedAdminLeadsFormularioSimuladorRouteImport } from './routes/_authenticated/admin/leads.formulario.simulador'
+import { Route as AuthenticatedAdminLeadsFormularioScoreRouteImport } from './routes/_authenticated/admin/leads.formulario.score'
+import { Route as AuthenticatedAdminLeadsFormularioPixelsRouteImport } from './routes/_authenticated/admin/leads.formulario.pixels'
+import { Route as AuthenticatedAdminLeadsFormularioDiagnosticoRouteImport } from './routes/_authenticated/admin/leads.formulario.diagnostico'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -262,6 +268,42 @@ const AuthenticatedAdminChecklistEventIdRoute =
     path: '/checklist/$eventId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminLeadsFormularioIndexRoute =
+  AuthenticatedAdminLeadsFormularioIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioVisualRoute =
+  AuthenticatedAdminLeadsFormularioVisualRouteImport.update({
+    id: '/visual',
+    path: '/visual',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioSimuladorRoute =
+  AuthenticatedAdminLeadsFormularioSimuladorRouteImport.update({
+    id: '/simulador',
+    path: '/simulador',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioScoreRoute =
+  AuthenticatedAdminLeadsFormularioScoreRouteImport.update({
+    id: '/score',
+    path: '/score',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioPixelsRoute =
+  AuthenticatedAdminLeadsFormularioPixelsRouteImport.update({
+    id: '/pixels',
+    path: '/pixels',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
+const AuthenticatedAdminLeadsFormularioDiagnosticoRoute =
+  AuthenticatedAdminLeadsFormularioDiagnosticoRouteImport.update({
+    id: '/diagnostico',
+    path: '/diagnostico',
+    getParentRoute: () => AuthenticatedAdminLeadsFormularioRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -297,10 +339,16 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
-  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
+  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
   '/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
+  '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
+  '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
+  '/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
+  '/admin/leads/formulario/simulador': typeof AuthenticatedAdminLeadsFormularioSimuladorRoute
+  '/admin/leads/formulario/visual': typeof AuthenticatedAdminLeadsFormularioVisualRoute
+  '/admin/leads/formulario/': typeof AuthenticatedAdminLeadsFormularioIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -333,10 +381,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
-  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
   '/admin/leads': typeof AuthenticatedAdminLeadsIndexRoute
+  '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
+  '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
+  '/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
+  '/admin/leads/formulario/simulador': typeof AuthenticatedAdminLeadsFormularioSimuladorRoute
+  '/admin/leads/formulario/visual': typeof AuthenticatedAdminLeadsFormularioVisualRoute
+  '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -374,10 +427,16 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
-  '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRoute
+  '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/_authenticated/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
   '/_authenticated/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
+  '/_authenticated/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
+  '/_authenticated/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
+  '/_authenticated/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
+  '/_authenticated/admin/leads/formulario/simulador': typeof AuthenticatedAdminLeadsFormularioSimuladorRoute
+  '/_authenticated/admin/leads/formulario/visual': typeof AuthenticatedAdminLeadsFormularioVisualRoute
+  '/_authenticated/admin/leads/formulario/': typeof AuthenticatedAdminLeadsFormularioIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -419,6 +478,12 @@ export interface FileRouteTypes {
     | '/admin/leads/integracoes'
     | '/admin/checklist/'
     | '/admin/leads/'
+    | '/admin/leads/formulario/diagnostico'
+    | '/admin/leads/formulario/pixels'
+    | '/admin/leads/formulario/score'
+    | '/admin/leads/formulario/simulador'
+    | '/admin/leads/formulario/visual'
+    | '/admin/leads/formulario/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -451,10 +516,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/admin/checklist/$eventId'
-    | '/admin/leads/formulario'
     | '/admin/leads/integracoes'
     | '/admin/checklist'
     | '/admin/leads'
+    | '/admin/leads/formulario/diagnostico'
+    | '/admin/leads/formulario/pixels'
+    | '/admin/leads/formulario/score'
+    | '/admin/leads/formulario/simulador'
+    | '/admin/leads/formulario/visual'
+    | '/admin/leads/formulario'
   id:
     | '__root__'
     | '/'
@@ -495,6 +565,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/leads/integracoes'
     | '/_authenticated/admin/checklist/'
     | '/_authenticated/admin/leads/'
+    | '/_authenticated/admin/leads/formulario/diagnostico'
+    | '/_authenticated/admin/leads/formulario/pixels'
+    | '/_authenticated/admin/leads/formulario/score'
+    | '/_authenticated/admin/leads/formulario/simulador'
+    | '/_authenticated/admin/leads/formulario/visual'
+    | '/_authenticated/admin/leads/formulario/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -773,11 +849,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminChecklistEventIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/leads/formulario/': {
+      id: '/_authenticated/admin/leads/formulario/'
+      path: '/'
+      fullPath: '/admin/leads/formulario/'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
+    '/_authenticated/admin/leads/formulario/visual': {
+      id: '/_authenticated/admin/leads/formulario/visual'
+      path: '/visual'
+      fullPath: '/admin/leads/formulario/visual'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioVisualRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
+    '/_authenticated/admin/leads/formulario/simulador': {
+      id: '/_authenticated/admin/leads/formulario/simulador'
+      path: '/simulador'
+      fullPath: '/admin/leads/formulario/simulador'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioSimuladorRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
+    '/_authenticated/admin/leads/formulario/score': {
+      id: '/_authenticated/admin/leads/formulario/score'
+      path: '/score'
+      fullPath: '/admin/leads/formulario/score'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioScoreRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
+    '/_authenticated/admin/leads/formulario/pixels': {
+      id: '/_authenticated/admin/leads/formulario/pixels'
+      path: '/pixels'
+      fullPath: '/admin/leads/formulario/pixels'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioPixelsRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
+    '/_authenticated/admin/leads/formulario/diagnostico': {
+      id: '/_authenticated/admin/leads/formulario/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/admin/leads/formulario/diagnostico'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioDiagnosticoRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+    }
   }
 }
 
+interface AuthenticatedAdminLeadsFormularioRouteChildren {
+  AuthenticatedAdminLeadsFormularioDiagnosticoRoute: typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
+  AuthenticatedAdminLeadsFormularioPixelsRoute: typeof AuthenticatedAdminLeadsFormularioPixelsRoute
+  AuthenticatedAdminLeadsFormularioScoreRoute: typeof AuthenticatedAdminLeadsFormularioScoreRoute
+  AuthenticatedAdminLeadsFormularioSimuladorRoute: typeof AuthenticatedAdminLeadsFormularioSimuladorRoute
+  AuthenticatedAdminLeadsFormularioVisualRoute: typeof AuthenticatedAdminLeadsFormularioVisualRoute
+  AuthenticatedAdminLeadsFormularioIndexRoute: typeof AuthenticatedAdminLeadsFormularioIndexRoute
+}
+
+const AuthenticatedAdminLeadsFormularioRouteChildren: AuthenticatedAdminLeadsFormularioRouteChildren =
+  {
+    AuthenticatedAdminLeadsFormularioDiagnosticoRoute:
+      AuthenticatedAdminLeadsFormularioDiagnosticoRoute,
+    AuthenticatedAdminLeadsFormularioPixelsRoute:
+      AuthenticatedAdminLeadsFormularioPixelsRoute,
+    AuthenticatedAdminLeadsFormularioScoreRoute:
+      AuthenticatedAdminLeadsFormularioScoreRoute,
+    AuthenticatedAdminLeadsFormularioSimuladorRoute:
+      AuthenticatedAdminLeadsFormularioSimuladorRoute,
+    AuthenticatedAdminLeadsFormularioVisualRoute:
+      AuthenticatedAdminLeadsFormularioVisualRoute,
+    AuthenticatedAdminLeadsFormularioIndexRoute:
+      AuthenticatedAdminLeadsFormularioIndexRoute,
+  }
+
+const AuthenticatedAdminLeadsFormularioRouteWithChildren =
+  AuthenticatedAdminLeadsFormularioRoute._addFileChildren(
+    AuthenticatedAdminLeadsFormularioRouteChildren,
+  )
+
 interface AuthenticatedAdminLeadsRouteChildren {
-  AuthenticatedAdminLeadsFormularioRoute: typeof AuthenticatedAdminLeadsFormularioRoute
+  AuthenticatedAdminLeadsFormularioRoute: typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   AuthenticatedAdminLeadsIntegracoesRoute: typeof AuthenticatedAdminLeadsIntegracoesRoute
   AuthenticatedAdminLeadsIndexRoute: typeof AuthenticatedAdminLeadsIndexRoute
 }
@@ -785,7 +933,7 @@ interface AuthenticatedAdminLeadsRouteChildren {
 const AuthenticatedAdminLeadsRouteChildren: AuthenticatedAdminLeadsRouteChildren =
   {
     AuthenticatedAdminLeadsFormularioRoute:
-      AuthenticatedAdminLeadsFormularioRoute,
+      AuthenticatedAdminLeadsFormularioRouteWithChildren,
     AuthenticatedAdminLeadsIntegracoesRoute:
       AuthenticatedAdminLeadsIntegracoesRoute,
     AuthenticatedAdminLeadsIndexRoute: AuthenticatedAdminLeadsIndexRoute,

@@ -3,14 +3,19 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      # 5434 no host evita conflito com outros Postgres locais na 5432
-      - "5434:5432"
+      # 5433 no host: padrão local deste projeto (5432 costuma estar com outro app)
+      - "5433:5432"
     environment:
       POSTGRES_USER: pallazium
       POSTGRES_PASSWORD: pallazium
       POSTGRES_DB: pallazium
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pallazium -d pallazium"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:

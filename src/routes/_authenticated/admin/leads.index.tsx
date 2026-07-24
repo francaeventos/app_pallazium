@@ -40,6 +40,7 @@ import {
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { temperatureLabel, type LeadTemperature } from "@/lib/leads/score";
 
 export const Route = createFileRoute("/_authenticated/admin/leads/")({ component: Page });
 
@@ -86,6 +87,27 @@ function formatAnswerValue(key: string, value: unknown) {
     if (isValid(d)) return format(d, "dd/MM/yyyy", { locale: ptBR });
   }
   return str;
+}
+
+function temperatureBadgeClass(temperature: string) {
+  switch (temperature) {
+    case "muito_quente":
+      return "border-transparent bg-gold text-background hover:bg-gold/90";
+    case "quente":
+      return "border-transparent bg-primary text-primary-foreground hover:bg-primary/90";
+    case "morno":
+      return "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90";
+    default:
+      return "";
+  }
+}
+
+function TemperatureBadge({ temperature }: { temperature: string }) {
+  return (
+    <Badge variant={temperature === "frio" ? "outline" : "default"} className={temperatureBadgeClass(temperature)}>
+      {temperatureLabel((temperature as LeadTemperature) || "frio")}
+    </Badge>
+  );
 }
 
 function WhatsAppLink({ phone }: { phone: string }) {
@@ -273,6 +295,7 @@ function Page() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>
+                <TemperatureBadge temperature={lead.temperature} />
                 <Badge variant={lead.qualified ? "default" : "secondary"}>
                   Score {lead.score}
                   {lead.qualified ? " · Qualificado" : ""}
@@ -309,6 +332,7 @@ function Page() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{STATUS_LABEL[selected.status] || selected.status}</Badge>
+                    <TemperatureBadge temperature={selected.temperature} />
                     <Badge variant={selected.qualified ? "default" : "secondary"}>
                       Score {selected.score}
                       {selected.qualified ? " · Qualificado" : " · Não qualificado"}

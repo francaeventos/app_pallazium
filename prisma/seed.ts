@@ -1,5 +1,6 @@
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL não configurada.");
@@ -289,6 +290,50 @@ async function seedLeadForm() {
   console.log(`Lead form seeded: ${form.slug}`);
 }
 
+async function seedAdmin() {
+  const email = (process.env.SEED_ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = process.env.SEED_ADMIN_PASSWORD || "";
+  const fullName = process.env.SEED_ADMIN_NAME || "Admin";
+
+  if (!email || !password) {
+    console.log("SEED_ADMIN_EMAIL/PASSWORD não definidos — pulando admin.");
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const existing = await db.user.findUnique({ where: { email } });
+
+  let userId: string;
+  if (existing) {
+    userId = existing.id;
+    await db.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    await db.profile.upsert({
+      where: { id: userId },
+      update: { fullName, email },
+      create: { id: userId, fullName, email },
+    });
+  } else {
+    const created = await db.user.create({
+      data: { email, passwordHash },
+    });
+    userId = created.id;
+    await db.profile.create({
+      data: { id: userId, fullName, email },
+    });
+  }
+
+  await db.userRole.upsert({
+    where: { userId_role: { userId, role: "admin" } },
+    update: {},
+    create: { userId, role: "admin" },
+  });
+
+  console.log(`Admin seeded: ${email}`);
+}
+
 async function main() {
   for (const option of financialStatusOptions) {
     await db.financialStatusOption.upsert({
@@ -298,6 +343,7 @@ async function main() {
     });
   }
   await seedLeadForm();
+  await seedAdmin();
 }
 
 main()

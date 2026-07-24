@@ -14,6 +14,10 @@ type StorageImageInputProps = {
   defaultValue?: string | null;
   folder?: string;
   onValueChange?: (url: string) => void;
+  /** Oculta o caminho técnico bucket/folder (útil em telas de operação). */
+  hideFolderHint?: boolean;
+  /** Classes extras no preview da imagem. */
+  previewClassName?: string;
 };
 
 export function StorageImageInput({
@@ -23,6 +27,8 @@ export function StorageImageInput({
   defaultValue,
   folder = "uploads",
   onValueChange,
+  hideFolderHint = false,
+  previewClassName,
 }: StorageImageInputProps) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [uploading, setUploading] = useState(false);
@@ -90,14 +96,34 @@ export function StorageImageInput({
         </Button>
       </div>
       {url && (
-        <div
-          className="h-28 rounded-xl border bg-muted bg-cover bg-center"
-          style={{ backgroundImage: `url(${url})` }}
-        />
+        <div className="relative">
+          <div
+            className={
+              previewClassName ??
+              "h-28 rounded-xl border bg-muted bg-cover bg-center"
+            }
+            style={{ backgroundImage: `url(${url})` }}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-2 top-2 h-8 w-8 shadow"
+            title="Remover imagem"
+            onClick={() => {
+              setUrl("");
+              onValueChange?.("");
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        Pasta: <span className="font-medium">{bucket}/{folder}</span>
-      </p>
+      {!hideFolderHint && (
+        <p className="text-xs text-muted-foreground">
+          Pasta: <span className="font-medium">{bucket}/{folder}</span>
+        </p>
+      )}
     </div>
   );
 }

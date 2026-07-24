@@ -1,5 +1,11 @@
 import { db } from "@/lib/db";
-import { computeLeadScore } from "@/lib/leads/score";
+import {
+  bandsFromForm,
+  computeLeadScore,
+  meetsConversionTemperature,
+  type ConversionMinTemperature,
+  type LeadTemperature,
+} from "@/lib/leads/score";
 import { sendMetaCapiEvent } from "@/lib/leads/tracking.server";
 import { sendLeadWebhook, type WebhookLeadPayload } from "@/lib/leads/webhook";
 import type { Lead, LeadForm, LeadIntegrationSettings, Prisma } from "@/generated/prisma/client";
@@ -78,6 +84,14 @@ export async function maybeSendQualifiedWebhook(
   });
 }
 
+export function shouldSendPaidConversion(
+  temperature: LeadTemperature,
+  settings: LeadIntegrationSettings | null,
+) {
+  const min = (settings?.conversionMinTemperature ?? "quente") as ConversionMinTemperature;
+  return meetsConversionTemperature(temperature, min);
+}
+
 export async function maybeSendCapi(
   lead: Lead,
   settings: LeadIntegrationSettings | null,
@@ -88,6 +102,9 @@ export async function maybeSendCapi(
   const accessToken = settings?.metaAccessToken || process.env.META_CAPI_TOKEN || null;
   const enabled = settings?.capiEnabled ?? true;
   if (!enabled || !pixelId || !accessToken) return;
+
+  const temperature = (lead.temperature ?? "frio") as LeadTemperature;
+  if (!shouldSendPaidConversion(temperature, settings)) return;
 
   const result = await sendMetaCapiEvent({
     eventName,
@@ -106,6 +123,7 @@ export async function maybeSendCapi(
       lead_id: lead.id,
       score: lead.score,
       qualified: lead.qualified,
+      temperature,
       status: lead.status,
     },
   });
@@ -143,7 +161,18 @@ export async function loadFormQuestionsForScore(formId: string) {
 export function scoreLeadAnswers(
   answers: Record<string, string>,
   questions: Awaited<ReturnType<typeof loadFormQuestionsForScore>>,
-  threshold: number,
+  formOrThreshold:
+    | number
+    | {
+        scoreColdMax?: number;
+        scoreWarmMax?: number;
+        scoreHotMax?: number;
+        qualificationThreshold?: number;
+      },
 ) {
-  return computeLeadScore(answers, questions, threshold);
+  const bands =
+    typeof formOrThreshold === "number"
+      ? formOrThreshold
+      : bandsFromForm(formOrThreshold);
+  return computeLeadScore(answers, questions, bands);
 }

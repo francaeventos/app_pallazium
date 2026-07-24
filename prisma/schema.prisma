@@ -105,6 +105,24 @@ enum LeadEventType {
   @@map("lead_event_type")
 }
 
+enum LeadTemperature {
+  frio
+  morno
+  quente
+  muito_quente
+
+  @@map("lead_temperature")
+}
+
+enum LeadConversionMinTemperature {
+  any
+  morno
+  quente
+  muito_quente
+
+  @@map("lead_conversion_min_temperature")
+}
+
 model User {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String   @unique
@@ -502,7 +520,15 @@ model LeadForm {
   whatsappMessage         String?  @map("whatsapp_message")
   privacyUrl              String?  @map("privacy_url")
   termsUrl                String?  @map("terms_url")
-  qualificationThreshold  Int      @default(60) @map("qualification_threshold")
+  qualificationThreshold  Int      @default(50) @map("qualification_threshold")
+  scoreColdMax            Int      @default(24) @map("score_cold_max")
+  scoreWarmMax            Int      @default(49) @map("score_warm_max")
+  scoreHotMax             Int      @default(74) @map("score_hot_max")
+  botDelayMs              Int      @default(850) @map("bot_delay_ms")
+  seoTitle                String?  @map("seo_title")
+  seoDescription          String?  @map("seo_description")
+  pageBgLight             String?  @map("page_bg_light")
+  pageBgDark              String?  @map("page_bg_dark")
   agendaEnabled           Boolean  @default(false) @map("agenda_enabled")
   agendaWeekdays          Int[]    @default([1, 2, 3, 4, 5]) @map("agenda_weekdays")
   agendaTimes             String[] @default(["09:00", "11:00", "14:00", "16:00", "19:00"]) @map("agenda_times")
@@ -588,8 +614,9 @@ model Lead {
   email         String?
   whatsapp      String?
   status        LeadStatus @default(parcial)
-  score         Int        @default(0)
-  qualified     Boolean    @default(false)
+  score         Int             @default(0)
+  temperature   LeadTemperature @default(frio)
+  qualified     Boolean         @default(false)
   answers       Json       @default("{}")
   utm           Json       @default("{}")
   fbp           String?
@@ -610,6 +637,7 @@ model Lead {
   @@index([formId, whatsapp])
   @@index([formId, status])
   @@index([qualified])
+  @@index([temperature])
   @@index([createdAt])
   @@index([slot])
   @@map("leads")
@@ -629,20 +657,24 @@ model LeadEvent {
 }
 
 model LeadIntegrationSettings {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  formId             String   @unique @map("form_id") @db.Uuid
-  gtmId              String?  @map("gtm_id")
-  metaPixelId        String?  @map("meta_pixel_id")
-  metaAccessToken    String?  @map("meta_access_token")
-  metaTestEventCode  String?  @map("meta_test_event_code")
-  webhookUrl         String?  @map("webhook_url")
-  webhookSecret      String?  @map("webhook_secret")
-  pixelEnabled       Boolean  @default(true) @map("pixel_enabled")
-  gtmEnabled         Boolean  @default(true) @map("gtm_enabled")
-  capiEnabled        Boolean  @default(true) @map("capi_enabled")
-  webhookEnabled     Boolean  @default(true) @map("webhook_enabled")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                        String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  formId                    String                        @unique @map("form_id") @db.Uuid
+  gtmId                     String?                       @map("gtm_id")
+  gaMeasurementId           String?                       @map("ga_measurement_id")
+  googleAdsId               String?                       @map("google_ads_id")
+  googleAdsConversionLabel  String?                       @map("google_ads_conversion_label")
+  metaPixelId               String?                       @map("meta_pixel_id")
+  metaAccessToken           String?                       @map("meta_access_token")
+  metaTestEventCode         String?                       @map("meta_test_event_code")
+  webhookUrl                String?                       @map("webhook_url")
+  webhookSecret             String?                       @map("webhook_secret")
+  conversionMinTemperature  LeadConversionMinTemperature  @default(quente) @map("conversion_min_temperature")
+  pixelEnabled              Boolean                       @default(true) @map("pixel_enabled")
+  gtmEnabled                Boolean                       @default(true) @map("gtm_enabled")
+  capiEnabled               Boolean                       @default(true) @map("capi_enabled")
+  webhookEnabled            Boolean                       @default(true) @map("webhook_enabled")
+  createdAt                 DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   form LeadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 

@@ -27,6 +27,7 @@ function leadRecord(lead: {
   whatsapp: string | null;
   status: string;
   score: number;
+  temperature?: string;
   qualified: boolean;
   answers: unknown;
   utm: unknown;
@@ -48,6 +49,7 @@ function leadRecord(lead: {
     whatsapp: lead.whatsapp,
     status: lead.status,
     score: lead.score,
+    temperature: lead.temperature ?? "frio",
     qualified: lead.qualified,
     answers: (lead.answers ?? {}) as Record<string, string | number | boolean | null>,
     utm: (lead.utm ?? {}) as Record<string, string | number | boolean | null>,
@@ -253,6 +255,14 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
         privacy_url: form.privacyUrl,
         terms_url: form.termsUrl,
         qualification_threshold: form.qualificationThreshold,
+        score_cold_max: form.scoreColdMax,
+        score_warm_max: form.scoreWarmMax,
+        score_hot_max: form.scoreHotMax,
+        bot_delay_ms: form.botDelayMs,
+        seo_title: form.seoTitle,
+        seo_description: form.seoDescription,
+        page_bg_light: form.pageBgLight,
+        page_bg_dark: form.pageBgDark,
         agenda_enabled: form.agendaEnabled,
         agenda_weekdays: form.agendaWeekdays,
         agenda_times: form.agendaTimes,
@@ -292,6 +302,9 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
         })),
         integrations: {
           gtm_id: integrations.gtmId,
+          ga_measurement_id: integrations.gaMeasurementId,
+          google_ads_id: integrations.googleAdsId,
+          google_ads_conversion_label: integrations.googleAdsConversionLabel,
           meta_pixel_id: integrations.metaPixelId,
           meta_access_token: integrations.metaAccessToken ? "••••••••" : null,
           has_meta_token: Boolean(integrations.metaAccessToken),
@@ -299,6 +312,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           webhook_url: integrations.webhookUrl,
           webhook_secret: integrations.webhookSecret ? "••••••••" : null,
           has_webhook_secret: Boolean(integrations.webhookSecret),
+          conversion_min_temperature: integrations.conversionMinTemperature,
           pixel_enabled: integrations.pixelEnabled,
           gtm_enabled: integrations.gtmEnabled,
           capi_enabled: integrations.capiEnabled,
@@ -328,10 +342,28 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         wallpaper_dark_url: z.string().trim().max(5000).nullable().optional(),
         header_subtitle: z.string().trim().max(160).nullable().optional(),
         whatsapp_destination: z.string().trim().min(10).max(30).optional(),
-        whatsapp_message: z.string().trim().max(500).nullable().optional(),
+        whatsapp_message: z.string().trim().max(2000).nullable().optional(),
         privacy_url: z.string().trim().max(500).nullable().optional(),
         terms_url: z.string().trim().max(500).nullable().optional(),
         qualification_threshold: z.number().int().min(0).max(200).optional(),
+        score_cold_max: z.number().int().min(0).max(200).optional(),
+        score_warm_max: z.number().int().min(0).max(200).optional(),
+        score_hot_max: z.number().int().min(0).max(200).optional(),
+        bot_delay_ms: z.number().int().min(0).max(5000).optional(),
+        seo_title: z.string().trim().max(120).nullable().optional(),
+        seo_description: z.string().trim().max(320).nullable().optional(),
+        page_bg_light: z
+          .string()
+          .trim()
+          .regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/)
+          .nullable()
+          .optional(),
+        page_bg_dark: z
+          .string()
+          .trim()
+          .regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/)
+          .nullable()
+          .optional(),
         agenda_enabled: z.boolean().optional(),
         agenda_weekdays: z.array(z.number().int().min(0).max(6)).optional(),
         agenda_times: z.array(z.string().regex(/^\d{2}:\d{2}$/)).optional(),
@@ -366,6 +398,19 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         ...(rest.qualification_threshold !== undefined
           ? { qualificationThreshold: rest.qualification_threshold }
           : {}),
+        ...(rest.score_cold_max !== undefined ? { scoreColdMax: rest.score_cold_max } : {}),
+        ...(rest.score_warm_max !== undefined
+          ? {
+              scoreWarmMax: rest.score_warm_max,
+              qualificationThreshold: rest.score_warm_max + 1,
+            }
+          : {}),
+        ...(rest.score_hot_max !== undefined ? { scoreHotMax: rest.score_hot_max } : {}),
+        ...(rest.bot_delay_ms !== undefined ? { botDelayMs: rest.bot_delay_ms } : {}),
+        ...(rest.seo_title !== undefined ? { seoTitle: rest.seo_title } : {}),
+        ...(rest.seo_description !== undefined ? { seoDescription: rest.seo_description } : {}),
+        ...(rest.page_bg_light !== undefined ? { pageBgLight: rest.page_bg_light } : {}),
+        ...(rest.page_bg_dark !== undefined ? { pageBgDark: rest.page_bg_dark } : {}),
         ...(rest.agenda_enabled !== undefined ? { agendaEnabled: rest.agenda_enabled } : {}),
         ...(rest.agenda_weekdays !== undefined ? { agendaWeekdays: rest.agenda_weekdays } : {}),
         ...(rest.agenda_times !== undefined ? { agendaTimes: rest.agenda_times } : {}),
@@ -548,11 +593,17 @@ export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
       .object({
         form_id: z.string().uuid(),
         gtm_id: z.string().trim().max(40).nullable().optional(),
+        ga_measurement_id: z.string().trim().max(40).nullable().optional(),
+        google_ads_id: z.string().trim().max(40).nullable().optional(),
+        google_ads_conversion_label: z.string().trim().max(80).nullable().optional(),
         meta_pixel_id: z.string().trim().max(40).nullable().optional(),
         meta_access_token: z.string().trim().max(500).nullable().optional(),
         meta_test_event_code: z.string().trim().max(80).nullable().optional(),
         webhook_url: z.string().trim().max(500).nullable().optional(),
         webhook_secret: z.string().trim().max(200).nullable().optional(),
+        conversion_min_temperature: z
+          .enum(["any", "morno", "quente", "muito_quente"])
+          .optional(),
         pixel_enabled: z.boolean().optional(),
         gtm_enabled: z.boolean().optional(),
         capi_enabled: z.boolean().optional(),
@@ -583,9 +634,15 @@ export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
 
     const payload = {
       gtmId: data.gtm_id?.trim() || null,
+      gaMeasurementId: data.ga_measurement_id?.trim() || null,
+      googleAdsId: data.google_ads_id?.trim() || null,
+      googleAdsConversionLabel: data.google_ads_conversion_label?.trim() || null,
       metaPixelId: data.meta_pixel_id?.trim() || null,
       metaTestEventCode: data.meta_test_event_code?.trim() || null,
       webhookUrl: data.webhook_url?.trim() || null,
+      ...(data.conversion_min_temperature !== undefined
+        ? { conversionMinTemperature: data.conversion_min_temperature }
+        : {}),
       pixelEnabled: data.pixel_enabled ?? true,
       gtmEnabled: data.gtm_enabled ?? true,
       capiEnabled: data.capi_enabled ?? true,

@@ -14,6 +14,7 @@ import {
   trackPixel,
 } from "@/lib/leads/tracking";
 import { darkenHex } from "@/lib/leads/theme";
+import { buildLeadTemplateVars, interpolateLeadTemplate } from "@/lib/leads/variables";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -30,14 +31,12 @@ type ChatBubble = {
 
 type Phase = "quiz" | "diagnosis";
 
-const BOT_DELAY_MS = 900;
-
 function nowTime() {
   return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function interpolate(text: string, answers: Record<string, string>) {
-  return text.replace(/\{(\w+)\}/g, (_, key: string) => answers[key] || "");
+  return interpolateLeadTemplate(text, buildLeadTemplateVars(answers));
 }
 
 function readUtms(): Record<string, string> {
@@ -157,7 +156,15 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       }
     : undefined;
 
-  const whatsappHref = `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(form.whatsappMessage || "Olá!")}`;
+  const whatsappHref = `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
+    interpolate(form.whatsappMessage || "Olá!", answers),
+  )}`;
+
+  useEffect(() => {
+    if (form.seoTitle && typeof document !== "undefined") {
+      document.title = form.seoTitle;
+    }
+  }, [form.seoTitle]);
 
   useEffect(() => {
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
@@ -172,11 +179,13 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [bubbles, typing, phase, current]);
 
+  const botDelayMs = form.botDelayMs || 850;
+
   const pushBotMessages = useCallback(
     async (messages: Array<{ html: string; isQuestion?: boolean }>) => {
       for (const msg of messages) {
         setTyping(true);
-        await new Promise((r) => setTimeout(r, BOT_DELAY_MS));
+        await new Promise((r) => setTimeout(r, botDelayMs));
         setTyping(false);
         setBubbles((prev) => [
           ...prev,
@@ -191,7 +200,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         await new Promise((r) => setTimeout(r, 120));
       }
     },
-    [],
+    [botDelayMs],
   );
 
   useEffect(() => {

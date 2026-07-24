@@ -46,6 +46,14 @@ function publicFormShape(form: {
   privacyUrl: string | null;
   termsUrl: string | null;
   qualificationThreshold: number;
+  scoreColdMax: number;
+  scoreWarmMax: number;
+  scoreHotMax: number;
+  botDelayMs: number;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  pageBgLight: string | null;
+  pageBgDark: string | null;
   agendaEnabled: boolean;
   questions: Array<{
     id: string;
@@ -91,6 +99,14 @@ function publicFormShape(form: {
     privacyUrl: form.privacyUrl,
     termsUrl: form.termsUrl,
     qualificationThreshold: form.qualificationThreshold,
+    scoreColdMax: form.scoreColdMax,
+    scoreWarmMax: form.scoreWarmMax,
+    scoreHotMax: form.scoreHotMax,
+    botDelayMs: form.botDelayMs,
+    seoTitle: form.seoTitle,
+    seoDescription: form.seoDescription,
+    pageBgLight: form.pageBgLight,
+    pageBgDark: form.pageBgDark,
     agendaEnabled: form.agendaEnabled,
     questions: form.questions.map((q) => ({
       id: q.id,
@@ -306,7 +322,7 @@ export const completeLeadFn = createServerFn({ method: "POST" })
     }
 
     const scoreQuestions = await loadFormQuestionsForScore(form.id);
-    const scored = scoreLeadAnswers(answers, scoreQuestions, form.qualificationThreshold);
+    const scored = scoreLeadAnswers(answers, scoreQuestions, form);
     const eventId = randomUUID();
 
     let lead =
@@ -330,6 +346,7 @@ export const completeLeadFn = createServerFn({ method: "POST" })
       fbc: data.fbc ?? lead?.fbc ?? null,
       sourceUrl: data.sourceUrl || lead?.sourceUrl || null,
       score: scored.score,
+      temperature: scored.temperature,
       qualified: scored.qualified,
       status: lead?.status === "agendado" ? ("agendado" as const) : ("completo" as const),
       completedAt: new Date(),
@@ -347,20 +364,27 @@ export const completeLeadFn = createServerFn({ method: "POST" })
 
     await recordLeadEvent(lead.id, "completed", {
       score: scored.score,
+      temperature: scored.temperature,
       qualified: scored.qualified,
       breakdown: scored.breakdown,
       eventId,
     });
 
     if (scored.qualified && !wasQualified) {
-      await recordLeadEvent(lead.id, "qualified", { score: scored.score });
+      await recordLeadEvent(lead.id, "qualified", {
+        score: scored.score,
+        temperature: scored.temperature,
+      });
     }
 
     const settings = form.integrations;
-    // Conversão (CAPI Lead + webhook) só quando atinge o limiar de score
+    // Conversão CAPI: respeita temperatura mínima; webhook: leads quentes+
     if (scored.qualified) {
       await maybeSendCapi(lead, settings, "Lead", eventId);
       await maybeSendQualifiedWebhook(lead, form, settings);
+    } else {
+      // Ainda pode contar como conversão Ads/Meta se o filtro for "any"/"morno"
+      await maybeSendCapi(lead, settings, "Lead", eventId);
     }
 
     const diagnosis = resolveDiagnosis(
@@ -378,10 +402,16 @@ export const completeLeadFn = createServerFn({ method: "POST" })
     return {
       leadId: lead.id,
       score: lead.score,
+      temperature: lead.temperature,
       qualified: lead.qualified,
       eventId,
       diagnosis,
       threshold: form.qualificationThreshold,
+      bands: {
+        coldMax: form.scoreColdMax,
+        warmMax: form.scoreWarmMax,
+        hotMax: form.scoreHotMax,
+      },
     };
   });
 
