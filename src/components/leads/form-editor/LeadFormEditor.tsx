@@ -52,6 +52,7 @@ import {
   resolveNextStepIndex,
 } from "@/lib/leads/question-types";
 import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, defaultWhatsAppRedirectTemplate, formatLeadMessageHtml, interpolateLeadTemplate, resolveRedirectUrl } from "@/lib/leads/variables";
+import { formatDateMaskBr } from "@/lib/leads/date";
 import { VariableChips } from "@/components/leads/form-editor/VariableChips";
 import { cn } from "@/lib/utils";
 import {
@@ -1355,9 +1356,21 @@ export function LeadFormSimulatorPanel() {
                     <input
                       className="min-h-11 flex-1 rounded-full border-0 bg-white px-4 py-2.5 text-sm shadow-sm outline-none ring-1 ring-black/5 focus:ring-2"
                       style={{ ["--tw-ring-color" as string]: meta.primary_color }}
-                      placeholder={current.placeholder || "Digite sua resposta…"}
+                      placeholder={
+                        current.type === "date"
+                          ? "dd/mm/aaaa"
+                          : current.placeholder || "Digite sua resposta…"
+                      }
+                      inputMode={current.type === "date" ? "numeric" : undefined}
+                      maxLength={current.type === "date" ? 10 : undefined}
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={(e) =>
+                        setInput(
+                          current.type === "date"
+                            ? formatDateMaskBr(e.target.value)
+                            : e.target.value,
+                        )
+                      }
                     />
                     <Button
                       type="submit"

@@ -1,7 +1,14 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { LeadQuestionType } from "@/generated/prisma/enums";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+  prismaEnumFingerprint?: string;
+};
+
+/** Quando o enum muda (ex.: redirect/media), o singleton HMR precisa ser recriado. */
+const ENUM_FINGERPRINT = Object.values(LeadQuestionType).sort().join(",");
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
@@ -15,14 +22,17 @@ function createPrismaClient() {
 
 function getDb() {
   const existing = globalForPrisma.prisma;
-  // Evita singleton stale após prisma generate (ex.: leadForm undefined)
-  const leadForm = existing ? (existing as { leadForm?: { findFirst?: unknown } }).leadForm : undefined;
-  if (existing && typeof leadForm?.findFirst === "function") {
+  const leadForm = existing
+    ? (existing as { leadForm?: { findFirst?: unknown } }).leadForm
+    : undefined;
+  const fingerprintOk = globalForPrisma.prismaEnumFingerprint === ENUM_FINGERPRINT;
+  if (existing && fingerprintOk && typeof leadForm?.findFirst === "function") {
     return existing;
   }
   const client = createPrismaClient();
   if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prisma = client;
+    globalForPrisma.prismaEnumFingerprint = ENUM_FINGERPRINT;
   }
   return client;
 }

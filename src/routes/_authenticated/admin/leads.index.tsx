@@ -38,6 +38,7 @@ import {
   Webhook,
 } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
+import { formatLeadDateBr } from "@/lib/leads/date";
 import { UTM_KEYS, UTM_LABELS, utmHasValues, type UtmKey } from "@/lib/leads/utm";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -83,9 +84,14 @@ function answerLabel(key: string) {
 function formatAnswerValue(key: string, value: unknown) {
   if (value == null || value === "") return "—";
   const str = String(value);
-  if (key === "dataEvento" || /^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    const d = parseISO(str);
-    if (isValid(d)) return format(d, "dd/MM/yyyy", { locale: ptBR });
+  if (
+    key === "dataEvento" ||
+    key === "data" ||
+    /^\d{4}-\d{2}-\d{2}$/.test(str) ||
+    /^\d{2}\/\d{2}\/\d{4}$/.test(str)
+  ) {
+    const br = formatLeadDateBr(str);
+    if (br) return br;
   }
   return str;
 }

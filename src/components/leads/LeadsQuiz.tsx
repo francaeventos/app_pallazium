@@ -5,6 +5,7 @@ import {
   upsertLeadPartialFn,
 } from "@/fns/leads/public";
 import { formatPhoneMask, validateWhatsApp } from "@/lib/leads/phone";
+import { formatDateMaskBr, formatLeadDateBr, parseLeadDate, validateLeadDate } from "@/lib/leads/date";
 import {
   ensureGtm,
   ensureMetaPixel,
@@ -89,14 +90,7 @@ function validateAnswer(question: Question, value: string) {
     }
   }
   if (question.type === "multi" && !trimmed) return "Escolha ao menos uma opção.";
-  if (question.type === "date") {
-    if (!trimmed) return "Escolhe uma data pra continuar.";
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const d = new Date(`${trimmed}T00:00:00`);
-    if (Number.isNaN(d.getTime())) return "Data inválida. Tenta de novo.";
-    if (d < today) return "Essa data já passou. Escolhe uma data futura.";
-  }
+  if (question.type === "date") return validateLeadDate(trimmed);
   return null;
 }
 
@@ -389,7 +383,6 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
 
   const advance = async (value: string, optionNextKey?: string | null) => {
     if (!current || busy) return;
-    const displayValue = value.trim() || (isContentOnlyType(current.type) ? "Continuar" : "");
     const err = validateAnswer(current, value);
     if (err) {
       setError(err);
@@ -397,12 +390,20 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     }
     setError(null);
     setResumed(false);
+    const trimmedValue = value.trim();
+    const dateParsed = current.type === "date" ? parseLeadDate(trimmedValue) : null;
+    const displayValue =
+      current.type === "date" && dateParsed
+        ? formatLeadDateBr(dateParsed.iso)
+        : trimmedValue || (isContentOnlyType(current.type) ? "Continuar" : "");
     const stored =
       isContentOnlyType(current.type)
         ? current.type === "redirect"
           ? current.placeholder || "redirect"
           : "ok"
-        : value.trim();
+        : current.type === "date" && dateParsed
+          ? formatLeadDateBr(dateParsed.iso)
+          : trimmedValue;
     const nextAnswers = { ...answers, [current.key]: stored };
     const userBubble: ChatBubble = {
       id: crypto.randomUUID(),
@@ -851,21 +852,36 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                     type={
                       current.type === "email"
                         ? "email"
-                        : current.type === "date"
-                          ? "date"
-                          : current.type === "number"
-                            ? "number"
-                            : current.type === "tel"
-                              ? "tel"
-                              : "text"
+                        : current.type === "number"
+                          ? "number"
+                          : current.type === "tel"
+                            ? "tel"
+                            : "text"
                     }
+                    inputMode={current.type === "date" ? "numeric" : undefined}
+                    autoComplete={current.type === "date" ? "off" : undefined}
                     value={input}
-                    placeholder={current.placeholder || "Digite sua resposta…"}
+                    placeholder={
+                      current.type === "date"
+                        ? "dd/mm/aaaa"
+                        : current.placeholder || "Digite sua resposta…"
+                    }
+                    maxLength={current.type === "date" ? 10 : undefined}
                     disabled={busy || typing}
                     onChange={(e) => {
                       const v =
-                        current.type === "tel" ? formatPhoneMask(e.target.value) : e.target.value;
+                        current.type === "tel"
+                          ? formatPhoneMask(e.target.value)
+                          : current.type === "date"
+                            ? formatDateMaskBr(e.target.value)
+                            : e.target.value;
                       setInput(v);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        advance(input);
+                      }
                     }}
                   />
                 </div>
