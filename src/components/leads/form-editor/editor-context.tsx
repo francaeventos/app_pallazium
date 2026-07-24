@@ -637,7 +637,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
           active: r.active,
         },
       });
-      toast.success("Regra de diagnóstico salva");
+      toast.success("Regra de resumo salva");
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar regra.");
@@ -651,8 +651,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     setRules((prev) => [
       ...prev,
       {
-        title: "Novo diagnóstico",
-        body: "Texto do diagnóstico…",
+        title: "Novo resumo",
+        body: "Texto do resumo…",
         match_key: questionKeys[0] || "tipoEvento",
         match_value: "",
         sort_order: prev.length,

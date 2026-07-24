@@ -88,7 +88,7 @@ const NAV_ITEMS = [
   { to: "/admin/leads/formulario/visual", label: "Visual", icon: Palette },
   { to: "/admin/leads/formulario/simulador", label: "Simulador", icon: Wand2 },
   { to: "/admin/leads/formulario/pixels", label: "Pixels", icon: Webhook },
-  { to: "/admin/leads/formulario/diagnostico", label: "Diagnóstico", icon: Stethoscope },
+  { to: "/admin/leads/formulario/diagnostico", label: "Resumo", icon: Stethoscope },
 ] as const;
 
 const navPillClass =
@@ -113,7 +113,7 @@ function NextKeySelect({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="__default__">Seguir fluxo padrão</SelectItem>
-        <SelectItem value={FLOW_END}>Encerrar → diagnóstico</SelectItem>
+        <SelectItem value={FLOW_END}>Encerrar → resumo</SelectItem>
         {questionKeys
           .filter((k) => k && k !== currentKey)
           .map((k) => (
@@ -158,7 +158,7 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
             </p>
             <h1 className="font-serif text-3xl tracking-tight lg:text-4xl">Formulário de leads</h1>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Visual do chat, perguntas, pontuação e diagnósticos — o que o visitante vê em{" "}
+              Visual do chat, perguntas, pontuação e resumos — o que o visitante vê em{" "}
               <span className="font-medium text-foreground">/leads</span>.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
                 {activeQuestions === 1 ? "" : "s"}
               </Badge>
               <Badge variant="outline">
-                {activeRules} diagnóstico{activeRules === 1 ? "" : "s"}
+                {activeRules} resumo{activeRules === 1 ? "" : "s"}
               </Badge>
             </div>
           </div>
@@ -1786,7 +1786,7 @@ export function LeadFormDiagnosisPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl">Diagnóstico</h2>
+          <h2 className="font-serif text-xl">Resumo</h2>
           <p className="text-sm text-muted-foreground">
             Texto exibido após o quiz. Combine chave/valor ou use fallback.
           </p>
@@ -1809,7 +1809,7 @@ export function LeadFormDiagnosisPanel() {
       {rules.length === 0 ? (
         <AdminEmptyState
           icon={Stethoscope}
-          title="Nenhuma regra de diagnóstico"
+          title="Nenhuma regra de resumo"
           description="Crie regras por tipo de evento (ou outra chave) e um fallback para o restante."
           actionLabel="Criar regra"
           onAction={addRule}
@@ -1911,7 +1911,7 @@ export function LeadFormDiagnosisPanel() {
                         }
                       />
                     </Field>
-                    <Field label="Texto do diagnóstico">
+                    <Field label="Texto do resumo">
                       <Textarea
                         rows={4}
                         value={r.body}
