@@ -32,6 +32,7 @@ import {
 import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { StorageImageInput } from "@/components/StorageImageInput";
 import { VariableChips } from "@/components/leads/form-editor/VariableChips";
+import { MessageFormatBar } from "@/components/leads/form-editor/MessageFormatToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,8 +50,27 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { LEAD_PRIMARY_PRESETS, darkenHex } from "@/lib/leads/theme";
 import { temperatureLabel, type ConversionMinTemperature } from "@/lib/leads/score";
-import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, interpolateLeadTemplate } from "@/lib/leads/variables";
+import {
+  BLOCK_MENU,
+  FLOW_END,
+  TYPE_LABEL,
+  defaultOptionsForType,
+  defaultPromptForType,
+  hasChoiceOptions,
+  isContentOnlyType,
+  resolveNextStepIndex,
+  type LeadQuestionTypeValue,
+} from "@/lib/leads/question-types";
+import { CORE_VARIABLE_CHIPS, buildLeadTemplateVars, formatLeadMessageHtml, interpolateLeadTemplate } from "@/lib/leads/variables";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowDown,
   ArrowLeft,
@@ -74,7 +94,7 @@ import { toast } from "sonner";
 type FormData = Awaited<ReturnType<typeof getAdminLeadFormFn>>["form"];
 type Question = FormData["questions"][number];
 type Rule = FormData["rules"][number];
-type QuestionType = Question["type"];
+type QuestionType = LeadQuestionTypeValue;
 
 type QuestionDraft = {
   id?: string;
@@ -84,6 +104,7 @@ type QuestionDraft = {
   prompt: string;
   bot_messages_text: string;
   placeholder: string;
+  next_key: string;
   sort_order: number;
   required: boolean;
   score_bonus: number;
@@ -92,6 +113,7 @@ type QuestionDraft = {
     id?: string;
     label: string;
     score_points: number;
+    next_key: string;
     sort_order: number;
     active: boolean;
     _deleted?: boolean;
@@ -180,7 +202,7 @@ type LeadFormEditorContextValue = {
   saveIntegrations: () => Promise<void>;
   updateQuestionLocal: (index: number, patch: Partial<QuestionDraft>) => void;
   saveQuestion: (index: number) => Promise<void>;
-  addQuestion: () => void;
+  addQuestion: (type?: QuestionType) => void;
   removeQuestion: (index: number) => Promise<void>;
   moveQuestion: (index: number, dir: -1 | 1) => Promise<void>;
   saveRule: (index: number) => Promise<void>;
@@ -189,14 +211,6 @@ type LeadFormEditorContextValue = {
 };
 
 const LeadFormEditorContext = createContext<LeadFormEditorContextValue | null>(null);
-
-const TYPE_LABEL: Record<QuestionType, string> = {
-  text: "Texto",
-  email: "E-mail",
-  tel: "WhatsApp",
-  choice: "Escolha",
-  date: "Data",
-};
 
 const NAV_ITEMS = [
   { to: "/admin/leads/formulario/score", label: "Score", icon: Gauge },
@@ -214,11 +228,12 @@ function toQuestionDraft(q: Question): QuestionDraft {
   return {
     id: q.id,
     key: q.key,
-    type: q.type,
+    type: q.type as QuestionType,
     label: q.label || "",
     prompt: q.prompt || "",
     bot_messages_text: (q.bot_messages || []).join("\n\n"),
     placeholder: q.placeholder || "",
+    next_key: q.next_key || "",
     sort_order: q.sort_order,
     required: q.required,
     score_bonus: q.score_bonus,
@@ -227,10 +242,42 @@ function toQuestionDraft(q: Question): QuestionDraft {
       id: o.id,
       label: o.label,
       score_points: o.score_points,
+      next_key: o.next_key || "",
       sort_order: o.sort_order,
       active: o.active,
     })),
   };
+}
+
+function NextKeySelect({
+  value,
+  onChange,
+  questionKeys,
+  currentKey,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  questionKeys: string[];
+  currentKey?: string;
+}) {
+  return (
+    <Select value={value || "__default__"} onValueChange={(v) => onChange(v === "__default__" ? "" : v)}>
+      <SelectTrigger>
+        <SelectValue placeholder="Seguir fluxo padrão" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__default__">Seguir fluxo padrão</SelectItem>
+        <SelectItem value={FLOW_END}>Encerrar → diagnóstico</SelectItem>
+        {questionKeys
+          .filter((k) => k && k !== currentKey)
+          .map((k) => (
+            <SelectItem key={k} value={k}>
+              Ir para: {k}
+            </SelectItem>
+          ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function toRuleDraft(r: Rule): RuleDraft {
@@ -379,12 +426,11 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     let max = 0;
     for (const q of questions) {
       if (!q.active) continue;
-      if (q.type === "choice") {
-        const best = Math.max(
-          0,
-          ...q.options.filter((o) => !o._deleted && o.active).map((o) => o.score_points),
-        );
-        max += best;
+      const opts = q.options.filter((o) => !o._deleted && o.active);
+      if (q.type === "multi") {
+        max += opts.reduce((sum, o) => sum + o.score_points, 0);
+      } else if (hasChoiceOptions(q.type)) {
+        max += Math.max(0, ...opts.map((o) => o.score_points));
       } else {
         max += q.score_bonus;
       }
@@ -497,6 +543,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
           prompt: q.prompt || null,
           bot_messages: parseBotMessages(q.bot_messages_text),
           placeholder: q.placeholder || null,
+          next_key: q.next_key || null,
           sort_order: index,
           required: q.required,
           score_bonus: q.score_bonus,
@@ -521,6 +568,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
             question_id: saved.id,
             label: opt.label.trim(),
             score_points: Number(opt.score_points) || 0,
+            next_key: opt.next_key || null,
             sort_order: opt.sort_order,
             active: opt.active,
           },
@@ -537,23 +585,21 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addQuestion = () => {
-    const key = `pergunta_${Date.now().toString().slice(-4)}`;
+  const addQuestion = (type: QuestionType = "choice") => {
+    const key = `bloco_${Date.now().toString().slice(-4)}`;
     const draft: QuestionDraft = {
       key,
-      type: "choice",
+      type,
       label: "",
-      prompt: "Nova pergunta",
-      bot_messages_text: "",
-      placeholder: "",
+      prompt: defaultPromptForType(type),
+      bot_messages_text: type === "message" ? "Olá! 👋" : "",
+      placeholder: type === "redirect" ? "https://" : "",
+      next_key: "",
       sort_order: questions.length,
-      required: true,
+      required: type !== "message" && type !== "redirect",
       score_bonus: 0,
       active: true,
-      options: [
-        { label: "Opção A", score_points: 10, sort_order: 0, active: true },
-        { label: "Opção B", score_points: 20, sort_order: 1, active: true },
-      ],
+      options: defaultOptionsForType(type),
     };
     setQuestions((prev) => [...prev, draft]);
     setExpandedId(key);
@@ -747,6 +793,7 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMetaRoute = pathname.endsWith("/score") || pathname.endsWith("/visual");
   const isPixelsRoute = pathname.endsWith("/pixels");
+  const isSimulator = pathname.endsWith("/simulador");
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-4 pb-24 lg:p-8">
@@ -804,10 +851,17 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <LeadFormFlowColumn />
+      <div
+        className={cn(
+          "grid gap-5",
+          isSimulator
+            ? "lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]"
+            : "lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
+        )}
+      >
+        <LeadFormFlowColumn compact={isSimulator} />
 
-        <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto">
           <nav className="flex flex-wrap gap-1 rounded-xl border bg-muted/40 p-1.5">
             {NAV_ITEMS.map((item) => (
               <Link
@@ -829,13 +883,14 @@ export function LeadFormEditorChrome({ children }: { children: ReactNode }) {
   );
 }
 
-export function LeadFormFlowColumn() {
+export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
   const {
     meta,
     setMeta,
     savingMeta,
     saveMeta,
     questions,
+    questionKeys,
     expandedId,
     setExpandedId,
     savingQuestionId,
@@ -847,7 +902,8 @@ export function LeadFormFlowColumn() {
   } = useLeadFormEditor();
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", compact && "min-w-0")}>
+      {!compact && (
       <Card className="border-gold/15 shadow-soft">
         <CardHeader>
           <CardTitle className="font-serif text-2xl">Identidade do chat</CardTitle>
@@ -901,28 +957,57 @@ export function LeadFormFlowColumn() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-serif text-2xl">Fluxo do quiz</h2>
+            <h2 className={cn("font-serif", compact ? "text-xl" : "text-2xl")}>Fluxo do quiz</h2>
+            {!compact && (
             <p className="text-sm text-muted-foreground">
               Ordem = sequência no chat. Separe mensagens do bot com linha em branco; use os
               chips de variável para inserir <code className="rounded bg-muted px-1">{"{{nome}}"}</code>.
             </p>
+            )}
           </div>
-          <Button onClick={addQuestion}>
-            <Plus className="h-4 w-4" /> Adicionar bloco
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size={compact ? "sm" : "default"}>
+                <Plus className="h-4 w-4" /> {compact ? "Bloco" : "Adicionar bloco"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[70vh] w-56 overflow-y-auto">
+              {BLOCK_MENU.map((section, si) => (
+                <div key={section.section}>
+                  {si > 0 ? <DropdownMenuSeparator /> : null}
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {section.section}
+                  </DropdownMenuLabel>
+                  {section.items.map((item) => (
+                    <DropdownMenuItem
+                      key={item.type}
+                      onClick={() => addQuestion(item.type)}
+                      className="flex flex-col items-start gap-0.5"
+                    >
+                      <span>{item.label}</span>
+                      {item.hint ? (
+                        <span className="text-[11px] text-muted-foreground">{item.hint}</span>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {questions.length === 0 ? (
           <AdminEmptyState
             icon={MessageSquareText}
             title="Nenhum bloco ainda"
-            description="Crie o primeiro bloco de pergunta do quiz. Comece pelas de múltipla escolha para pontuar o lead."
-            actionLabel="Adicionar bloco"
-            onAction={addQuestion}
+            description="Crie o primeiro bloco do quiz. Use o menu para escolher o tipo (mensagem, campo ou escolha)."
+            actionLabel="Adicionar botões"
+            onAction={() => addQuestion("buttons")}
           />
         ) : (
           <div className="space-y-3">
@@ -958,7 +1043,7 @@ export function LeadFormFlowColumn() {
                         {q.required && <Badge variant="outline">Obrigatória</Badge>}
                         {!q.active && <Badge variant="secondary">Inativa</Badge>}
                         <Badge variant="outline">
-                          {q.type === "choice"
+                          {hasChoiceOptions(q.type)
                             ? `${q.options.filter((o) => !o._deleted).length} opc. · até ${choiceMax} pts`
                             : `+${q.score_bonus} pts`}
                         </Badge>
@@ -990,22 +1075,29 @@ export function LeadFormFlowColumn() {
                             }
                           />
                         </Field>
-                        <Field label="Tipo de resposta">
+                        <Field label="Tipo de bloco">
                           <Select
                             value={q.type}
-                            onValueChange={(v) =>
-                              updateQuestionLocal(index, { type: v as QuestionType })
-                            }
+                            onValueChange={(v) => {
+                              const type = v as QuestionType;
+                              const patch: Partial<QuestionDraft> = { type };
+                              if (hasChoiceOptions(type) && q.options.filter((o) => !o._deleted).length === 0) {
+                                patch.options = defaultOptionsForType(type);
+                              }
+                              updateQuestionLocal(index, patch);
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="text">Texto</SelectItem>
-                              <SelectItem value="email">E-mail</SelectItem>
-                              <SelectItem value="tel">WhatsApp / telefone</SelectItem>
-                              <SelectItem value="choice">Múltipla escolha</SelectItem>
-                              <SelectItem value="date">Data</SelectItem>
+                              {BLOCK_MENU.map((section) =>
+                                section.items.map((item) => (
+                                  <SelectItem key={item.type} value={item.type}>
+                                    {item.label}
+                                  </SelectItem>
+                                )),
+                              )}
                             </SelectContent>
                           </Select>
                         </Field>
@@ -1016,14 +1108,26 @@ export function LeadFormFlowColumn() {
                             onChange={(e) => updateQuestionLocal(index, { label: e.target.value })}
                           />
                         </Field>
-                        <Field label="Placeholder">
-                          <Input
-                            value={q.placeholder}
-                            onChange={(e) =>
-                              updateQuestionLocal(index, { placeholder: e.target.value })
-                            }
-                          />
-                        </Field>
+                        {q.type === "redirect" ? (
+                          <Field label="URL de redirecionamento">
+                            <Input
+                              value={q.placeholder}
+                              placeholder="https://wa.me/..."
+                              onChange={(e) =>
+                                updateQuestionLocal(index, { placeholder: e.target.value })
+                              }
+                            />
+                          </Field>
+                        ) : (
+                          <Field label="Placeholder">
+                            <Input
+                              value={q.placeholder}
+                              onChange={(e) =>
+                                updateQuestionLocal(index, { placeholder: e.target.value })
+                              }
+                            />
+                          </Field>
+                        )}
                         <div className="sm:col-span-2">
                           <Field label="Pergunta no chat (prompt)">
                             <Textarea
@@ -1033,6 +1137,10 @@ export function LeadFormFlowColumn() {
                                 updateQuestionLocal(index, { prompt: e.target.value })
                               }
                             />
+                            <MessageFormatBar
+                              value={q.prompt}
+                              onChange={(prompt) => updateQuestionLocal(index, { prompt })}
+                            />
                           </Field>
                         </div>
                         <div className="space-y-1.5 sm:col-span-2">
@@ -1041,25 +1149,22 @@ export function LeadFormFlowColumn() {
                             value={q.bot_messages_text}
                             rows={6}
                             className="font-mono text-xs"
-                            placeholder={"Bloco 1\n\nBloco 2 — use {{nome}}"}
+                            placeholder={"Bloco 1 com *negrito*\n\nBloco 2 — use {{nome}}"}
                             onChange={(e) =>
                               updateQuestionLocal(index, {
                                 bot_messages_text: e.target.value,
                               })
                             }
                           />
-                          <VariableChips
-                            tokens={CORE_VARIABLE_CHIPS}
-                            onInsert={(token) =>
-                              updateQuestionLocal(index, {
-                                bot_messages_text: q.bot_messages_text
-                                  ? `${q.bot_messages_text} ${token}`
-                                  : token,
-                              })
+                          <MessageFormatBar
+                            value={q.bot_messages_text}
+                            onChange={(bot_messages_text) =>
+                              updateQuestionLocal(index, { bot_messages_text })
                             }
+                            tokens={CORE_VARIABLE_CHIPS}
                           />
                         </div>
-                        {q.type !== "choice" && (
+                        {!hasChoiceOptions(q.type) && (
                           <Field label="Bônus de score ao responder">
                             <Input
                               type="number"
@@ -1072,6 +1177,14 @@ export function LeadFormFlowColumn() {
                             />
                           </Field>
                         )}
+                        <Field label="Condição de saída (padrão do bloco)">
+                          <NextKeySelect
+                            value={q.next_key}
+                            currentKey={q.key}
+                            questionKeys={questionKeys}
+                            onChange={(next_key) => updateQuestionLocal(index, { next_key })}
+                          />
+                        </Field>
                         <div className="flex flex-wrap items-center gap-6 sm:items-end sm:pb-1">
                           <label className="flex items-center gap-2 text-sm">
                             <Switch
@@ -1090,10 +1203,15 @@ export function LeadFormFlowColumn() {
                         </div>
                       </div>
 
-                      {q.type === "choice" && (
+                      {hasChoiceOptions(q.type) && (
                         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium">Opções e pontuação</p>
+                            <div>
+                              <p className="text-sm font-medium">Opções e ramificações</p>
+                              <p className="text-xs text-muted-foreground">
+                                Score e para onde o fluxo vai ao escolher.
+                              </p>
+                            </div>
                             <Button
                               variant="outline"
                               size="sm"
@@ -1104,6 +1222,7 @@ export function LeadFormFlowColumn() {
                                     {
                                       label: "Nova opção",
                                       score_points: 0,
+                                      next_key: "",
                                       sort_order: q.options.length,
                                       active: true,
                                     },
@@ -1114,13 +1233,13 @@ export function LeadFormFlowColumn() {
                               <Plus className="h-4 w-4" /> Opção
                             </Button>
                           </div>
-                          <div className="grid gap-2">
+                          <div className="grid gap-3">
                             {q.options.map((opt, oi) => {
                               if (opt._deleted) return null;
                               return (
                                 <div
                                   key={opt.id || `new-${oi}`}
-                                  className="grid gap-2 sm:grid-cols-[1fr_100px_40px]"
+                                  className="grid gap-2 rounded-lg border bg-background/80 p-3 sm:grid-cols-[1fr_90px_minmax(160px,1fr)_40px]"
                                 >
                                   <Input
                                     value={opt.label}
@@ -1141,6 +1260,17 @@ export function LeadFormFlowColumn() {
                                         i === oi
                                           ? { ...o, score_points: Number(e.target.value) || 0 }
                                           : o,
+                                      );
+                                      updateQuestionLocal(index, { options });
+                                    }}
+                                  />
+                                  <NextKeySelect
+                                    value={opt.next_key}
+                                    currentKey={q.key}
+                                    questionKeys={questionKeys}
+                                    onChange={(next_key) => {
+                                      const options = q.options.map((o, i) =>
+                                        i === oi ? { ...o, next_key } : o,
                                       );
                                       updateQuestionLocal(index, { options });
                                     }}
@@ -1320,36 +1450,110 @@ export function LeadFormVisualPanel() {
             </div>
           </div>
 
-          <StorageImageInput
-            bucket="leads"
-            folder="avatars"
-            name="agent_avatar"
-            label="Avatar"
-            hideFolderHint
-            previewClassName="h-32 rounded-xl border bg-muted bg-cover bg-center"
-            defaultValue={meta.agent_avatar_url}
-            onValueChange={(url) => setMeta({ ...meta, agent_avatar_url: url })}
-          />
-          <StorageImageInput
-            bucket="leads"
-            folder="wallpapers"
-            name="wallpaper_light"
-            label="Fundo claro"
-            hideFolderHint
-            previewClassName="h-32 rounded-xl border bg-muted bg-cover bg-center"
-            defaultValue={meta.wallpaper_url}
-            onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
-          />
-          <StorageImageInput
-            bucket="leads"
-            folder="wallpapers"
-            name="wallpaper_dark"
-            label="Fundo escuro"
-            hideFolderHint
-            previewClassName="h-32 rounded-xl border bg-muted bg-cover bg-center"
-            defaultValue={meta.wallpaper_dark_url}
-            onValueChange={(url) => setMeta({ ...meta, wallpaper_dark_url: url })}
-          />
+          <div className="overflow-hidden rounded-2xl border shadow-md">
+            <div className="border-b bg-muted/30 px-3 py-2">
+              <p className="text-sm font-medium">Preview ao vivo</p>
+              <p className="text-xs text-muted-foreground">
+                Header, chat e fundo da página (claro).
+              </p>
+            </div>
+            <div className="p-3 sm:p-4" style={{ background: meta.page_bg_light || "#1A5C4F" }}>
+              <div className="overflow-hidden rounded-xl shadow-lg">
+                <div style={{ background: meta.wallpaper_url ? undefined : "#e5ddd5" }}>
+                  <div
+                    className="flex items-center gap-3 px-3 py-3 text-white"
+                    style={{
+                      background: `linear-gradient(180deg, ${meta.primary_color} 0%, ${primaryDark} 100%)`,
+                    }}
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-sm font-semibold ring-2 ring-white/30">
+                      {meta.agent_avatar_url ? (
+                        <img
+                          src={meta.agent_avatar_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        agentInitial
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {meta.agent_name || "Agente"}
+                      </p>
+                      <p className="truncate text-[11px] opacity-80">
+                        {meta.header_subtitle || meta.agent_title || "Estou online"}
+                        {meta.brand_name ? ` · ${meta.brand_name}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className="relative min-h-[140px] p-3"
+                    style={
+                      meta.wallpaper_url
+                        ? {
+                            backgroundImage: `url(${meta.wallpaper_url})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  >
+                    <div className="absolute inset-0 bg-black/5" />
+                    <div className="relative space-y-2">
+                      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-xs shadow-sm">
+                        Olá! Eu sou a {meta.agent_name || "assistente"} do{" "}
+                        {meta.brand_name || "espaço"}.
+                      </div>
+                      <div
+                        className="ml-auto max-w-[70%] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-white shadow-sm"
+                        style={{ background: meta.primary_color }}
+                      >
+                        Sim, quero!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="border-t bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Quiz pode somar até{" "}
+              <span className="font-medium text-foreground">{maxScoreHint} pts</span>.
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StorageImageInput
+              bucket="leads"
+              folder="avatars"
+              name="agent_avatar"
+              label="Avatar"
+              hideFolderHint
+              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
+              defaultValue={meta.agent_avatar_url}
+              onValueChange={(url) => setMeta({ ...meta, agent_avatar_url: url })}
+            />
+            <StorageImageInput
+              bucket="leads"
+              folder="wallpapers"
+              name="wallpaper_light"
+              label="Fundo claro"
+              hideFolderHint
+              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
+              defaultValue={meta.wallpaper_url}
+              onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
+            />
+            <StorageImageInput
+              bucket="leads"
+              folder="wallpapers"
+              name="wallpaper_dark"
+              label="Fundo escuro"
+              hideFolderHint
+              previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
+              defaultValue={meta.wallpaper_dark_url}
+              onValueChange={(url) => setMeta({ ...meta, wallpaper_dark_url: url })}
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -1377,7 +1581,9 @@ export function LeadFormVisualPanel() {
       <Card className="border-gold/15 shadow-soft">
         <CardHeader>
           <CardTitle className="font-serif text-xl">SEO</CardTitle>
-          <CardDescription>Título e descrição usados na aba do navegador e em compartilhamentos.</CardDescription>
+          <CardDescription>
+            Título e descrição usados na aba do navegador e em compartilhamentos.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Field label={`Título SEO (${meta.seo_title.length}/60)`}>
@@ -1403,9 +1609,7 @@ export function LeadFormVisualPanel() {
       <Card className="border-gold/15 shadow-soft">
         <CardHeader>
           <CardTitle className="font-serif text-xl">WhatsApp</CardTitle>
-          <CardDescription>
-            Para onde o visitante é enviado ao final do chat.
-          </CardDescription>
+          <CardDescription>Para onde o visitante é enviado ao final do chat.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Field
@@ -1439,68 +1643,10 @@ export function LeadFormVisualPanel() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-gold/20 shadow-luxe">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-serif text-xl">Preview ao vivo</CardTitle>
-          <CardDescription>Como o header do chat fica agora.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div
-            className="mx-3 mb-3 overflow-hidden rounded-2xl border shadow-md"
-            style={{ background: meta.wallpaper_url ? undefined : "#f0f2f5" }}
-          >
-            <div
-              className="flex items-center gap-3 px-3 py-3 text-white"
-              style={{
-                background: `linear-gradient(180deg, ${meta.primary_color} 0%, ${primaryDark} 100%)`,
-              }}
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-sm font-semibold ring-2 ring-white/30">
-                {meta.agent_avatar_url ? (
-                  <img src={meta.agent_avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  agentInitial
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{meta.agent_name || "Agente"}</p>
-                <p className="truncate text-[11px] opacity-80">
-                  {meta.header_subtitle || meta.agent_title || "Estou online"}
-                  {meta.brand_name ? ` · ${meta.brand_name}` : ""}
-                </p>
-              </div>
-            </div>
-            <div
-              className="relative min-h-[180px] p-3"
-              style={
-                meta.wallpaper_url
-                  ? {
-                      backgroundImage: `url(${meta.wallpaper_url})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }
-                  : undefined
-              }
-            >
-              <div className="absolute inset-0 bg-black/5" />
-              <div className="relative space-y-2">
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-xs shadow-sm">
-                  Olá! Eu sou a {meta.agent_name || "assistente"} do {meta.brand_name || "espaço"}.
-                </div>
-                <div
-                  className="ml-auto max-w-[70%] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-white shadow-sm"
-                  style={{ background: meta.primary_color }}
-                >
-                  Sim, quero!
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="border-t bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-            Quiz pode somar até <span className="font-medium text-foreground">{maxScoreHint} pts</span>.
-          </div>
-        </CardContent>
-      </Card>
+      <Button className="w-full" onClick={saveMeta} disabled={savingMeta}>
+        <Save className="h-4 w-4" />
+        {savingMeta ? "Salvando…" : "Salvar visual"}
+      </Button>
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden">
         <Button className="w-full" onClick={saveMeta} disabled={savingMeta}>
@@ -1523,9 +1669,11 @@ export function LeadFormSimulatorPanel() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [done, setDone] = useState(activeQuestions.length === 0);
-  const shownRef = useRef<Set<number>>(new Set());
+  const [session, setSession] = useState(0);
+  const shownRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
+  const pushGenRef = useRef(0);
   answersRef.current = answers;
 
   const current = activeQuestions[stepIndex];
@@ -1535,10 +1683,15 @@ export function LeadFormSimulatorPanel() {
   }, [bubbles, typing]);
 
   const pushBot = useCallback(
-    async (messages: string[]) => {
+    async (messages: string[], gen: number) => {
       for (const msg of messages) {
+        if (pushGenRef.current !== gen) return;
         setTyping(true);
         await new Promise((r) => setTimeout(r, meta.bot_delay_ms || 500));
+        if (pushGenRef.current !== gen) {
+          setTyping(false);
+          return;
+        }
         setTyping(false);
         setBubbles((prev) => [
           ...prev,
@@ -1559,50 +1712,60 @@ export function LeadFormSimulatorPanel() {
       setDone(true);
       return;
     }
-    if (shownRef.current.has(stepIndex)) return;
-    shownRef.current.add(stepIndex);
+    const shownKey = `${session}:${stepIndex}:${current.key}`;
+    if (shownRef.current.has(shownKey)) return;
+    shownRef.current.add(shownKey);
     const msgs = parseBotMessages(current.bot_messages_text);
     const prompt = current.prompt?.trim();
     if (prompt) msgs.push(prompt);
-    if (msgs.length) void pushBot(msgs);
+    if (msgs.length) {
+      const gen = ++pushGenRef.current;
+      void pushBot(msgs, gen);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIndex, current]);
+  }, [stepIndex, current, session]);
 
   const restart = () => {
+    pushGenRef.current += 1;
     shownRef.current = new Set();
-    setStepIndex(0);
-    setAnswers({});
-    setBubbles([]);
-    setInput("");
     setTyping(false);
+    setBubbles([]);
+    setAnswers({});
+    setInput("");
     setDone(activeQuestions.length === 0);
+    setStepIndex(0);
+    setSession((s) => s + 1);
   };
 
-  const advance = (value: string) => {
-    if (!current || !value.trim()) return;
-    const trimmed = value.trim();
+  const advance = (value: string, optionNextKey?: string) => {
+    if (!current || typing) return;
+    const trimmed = value.trim() || (isContentOnlyType(current.type) ? "Continuar" : "");
+    if (!trimmed && !isContentOnlyType(current.type)) return;
     setBubbles((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text: trimmed }]);
-    setAnswers((prev) => ({ ...prev, [current.key]: trimmed }));
+    setAnswers((prev) => ({
+      ...prev,
+      [current.key]: isContentOnlyType(current.type) ? "ok" : value.trim(),
+    }));
     setInput("");
-    const nextIndex = stepIndex + 1;
-    if (nextIndex >= activeQuestions.length) {
+    const branchKey = optionNextKey || current.next_key;
+    const next = resolveNextStepIndex(activeQuestions, stepIndex, branchKey);
+    if (next === "end") {
       setDone(true);
+      setStepIndex(activeQuestions.length);
+      return;
     }
-    setStepIndex(nextIndex);
+    setStepIndex(next);
   };
 
   return (
-    <Card className="border-gold/15 shadow-soft">
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle className="font-serif text-xl">Simulador</CardTitle>
-          <CardDescription>Teste o fluxo do quiz sem salvar dados reais.</CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={restart}>
+    <Card className="border-gold/15 shadow-luxe overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 py-3">
+        <CardTitle className="font-serif text-xl">Simulador</CardTitle>
+        <Button variant="outline" size="sm" onClick={restart} disabled={typing}>
           <RotateCcw className="h-4 w-4" /> Reiniciar
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-4 pt-0">
         {activeQuestions.length === 0 ? (
           <AdminEmptyState
             icon={Wand2}
@@ -1610,97 +1773,219 @@ export function LeadFormSimulatorPanel() {
             description="Adicione ou ative blocos no fluxo à esquerda para simular a conversa."
           />
         ) : (
-          <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-[24px] border shadow-lg">
+          <div
+            className="rounded-2xl p-3"
+            style={{ background: meta.page_bg_light || "#1A5C4F" }}
+          >
             <div
-              className="flex items-center gap-2 px-3 py-2.5 text-white"
-              style={{
-                background: `linear-gradient(180deg, ${meta.primary_color} 0%, ${primaryDark} 100%)`,
-              }}
+              className="mx-auto flex h-[min(72vh,620px)] w-full max-w-[380px] flex-col overflow-hidden rounded-[24px] border border-black/10 shadow-xl"
+              style={{ background: "#e5ddd5" }}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-xs font-semibold">
-                {meta.agent_avatar_url ? (
-                  <img src={meta.agent_avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  agentInitial
+              <div
+                className="relative shrink-0 px-4 pb-3 pt-3 text-white"
+                style={{
+                  background: `linear-gradient(180deg, ${meta.primary_color} 0%, ${primaryDark} 100%)`,
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-sm font-semibold ring-2 ring-white/25">
+                    {meta.agent_avatar_url ? (
+                      <img
+                        src={meta.agent_avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      agentInitial
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{meta.agent_name || "Agente"}</p>
+                    <p className="truncate text-xs opacity-80">
+                      {meta.header_subtitle || meta.agent_title || "Estou online"}
+                      {meta.brand_name ? ` · ${meta.brand_name}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1 overflow-hidden rounded-full bg-black/25">
+                  <div
+                    className="h-full rounded-full bg-white transition-all"
+                    style={{
+                      width: `${Math.round(
+                        ((Math.min(stepIndex, activeQuestions.length) + (done ? 1 : 0)) /
+                          Math.max(activeQuestions.length, 1)) *
+                          100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                ref={scrollRef}
+                className="relative flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-4"
+                style={
+                  meta.wallpaper_url
+                    ? {
+                        backgroundImage: `url(${meta.wallpaper_url})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : { background: "#e5ddd5" }
+                }
+              >
+                <div className="mx-auto mb-1 rounded-full bg-black/5 px-3 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur-sm">
+                  Simulação · Hoje
+                </div>
+                {bubbles.map((b) => (
+                  <div
+                    key={b.id}
+                    className={cn("flex", b.role === "user" ? "justify-end" : "justify-start")}
+                  >
+                    <div
+                      className={cn(
+                        "max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-snug shadow-sm",
+                        b.role === "user"
+                          ? "rounded-tr-sm text-white"
+                          : "rounded-tl-sm bg-white text-foreground [&_b]:font-semibold",
+                      )}
+                      style={b.role === "user" ? { background: meta.primary_color } : undefined}
+                    >
+                      {b.role === "bot" ? (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: formatLeadMessageHtml(b.text),
+                          }}
+                        />
+                      ) : (
+                        b.text
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {typing && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-muted-foreground shadow-sm">
+                      <span className="inline-flex gap-1">
+                        <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/50" />
+                        <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/50 [animation-delay:120ms]" />
+                        <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/50 [animation-delay:240ms]" />
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {done && (
+                  <div className="mt-2 space-y-2 rounded-xl border border-dashed border-white/40 bg-white/80 p-3 text-center backdrop-blur-sm">
+                    <p className="text-sm text-muted-foreground">Fim da simulação.</p>
+                    <Button type="button" size="sm" variant="outline" onClick={restart}>
+                      <RotateCcw className="h-4 w-4" /> Recomeçar
+                    </Button>
+                  </div>
                 )}
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{meta.agent_name || "Agente"}</p>
-                <p className="truncate text-[10px] opacity-80">
-                  {meta.header_subtitle || meta.agent_title || "online"}
-                </p>
-              </div>
-            </div>
-            <div ref={scrollRef} className="flex h-80 flex-col gap-2 overflow-y-auto bg-[#e5ddd5] p-3">
-              {bubbles.map((b) => (
-                <div key={b.id} className={cn("flex", b.role === "user" ? "justify-end" : "justify-start")}>
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-2xl px-3 py-2 text-xs shadow-sm",
-                      b.role === "user" ? "text-white" : "bg-white text-foreground",
-                    )}
-                    style={b.role === "user" ? { background: meta.primary_color } : undefined}
-                  >
-                    {b.text}
+
+              {!done && current && !typing && (
+                hasChoiceOptions(current.type) && current.type !== "multi" ? (
+                  <div className="flex shrink-0 flex-col gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur">
+                    {current.options
+                      .filter((o) => !o._deleted && o.active)
+                      .map((o, i) => (
+                        <button
+                          key={o.id || i}
+                          type="button"
+                          onClick={() => advance(o.label, o.next_key)}
+                          className="rounded-2xl border bg-white px-3.5 py-3 text-left text-sm font-medium shadow-sm transition hover:-translate-y-px hover:shadow"
+                          style={{ boxShadow: `inset 4px 0 0 ${meta.primary_color}` }}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
                   </div>
-                </div>
-              ))}
-              {typing && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl bg-white px-3 py-2 text-xs text-muted-foreground shadow-sm">
-                    digitando…
+                ) : isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm" ? (
+                  <div className="flex shrink-0 flex-col gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur">
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        advance(current.type === "lgpd" ? "sim" : "ok")
+                      }
+                      style={{ background: meta.primary_color }}
+                      className="text-white"
+                    >
+                      {current.type === "lgpd"
+                        ? "Aceito continuar"
+                        : current.type === "confirm"
+                          ? "Confirmar"
+                          : "Continuar"}
+                    </Button>
                   </div>
-                </div>
-              )}
-              {done && (
-                <div className="mt-2 rounded-xl border border-dashed bg-white/60 p-3 text-center text-xs text-muted-foreground">
-                  Fim do fluxo simulado.
-                </div>
+                ) : current.type === "multi" ? (
+                  <div className="flex shrink-0 flex-col gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur">
+                    {current.options
+                      .filter((o) => !o._deleted && o.active)
+                      .map((o, i) => {
+                        const on = input.split(/\s*\|\s*/).includes(o.label);
+                        return (
+                          <button
+                            key={o.id || i}
+                            type="button"
+                            onClick={() => {
+                              const parts = input
+                                .split(/\s*\|\s*/)
+                                .map((s) => s.trim())
+                                .filter(Boolean);
+                              const next = on
+                                ? parts.filter((p) => p !== o.label)
+                                : [...parts, o.label];
+                              setInput(next.join(" | "));
+                            }}
+                            className={cn(
+                              "rounded-2xl border px-3.5 py-3 text-left text-sm font-medium shadow-sm",
+                              on ? "bg-primary/10 border-primary" : "bg-white",
+                            )}
+                          >
+                            {on ? "✓ " : ""}
+                            {o.label}
+                          </button>
+                        );
+                      })}
+                    <Button
+                      type="button"
+                      disabled={!input.trim()}
+                      onClick={() => advance(input)}
+                      style={{ background: meta.primary_color }}
+                      className="text-white"
+                    >
+                      Confirmar seleção
+                    </Button>
+                  </div>
+                ) : (
+                  <form
+                    className="flex shrink-0 items-center gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      advance(input);
+                    }}
+                  >
+                    <input
+                      className="min-h-11 flex-1 rounded-full border-0 bg-white px-4 py-2.5 text-sm shadow-sm outline-none ring-1 ring-black/5 focus:ring-2"
+                      style={{ ["--tw-ring-color" as string]: meta.primary_color }}
+                      placeholder={current.placeholder || "Digite sua resposta…"}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                    />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 rounded-full shadow"
+                      style={{ background: meta.primary_color }}
+                      disabled={!input.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </form>
+                )
               )}
             </div>
-            {!done && current && !typing && (
-              current.type === "choice" ? (
-                <div className="flex flex-col gap-1.5 border-t bg-background p-3">
-                  {current.options
-                    .filter((o) => !o._deleted && o.active)
-                    .map((o, i) => (
-                      <button
-                        key={o.id || i}
-                        type="button"
-                        onClick={() => advance(o.label)}
-                        className="rounded-xl border px-3 py-2 text-left text-xs font-medium shadow-sm transition hover:-translate-y-px"
-                        style={{ boxShadow: `inset 3px 0 0 ${meta.primary_color}` }}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                </div>
-              ) : (
-                <form
-                  className="flex items-center gap-2 border-t bg-background p-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    advance(input);
-                  }}
-                >
-                  <input
-                    className="flex-1 rounded-full border px-3 py-2 text-xs outline-none"
-                    placeholder={current.placeholder || "Digite sua resposta…"}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                  />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 rounded-full"
-                    style={{ background: meta.primary_color }}
-                    disabled={!input.trim()}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
-                </form>
-              )
-            )}
           </div>
         )}
       </CardContent>
@@ -1708,18 +1993,81 @@ export function LeadFormSimulatorPanel() {
   );
 }
 
-const CONVERSION_OPTIONS: Array<{ value: ConversionMinTemperature; label: string }> = [
-  { value: "any", label: "Qualquer resposta" },
-  { value: "morno", label: "Morno ou mais" },
-  { value: "quente", label: "Quente ou mais" },
-  { value: "muito_quente", label: "Somente muito quente" },
+const CONVERSION_OPTIONS: Array<{
+  value: ConversionMinTemperature;
+  title: string;
+  hint: string;
+  includes: Array<"frio" | "morno" | "quente" | "muito_quente">;
+}> = [
+  {
+    value: "any",
+    title: "Qualquer resposta",
+    hint: "Dispara em todo lead que completar o quiz, inclusive frios.",
+    includes: ["frio", "morno", "quente", "muito_quente"],
+  },
+  {
+    value: "morno",
+    title: "Morno ou mais",
+    hint: "Ignora leads frios; dispara a partir de morno.",
+    includes: ["morno", "quente", "muito_quente"],
+  },
+  {
+    value: "quente",
+    title: "Quente ou mais",
+    hint: "Recomendado: só leads qualificados (quente e muito quente).",
+    includes: ["quente", "muito_quente"],
+  },
+  {
+    value: "muito_quente",
+    title: "Somente muito quente",
+    hint: "Mais restrito: só o topo do funil dispara conversão paga.",
+    includes: ["muito_quente"],
+  },
 ];
 
+function conversionTempChipClass(temp: string) {
+  switch (temp) {
+    case "muito_quente":
+      return "border-transparent bg-gold text-background";
+    case "quente":
+      return "border-transparent bg-primary text-primary-foreground";
+    case "morno":
+      return "border-transparent bg-secondary text-secondary-foreground";
+    default:
+      return "bg-background text-muted-foreground";
+  }
+}
+
+function conversionScoreHint(
+  value: ConversionMinTemperature,
+  bands: { cold: number; warm: number; hot: number },
+) {
+  switch (value) {
+    case "any":
+      return "0 pts ou mais";
+    case "morno":
+      return `${bands.cold + 1} pts ou mais`;
+    case "quente":
+      return `${bands.warm + 1} pts ou mais`;
+    case "muito_quente":
+      return `${bands.hot + 1} pts ou mais`;
+  }
+}
+
 export function LeadFormPixelsPanel() {
-  const { form, integrations, setIntegrations, savingIntegrations, saveIntegrations } =
+  const { form, meta, integrations, setIntegrations, savingIntegrations, saveIntegrations } =
     useLeadFormEditor();
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [testingCapi, setTestingCapi] = useState(false);
+
+  const scoreBands = {
+    cold: meta.score_cold_max,
+    warm: meta.score_warm_max,
+    hot: meta.score_hot_max,
+  };
+  const selectedConversion =
+    CONVERSION_OPTIONS.find((o) => o.value === integrations.conversion_min_temperature) ||
+    CONVERSION_OPTIONS[2];
 
   const testWebhook = async () => {
     setTestingWebhook(true);
@@ -1905,10 +2253,10 @@ export function LeadFormPixelsPanel() {
         <CardHeader>
           <CardTitle className="font-serif text-xl">Conversão mínima</CardTitle>
           <CardDescription>
-            Temperatura mínima para disparar Pixel/CAPI/webhook de conversão paga.
+            Temperatura mínima para disparar Pixel, CAPI e webhook de conversão paga.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <RadioGroup
             value={integrations.conversion_min_temperature}
             onValueChange={(v) =>
@@ -1917,14 +2265,63 @@ export function LeadFormPixelsPanel() {
                 conversion_min_temperature: v as ConversionMinTemperature,
               })
             }
+            className="grid gap-2"
           >
-            {CONVERSION_OPTIONS.map((opt) => (
-              <label key={opt.value} className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value={opt.value} />
-                {opt.label}
-              </label>
-            ))}
+            {CONVERSION_OPTIONS.map((opt) => {
+              const selected = integrations.conversion_min_temperature === opt.value;
+              return (
+                <label
+                  key={opt.value}
+                  className={cn(
+                    "flex cursor-pointer gap-3 rounded-xl border p-3 transition",
+                    selected
+                      ? "border-gold/50 bg-gold/5 shadow-sm ring-1 ring-gold/30"
+                      : "border-border/80 hover:border-foreground/20 hover:bg-muted/30",
+                  )}
+                >
+                  <RadioGroupItem value={opt.value} className="mt-1 shrink-0" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="text-sm font-medium leading-none">{opt.title}</p>
+                      <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+                        {conversionScoreHint(opt.value, scoreBands)}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{opt.hint}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(["frio", "morno", "quente", "muito_quente"] as const).map((temp) => {
+                        const active = opt.includes.includes(temp);
+                        return (
+                          <Badge
+                            key={temp}
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] font-medium",
+                              active
+                                ? conversionTempChipClass(temp)
+                                : "border-dashed opacity-35",
+                            )}
+                          >
+                            {temperatureLabel(temp)}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
           </RadioGroup>
+
+          <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
+            Com{" "}
+            <span className="font-medium text-foreground">{selectedConversion.title}</span>, a
+            conversão paga dispara a partir de{" "}
+            <span className="font-medium text-foreground">
+              {conversionScoreHint(selectedConversion.value, scoreBands)}
+            </span>
+            . As faixas vêm da aba Score.
+          </div>
         </CardContent>
       </Card>
 
@@ -2085,6 +2482,14 @@ export function LeadFormDiagnosisPanel() {
                         onChange={(e) =>
                           setRules((prev) =>
                             prev.map((x, i) => (i === index ? { ...x, body: e.target.value } : x)),
+                          )
+                        }
+                      />
+                      <MessageFormatBar
+                        value={r.body}
+                        onChange={(body) =>
+                          setRules((prev) =>
+                            prev.map((x, i) => (i === index ? { ...x, body } : x)),
                           )
                         }
                       />

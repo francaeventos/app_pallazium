@@ -204,6 +204,51 @@
   color: rgb(255 250 247 / 0.62);
 }
 
+/* Scrollbars finas e discretas (Firefox + Chromium/WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(144 117 84 / 0.45) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(144 117 84 / 0.4);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(144 117 84 / 0.65);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.pallazium-sidebar,
+.pallazium-sidebar * {
+  scrollbar-color: rgb(255 250 247 / 0.22) transparent;
+}
+
+.pallazium-sidebar::-webkit-scrollbar-thumb,
+.pallazium-sidebar *::-webkit-scrollbar-thumb {
+  background: rgb(255 250 247 / 0.22);
+}
+
+.pallazium-sidebar::-webkit-scrollbar-thumb:hover,
+.pallazium-sidebar *::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 250 247 / 0.38);
+}
+
 .pallazium-feature-card {
   background: #4a3c2e;
   border: 1px solid rgb(144 117 84 / 0.55);

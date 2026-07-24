@@ -9,6 +9,7 @@ import {
   serializeLeadForWebhook,
 } from "@/lib/leads/service";
 import { sendLeadWebhook } from "@/lib/leads/webhook";
+import { LEAD_QUESTION_TYPES } from "@/lib/leads/question-types";
 
 async function guardAdmin(context: { userId?: string }) {
   const userId = context.userId;
@@ -278,6 +279,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           prompt: q.prompt,
           bot_messages: q.botMessages,
           placeholder: q.placeholder,
+          next_key: q.nextKey || "",
           sort_order: q.sortOrder,
           required: q.required,
           score_bonus: q.scoreBonus,
@@ -286,6 +288,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
             id: o.id,
             label: o.label,
             score_points: o.scorePoints,
+            next_key: o.nextKey || "",
             sort_order: o.sortOrder,
             active: o.active,
           })),
@@ -433,11 +436,12 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
         id: z.string().uuid().optional(),
         form_id: z.string().uuid(),
         key: z.string().trim().min(1).max(60),
-        type: z.enum(["text", "email", "tel", "choice", "date"]),
+        type: z.enum(LEAD_QUESTION_TYPES as unknown as [string, ...string[]]),
         label: z.string().trim().max(120).nullable().optional(),
         prompt: z.string().trim().max(2000).nullable().optional(),
         bot_messages: z.array(z.string().max(4000)).optional(),
-        placeholder: z.string().trim().max(200).nullable().optional(),
+        placeholder: z.string().trim().max(2000).nullable().optional(),
+        next_key: z.string().trim().max(60).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
         required: z.boolean().default(true),
         score_bonus: z.number().int().min(0).max(100).default(0),
@@ -455,6 +459,7 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
       prompt: data.prompt ?? null,
       botMessages: data.bot_messages ?? [],
       placeholder: data.placeholder ?? null,
+      nextKey: data.next_key?.trim() || null,
       sortOrder: data.sort_order,
       required: data.required,
       scoreBonus: data.score_bonus,
@@ -486,6 +491,7 @@ export const saveLeadOptionFn = createServerFn({ method: "POST" })
         question_id: z.string().uuid(),
         label: z.string().trim().min(1).max(200),
         score_points: z.number().int().min(0).max(200).default(0),
+        next_key: z.string().trim().max(60).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
         active: z.boolean().default(true),
       })
@@ -497,6 +503,7 @@ export const saveLeadOptionFn = createServerFn({ method: "POST" })
       questionId: data.question_id,
       label: data.label,
       scorePoints: data.score_points,
+      nextKey: data.next_key?.trim() || null,
       sortOrder: data.sort_order,
       active: data.active,
     };

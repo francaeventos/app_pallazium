@@ -79,6 +79,15 @@ enum LeadQuestionType {
   tel
   choice
   date
+  number
+  multi
+  buttons
+  scale
+  rating
+  message
+  confirm
+  redirect
+  lgpd
 
   @@map("lead_question_type")
 }
@@ -556,6 +565,8 @@ model LeadFormQuestion {
   prompt       String?
   botMessages  String[]         @default([]) @map("bot_messages")
   placeholder  String?
+  /// Próximo bloco por chave; vazio = ordem padrão; "__end__" = diagnóstico.
+  nextKey      String?          @map("next_key")
   sortOrder    Int              @default(0) @map("sort_order")
   required     Boolean          @default(true)
   scoreBonus   Int              @default(0) @map("score_bonus")
@@ -576,6 +587,8 @@ model LeadFormOption {
   questionId  String   @map("question_id") @db.Uuid
   label       String
   scorePoints Int      @default(0) @map("score_points")
+  /// Override de saída desta opção (chave do bloco ou "__end__").
+  nextKey     String?  @map("next_key")
   sortOrder   Int      @default(0) @map("sort_order")
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

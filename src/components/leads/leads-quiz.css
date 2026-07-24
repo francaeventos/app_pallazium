@@ -4,7 +4,8 @@
    Smart Form (Ativadash) — tokens do chat público /leads
    ============================================================ */
 
-.sf-root {
+/* Quiz público /leads — escopo em .leads-quiz-app para não vazar no admin */
+.leads-quiz-app.sf-root {
   --sf-primary: #128c7e;
   --sf-primary-dark: #0d655b;
 
@@ -68,7 +69,7 @@
   color: var(--sf-bubble-text);
 }
 
-.sf-page-frame-light {
+.leads-quiz-app.sf-page-frame-light {
   background:
     radial-gradient(
       900px 500px at 20% 0%,
@@ -84,7 +85,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .sf-root.sf-page-frame-light {
+  .leads-quiz-app.sf-root.sf-page-frame-light {
     background:
       radial-gradient(
         900px 500px at 20% 0%,
@@ -99,11 +100,11 @@
       var(--sf-page-bg-dark);
   }
 
-  .sf-root .sf-phone {
+  .leads-quiz-app .sf-phone {
     background: var(--sf-chat-bg-dark);
   }
 
-  .sf-root .sf-wallpaper {
+  .leads-quiz-app .sf-wallpaper {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M20 40h40M40 20v40M90 70h50M115 45v50M180 30h40M200 10v40M50 160h60M80 130v60M170 180h50M195 155v50'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
@@ -122,7 +123,7 @@
 }
 
 @media (min-width: 480px) {
-  .sf-root {
+  .leads-quiz-app.sf-root {
     padding: 1.25rem;
   }
 
@@ -399,6 +400,22 @@
 .sf-option:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.sf-option.selected {
+  box-shadow: inset 3px 0 0 var(--sf-primary), 0 0 0 1.5px var(--sf-primary);
+  background: color-mix(in srgb, var(--sf-primary) 10%, #fff);
+}
+
+.sf-lgpd-links {
+  margin: 0 0 0.35rem;
+  font-size: 12px;
+  color: var(--sf-bubble-text-secondary);
+}
+
+.sf-lgpd-links a {
+  color: var(--sf-primary);
+  text-decoration: underline;
 }
 
 .sf-composer {

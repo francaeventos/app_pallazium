@@ -102,7 +102,7 @@ export function computeLeadScore(
     const raw = answers[question.key];
     if (raw == null || String(raw).trim() === "") continue;
 
-    if (question.type === "choice") {
+    if (question.type === "choice" || question.type === "buttons" || question.type === "scale" || question.type === "rating") {
       const option = question.options.find((o) => o.label === raw || o.id === raw);
       if (option) {
         score += option.scorePoints;
@@ -110,6 +110,24 @@ export function computeLeadScore(
           key: question.key,
           points: option.scorePoints,
           reason: option.label,
+        });
+      }
+    } else if (question.type === "multi") {
+      const selected = String(raw)
+        .split(/\s*\|\s*/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      let points = 0;
+      for (const label of selected) {
+        const option = question.options.find((o) => o.label === label || o.id === label);
+        if (option) points += option.scorePoints;
+      }
+      if (points > 0) {
+        score += points;
+        breakdown.push({
+          key: question.key,
+          points,
+          reason: selected.join(", "),
         });
       }
     } else if (question.scoreBonus > 0) {

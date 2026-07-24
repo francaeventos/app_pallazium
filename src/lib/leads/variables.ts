@@ -32,6 +32,53 @@ export function buildLeadTemplateVars(answers: Record<string, string>) {
   return vars;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Converte marcadores de negrito para HTML seguro.
+ * Aceita *texto* (WhatsApp), **texto** e <b>texto</b> legado.
+ */
+export function formatLeadMessageHtml(text: string) {
+  if (!text) return "";
+  let s = text.replace(/\r\n/g, "\n");
+  s = s.replace(/<\/?b>/gi, (tag) => (tag.toLowerCase() === "<b>" ? "§B§" : "§/B§"));
+  s = s.replace(/<\/?strong>/gi, (tag) =>
+    tag.toLowerCase().startsWith("<strong") ? "§B§" : "§/B§",
+  );
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "§B§$1§/B§");
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g, "$1§B§$2§/B§");
+  s = escapeHtml(s);
+  s = s.replace(/§B§/g, "<b>").replace(/§\/B§/g, "</b>");
+  s = s.replace(/\n/g, "<br/>");
+  return s;
+}
+
+/** Envolve a seleção (ou o texto) com *negrito*. */
+export function wrapWithBoldMarkers(value: string, start: number, end: number) {
+  const selected = value.slice(start, end);
+  if (!selected) {
+    const insert = "*negrito*";
+    return {
+      value: value.slice(0, start) + insert + value.slice(end),
+      selectionStart: start + 1,
+      selectionEnd: start + insert.length - 1,
+    };
+  }
+  const wrapped = `*${selected}*`;
+  return {
+    value: value.slice(0, start) + wrapped + value.slice(end),
+    selectionStart: start,
+    selectionEnd: start + wrapped.length,
+  };
+}
+
 export const CORE_VARIABLE_CHIPS = [
   { token: "{{nome}}", label: "nome" },
   { token: "{{telefone}}", label: "telefone" },

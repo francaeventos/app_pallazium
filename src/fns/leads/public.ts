@@ -13,6 +13,7 @@ import {
   recordLeadEvent,
   scoreLeadAnswers,
 } from "@/lib/leads/service";
+import { needsAnswer } from "@/lib/leads/question-types";
 
 const slugSchema = z.object({ slug: z.string().trim().min(1).default("leads") });
 
@@ -63,9 +64,10 @@ function publicFormShape(form: {
     prompt: string | null;
     botMessages: string[];
     placeholder: string | null;
+    nextKey: string | null;
     sortOrder: number;
     required: boolean;
-    options: Array<{ id: string; label: string; sortOrder: number }>;
+    options: Array<{ id: string; label: string; sortOrder: number; nextKey: string | null }>;
   }>;
   rules: Array<{
     title: string;
@@ -116,9 +118,15 @@ function publicFormShape(form: {
       prompt: q.prompt,
       botMessages: q.botMessages,
       placeholder: q.placeholder,
+      nextKey: q.nextKey,
       sortOrder: q.sortOrder,
       required: q.required,
-      options: q.options.map((o) => ({ id: o.id, label: o.label, sortOrder: o.sortOrder })),
+      options: q.options.map((o) => ({
+        id: o.id,
+        label: o.label,
+        sortOrder: o.sortOrder,
+        nextKey: o.nextKey,
+      })),
     })),
     rules: form.rules,
     tracking: resolvePublicTracking(form.integrations),
@@ -314,10 +322,13 @@ export const completeLeadFn = createServerFn({ method: "POST" })
     const whatsapp = normalizePhone(whatsappRaw);
 
     for (const q of form.questions) {
-      if (!q.required) continue;
+      if (!needsAnswer(q.type, q.required)) continue;
       const value = answers[q.key];
       if (!value || !String(value).trim()) {
         throw new Error(`Resposta obrigatória: ${q.prompt || q.label || q.key}`);
+      }
+      if (q.type === "lgpd" && !/^(sim|aceito|true|1|ok)$/i.test(String(value).trim())) {
+        throw new Error("É necessário aceitar a política de privacidade.");
       }
     }
 

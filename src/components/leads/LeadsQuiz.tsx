@@ -14,7 +14,12 @@ import {
   trackPixel,
 } from "@/lib/leads/tracking";
 import { darkenHex } from "@/lib/leads/theme";
-import { buildLeadTemplateVars, interpolateLeadTemplate } from "@/lib/leads/variables";
+import {
+  hasChoiceOptions,
+  isContentOnlyType,
+  resolveNextStepIndex,
+} from "@/lib/leads/question-types";
+import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml } from "@/lib/leads/variables";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -37,6 +42,10 @@ function nowTime() {
 
 function interpolate(text: string, answers: Record<string, string>) {
   return interpolateLeadTemplate(text, buildLeadTemplateVars(answers));
+}
+
+function formatBubbleHtml(text: string, answers: Record<string, string>) {
+  return formatLeadMessageHtml(interpolate(text, answers));
 }
 
 function readUtms(): Record<string, string> {
@@ -71,12 +80,25 @@ function getAnonId() {
 
 function validateAnswer(question: Question, value: string) {
   const trimmed = value.trim();
+  if (isContentOnlyType(question.type)) return null;
+  if (question.type === "lgpd") {
+    if (question.required && !/^(sim|aceito|true|1|ok)$/i.test(trimmed)) {
+      return "Aceite a política para continuar.";
+    }
+    return null;
+  }
   if (question.required && !trimmed) return "Resposta obrigatória.";
   if (question.type === "text" && trimmed.length < 2) return "Me diz seu nome pra continuar.";
   if (question.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
     return "Coloca um e-mail válido.";
   }
   if (question.type === "tel") return validateWhatsApp(trimmed);
+  if (question.type === "number") {
+    if (!trimmed || Number.isNaN(Number(trimmed.replace(",", ".")))) {
+      return "Informe um número válido.";
+    }
+  }
+  if (question.type === "multi" && !trimmed) return "Escolha ao menos uma opção.";
   if (question.type === "date") {
     if (!trimmed) return "Escolhe uma data pra continuar.";
     const today = new Date();
@@ -89,10 +111,13 @@ function validateAnswer(question: Question, value: string) {
 }
 
 function stripHtmlToTitleBody(html: string): { title?: string; body: string } {
-  const plain = html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?b>/gi, "**");
+  const plain = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?b>/gi, "")
+    .replace(/<\/?strong>/gi, "");
   const parts = plain.split(/\n+/).map((p) => p.trim()).filter(Boolean);
   if (parts.length > 1) {
-    return { title: parts[0].replace(/\*\*/g, ""), body: parts.slice(1).join(" ") };
+    return { title: parts[0], body: parts.slice(1).join(" ") };
   }
   return { body: html };
 }
@@ -122,6 +147,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState<{ title: string; body: string } | null>(null);
   const [typing, setTyping] = useState(false);
+  const [multiSelected, setMultiSelected] = useState<string[]>([]);
   const startedRef = useRef(false);
   const shownStepsRef = useRef<Set<number>>(new Set());
   const answersRef = useRef(answers);
@@ -140,7 +166,8 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const themeStyle = {
     ["--sf-primary" as string]: primary,
     ["--sf-primary-dark" as string]: primaryDark,
-    ["--sf-page-bg-light" as string]: primaryDark,
+    ["--sf-page-bg-light" as string]: form.pageBgLight || "#1A5C4F",
+    ["--sf-page-bg-dark" as string]: form.pageBgDark || "#0B141A",
   };
 
   const activeWallpaper = prefersDark
@@ -192,7 +219,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           {
             id: crypto.randomUUID(),
             role: "bot",
-            html: interpolate(msg.html, answersRef.current),
+            html: formatBubbleHtml(msg.html, answersRef.current),
             isQuestion: msg.isQuestion,
             time: nowTime(),
           },
@@ -227,6 +254,12 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       cancelled = true;
     };
   }, [stepIndex, phase, current, pushBotMessages]);
+
+  useEffect(() => {
+    setMultiSelected([]);
+    setInput("");
+    setError(null);
+  }, [stepIndex]);
 
   const trackingMeta = () => ({
     fbp: resolveFbp(),
@@ -273,59 +306,100 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     }
   };
 
-  const advance = async (value: string) => {
+  const advance = async (value: string, optionNextKey?: string | null) => {
     if (!current || busy) return;
+    const displayValue = value.trim() || (isContentOnlyType(current.type) ? "Continuar" : "");
     const err = validateAnswer(current, value);
     if (err) {
       setError(err);
       return;
     }
     setError(null);
-    const nextAnswers = { ...answers, [current.key]: value.trim() };
+    const stored =
+      isContentOnlyType(current.type)
+        ? current.type === "redirect"
+          ? current.placeholder || "redirect"
+          : "ok"
+        : value.trim();
+    const nextAnswers = { ...answers, [current.key]: stored };
     setAnswers(nextAnswers);
     setBubbles((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: "user", text: value.trim(), time: nowTime() },
+      { id: crypto.randomUUID(), role: "user", text: displayValue, time: nowTime() },
     ]);
     setInput("");
+    setMultiSelected([]);
 
-    if (current.key === "whatsapp") {
-      setBusy(true);
-      try {
-        const partial = await upsertLeadPartialFn({
-          data: {
-            slug: form.slug,
-            leadId: leadId || undefined,
-            name: nextAnswers.nome,
-            email: nextAnswers.email,
-            whatsapp: value.trim(),
-            answers: nextAnswers,
-            ...trackingMeta(),
-          },
-        });
-        setLeadId(partial.leadId);
-        pushDataLayer("quiz_partial", { lead_id: partial.leadId });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro ao salvar contato.");
-        setBusy(false);
-        return;
-      } finally {
-        setBusy(false);
+    if (current.type === "redirect" && current.placeholder?.trim()) {
+      const url = interpolate(current.placeholder.trim(), nextAnswers);
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    if (current.key === "whatsapp" || current.type === "tel") {
+      const phone = nextAnswers.whatsapp || (current.key === "whatsapp" ? stored : "");
+      if (phone) {
+        setBusy(true);
+        try {
+          const partial = await upsertLeadPartialFn({
+            data: {
+              slug: form.slug,
+              leadId: leadId || undefined,
+              name: nextAnswers.nome,
+              email: nextAnswers.email,
+              whatsapp: phone,
+              answers: nextAnswers,
+              ...trackingMeta(),
+            },
+          });
+          setLeadId(partial.leadId);
+          pushDataLayer("quiz_partial", { lead_id: partial.leadId });
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Erro ao salvar contato.");
+          setBusy(false);
+          return;
+        } finally {
+          setBusy(false);
+        }
       }
     }
 
-    const nextIndex = stepIndex + 1;
-    if (nextIndex >= questions.length) {
+    const branchKey = optionNextKey || current.nextKey;
+    const next = resolveNextStepIndex(questions, stepIndex, branchKey);
+    if (next === "end") {
       await finishQuiz(nextAnswers);
       return;
     }
-    setStepIndex(nextIndex);
+    setStepIndex(next);
   };
 
-  const showOptions = phase === "quiz" && current?.type === "choice" && !typing && !busy;
+  const showSingleChoice =
+    phase === "quiz" &&
+    current &&
+    (current.type === "choice" ||
+      current.type === "buttons" ||
+      current.type === "scale" ||
+      current.type === "rating") &&
+    !typing &&
+    !busy;
+  const showMulti =
+    phase === "quiz" && current?.type === "multi" && !typing && !busy;
+  const showContentAction =
+    phase === "quiz" &&
+    current &&
+    (isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm") &&
+    !typing &&
+    !busy;
+  const showTextInput =
+    phase === "quiz" &&
+    current &&
+    !hasChoiceOptions(current.type) &&
+    !isContentOnlyType(current.type) &&
+    current.type !== "lgpd" &&
+    current.type !== "confirm" &&
+    !typing;
 
   return (
-    <div className="sf-root sf-page-frame-light" style={themeStyle}>
+    <div className="leads-quiz-app sf-root sf-page-frame-light" style={themeStyle}>
       <div className="sf-phone">
         <header className="sf-header">
           <div className="sf-avatar">
@@ -367,18 +441,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                 );
               }
 
-              const parsed = stripHtmlToTitleBody(b.html || "");
+              const html = b.html || "";
+              const parsed = stripHtmlToTitleBody(html);
               return (
                 <div key={b.id} className="sf-row">
                   <div className="sf-bubble-bot">
                     {b.isQuestion || !parsed.title ? (
-                      <span dangerouslySetInnerHTML={{ __html: b.html || "" }} />
+                      <span dangerouslySetInnerHTML={{ __html: html }} />
                     ) : (
                       <>
-                        <div>{parsed.title}</div>
+                        <div className="font-semibold">{parsed.title}</div>
                         <div
                           className="sf-bubble-body"
-                          dangerouslySetInnerHTML={{ __html: parsed.body }}
+                          dangerouslySetInnerHTML={{
+                            __html: formatLeadMessageHtml(parsed.body),
+                          }}
                         />
                       </>
                     )}
@@ -405,7 +482,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
               </div>
             )}
 
-            {showOptions && (
+            {showSingleChoice && current && (
               <div className="sf-options">
                 {current.options.map((opt) => (
                   <button
@@ -413,7 +490,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                     type="button"
                     className="sf-option"
                     disabled={busy}
-                    onClick={() => advance(opt.label)}
+                    onClick={() => advance(opt.label, opt.nextKey)}
                   >
                     {opt.label}
                   </button>
@@ -421,11 +498,101 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
               </div>
             )}
 
+            {showMulti && current && (
+              <div className="sf-options">
+                {current.options.map((opt) => {
+                  const on = multiSelected.includes(opt.label);
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`sf-option${on ? " selected" : ""}`}
+                      disabled={busy}
+                      onClick={() =>
+                        setMultiSelected((prev) =>
+                          on ? prev.filter((x) => x !== opt.label) : [...prev, opt.label],
+                        )
+                      }
+                    >
+                      {on ? "✓ " : ""}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="sf-cta"
+                  disabled={busy || multiSelected.length === 0}
+                  onClick={() => advance(multiSelected.join(" | "))}
+                >
+                  Confirmar seleção
+                </button>
+              </div>
+            )}
+
+            {showContentAction && current && (
+              <div className="sf-options">
+                {current.type === "lgpd" ? (
+                  <>
+                    <p className="sf-lgpd-links">
+                      {form.privacyUrl ? (
+                        <a href={form.privacyUrl} target="_blank" rel="noreferrer">
+                          Política de privacidade
+                        </a>
+                      ) : null}
+                      {form.termsUrl ? (
+                        <>
+                          {" · "}
+                          <a href={form.termsUrl} target="_blank" rel="noreferrer">
+                            Termos
+                          </a>
+                        </>
+                      ) : null}
+                    </p>
+                    <button
+                      type="button"
+                      className="sf-option"
+                      disabled={busy}
+                      onClick={() => advance("sim")}
+                    >
+                      Aceito continuar
+                    </button>
+                  </>
+                ) : current.type === "confirm" ? (
+                  <button
+                    type="button"
+                    className="sf-cta"
+                    disabled={busy}
+                    onClick={() => advance("confirmado")}
+                  >
+                    Confirmar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="sf-cta"
+                    disabled={busy}
+                    onClick={() => advance("ok")}
+                  >
+                    Continuar
+                  </button>
+                )}
+              </div>
+            )}
+
             {phase === "diagnosis" && diagnosis && (
               <div className="sf-card">
                 <h4>Diagnóstico</h4>
-                <strong>{diagnosis.title}</strong>
-                <p>{diagnosis.body}</p>
+                <strong
+                  dangerouslySetInnerHTML={{
+                    __html: formatBubbleHtml(diagnosis.title, answers),
+                  }}
+                />
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html: formatBubbleHtml(diagnosis.body, answers),
+                  }}
+                />
                 <a className="sf-cta wa" href={whatsappHref} target="_blank" rel="noreferrer">
                   Falar no WhatsApp
                 </a>
@@ -433,7 +600,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
             )}
           </div>
 
-          {phase === "quiz" && current && current.type !== "choice" && (
+          {showTextInput && current && (
             <div className="sf-composer">
               {error && <p className="sf-error">{error}</p>}
               <form
@@ -452,9 +619,11 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                         ? "email"
                         : current.type === "date"
                           ? "date"
-                          : current.type === "tel"
-                            ? "tel"
-                            : "text"
+                          : current.type === "number"
+                            ? "number"
+                            : current.type === "tel"
+                              ? "tel"
+                              : "text"
                     }
                     value={input}
                     placeholder={current.placeholder || "Digite sua resposta…"}
