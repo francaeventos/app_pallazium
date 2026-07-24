@@ -23,6 +23,9 @@ import {
   type QuestionType,
 } from "@/components/leads/form-editor/editor-context";
 import { MessageFormatBar } from "@/components/leads/form-editor/MessageFormatToolbar";
+import { LeadMediaUploadInput } from "@/components/leads/form-editor/LeadMediaUploadInput";
+import { LeadMediaView, resolveQuestionMedia } from "@/components/leads/LeadMediaView";
+import { parseMediaKind, type MediaKind } from "@/lib/leads/media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -356,7 +359,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
         ) : (
           <div className="space-y-3">
             {questions.map((q, index) => {
-              const panelId = q.id || q.key;
+              const panelId = q.localId;
               const open = expandedId === panelId;
               const choiceMax = Math.max(
                 0,
@@ -381,10 +384,12 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="outline" className="font-mono text-[10px]">
-                          {q.key}
+                          {`{{${q.key}}}`}
                         </Badge>
                         <Badge variant="secondary">{TYPE_LABEL[q.type] || q.type}</Badge>
-                        {q.required && <Badge variant="outline">Obrigatória</Badge>}
+                        {q.required && q.type !== "redirect" && (
+                          <Badge variant="outline">Obrigatória</Badge>
+                        )}
                         {!q.active && <Badge variant="secondary">Inativa</Badge>}
                         <Badge variant="outline">
                           {hasChoiceOptions(q.type)
@@ -545,10 +550,114 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
 
                           <details className="rounded-lg border px-3 py-2 text-sm">
                             <summary className="cursor-pointer text-muted-foreground">
-                              Avançado (chave e saída)
+                              Avançado (variável e saída)
                             </summary>
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <Field label="Chave (interna)">
+                              <Field
+                                label="Variável"
+                                hint="Nome usado em {{variavel}} e na ramificação. Sem espaços."
+                              >
+                                <Input
+                                  value={q.key}
+                                  onChange={(e) =>
+                                    updateQuestionLocal(index, {
+                                      key: e.target.value.replace(/\s+/g, ""),
+                                    })
+                                  }
+                                />
+                              </Field>
+                              <Field label="Condição de saída">
+                                <NextKeySelect
+                                  value={q.next_key}
+                                  currentKey={q.key}
+                                  questionKeys={questionKeys}
+                                  onChange={(next_key) =>
+                                    updateQuestionLocal(index, { next_key })
+                                  }
+                                />
+                              </Field>
+                            </div>
+                          </details>
+                        </div>
+                      ) : q.type === "media" ? (
+                        <div className="space-y-4">
+                          <Field label="Título / prompt">
+                            <Input
+                              value={q.prompt}
+                              placeholder="Confira este conteúdo:"
+                              onChange={(e) =>
+                                updateQuestionLocal(index, { prompt: e.target.value })
+                              }
+                            />
+                          </Field>
+                          <Field
+                            label="Mensagem do bot (opcional)"
+                            hint="Texto antes da mídia. Blocos separados por linha em branco."
+                          >
+                            <Textarea
+                              value={q.bot_messages_text}
+                              rows={3}
+                              className="font-mono text-xs"
+                              onChange={(e) =>
+                                updateQuestionLocal(index, {
+                                  bot_messages_text: e.target.value,
+                                })
+                              }
+                            />
+                            <MessageFormatBar
+                              value={q.bot_messages_text}
+                              onChange={(bot_messages_text) =>
+                                updateQuestionLocal(index, { bot_messages_text })
+                              }
+                              tokens={CORE_VARIABLE_CHIPS}
+                            />
+                          </Field>
+
+                          <LeadMediaUploadInput
+                            kind={parseMediaKind(q.label)}
+                            url={q.placeholder}
+                            onKindChange={(kind: MediaKind) =>
+                              updateQuestionLocal(index, { label: kind })
+                            }
+                            onUrlChange={(url) =>
+                              updateQuestionLocal(index, { placeholder: url })
+                            }
+                          />
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Bônus de score">
+                              <Input
+                                type="number"
+                                value={q.score_bonus}
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, {
+                                    score_bonus: Number(e.target.value) || 0,
+                                  })
+                                }
+                              />
+                            </Field>
+                            <div className="flex flex-wrap items-end gap-6 pb-1">
+                              <label className="flex items-center gap-2 text-sm">
+                                <Switch
+                                  checked={q.active}
+                                  onCheckedChange={(v) =>
+                                    updateQuestionLocal(index, { active: v })
+                                  }
+                                />
+                                Ativa
+                              </label>
+                            </div>
+                          </div>
+
+                          <details className="rounded-lg border px-3 py-2 text-sm">
+                            <summary className="cursor-pointer text-muted-foreground">
+                              Avançado (variável e saída)
+                            </summary>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <Field
+                                label="Variável"
+                                hint="Nome usado em {{variavel}} e na ramificação. Sem espaços."
+                              >
                                 <Input
                                   value={q.key}
                                   onChange={(e) =>
@@ -573,7 +682,10 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                         </div>
                       ) : (
                       <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Chave (interna, sem espaços)">
+                        <Field
+                          label="Variável"
+                          hint="Nome usado em {{variavel}} e na ramificação. Sem espaços."
+                        >
                           <Input
                             value={q.key}
                             onChange={(e) =>
@@ -591,6 +703,10 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                               const patch: Partial<QuestionDraft> = { type };
                               if (hasChoiceOptions(type) && q.options.filter((o) => !o._deleted).length === 0) {
                                 patch.options = defaultOptionsForType(type);
+                              }
+                              if (type === "media") {
+                                patch.required = false;
+                                patch.label = parseMediaKind(q.label);
                               }
                               updateQuestionLocal(index, patch);
                             }}
@@ -1144,6 +1260,18 @@ export function LeadFormSimulatorPanel() {
                   </div>
                 ) : isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm" ? (
                   <div className="flex shrink-0 flex-col gap-2 border-t bg-[#f0f2f5]/95 p-3 backdrop-blur">
+                    {current.type === "media"
+                      ? (() => {
+                          const media = resolveQuestionMedia(current);
+                          return media ? (
+                            <LeadMediaView kind={media.kind} url={media.url} className="!ml-0 max-w-full" />
+                          ) : (
+                            <p className="text-center text-[11px] text-muted-foreground">
+                              Mídia não configurada
+                            </p>
+                          );
+                        })()
+                      : null}
                     {current.type === "redirect" && current.placeholder?.trim() ? (
                       <p className="text-center text-[11px] text-muted-foreground">
                         Atraso: {current.redirect_delay_sec ?? 3}s · abre o link no quiz real

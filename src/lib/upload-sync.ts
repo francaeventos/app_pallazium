@@ -78,6 +78,13 @@ export async function mirrorUploadToOrigin(
 ) {
   if (!PUBLIC_UPLOAD_ORIGIN || !UPLOAD_SYNC_SECRET) return;
 
+  if (bytes.byteLength > MAX_SYNC_BYTES) {
+    console.warn(
+      `[upload-sync] Arquivo grande demais para espelho (${bytes.byteLength} bytes): ${relativePath}`,
+    );
+    return;
+  }
+
   const response = await fetch(`${PUBLIC_UPLOAD_ORIGIN}${UPLOAD_SYNC_PATH}`, {
     method: "POST",
     headers: {

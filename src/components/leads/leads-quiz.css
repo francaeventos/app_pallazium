@@ -295,6 +295,52 @@
   text-decoration: underline;
 }
 
+.sf-media {
+  margin: 0.35rem 0 0.55rem 2.25rem;
+  max-width: min(88%, 22rem);
+}
+
+.sf-media-img,
+.sf-media-video {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  border-radius: 14px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sf-shadow-bubble);
+}
+
+.sf-media-audio {
+  padding: 0.55rem 0.65rem;
+  border-radius: 14px;
+  background: var(--sf-bubble-bot-bg);
+  box-shadow: var(--sf-shadow-bubble);
+}
+
+.sf-media-audio audio {
+  width: 100%;
+}
+
+.sf-media-pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+  background: var(--sf-bubble-bot-bg);
+  color: var(--sf-primary);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  box-shadow: var(--sf-shadow-bubble);
+}
+
+.sf-media-pdf:hover {
+  text-decoration: underline;
+}
+
 .sf-row {
   display: flex;
   align-items: flex-end;

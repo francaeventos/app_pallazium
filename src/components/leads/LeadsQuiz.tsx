@@ -29,6 +29,7 @@ import {
   type QuizProgressBubble,
 } from "@/lib/leads/progress-storage";
 import { captureLeadUtm } from "@/lib/leads/utm";
+import { LeadMediaView, resolveQuestionMedia } from "@/components/leads/LeadMediaView";
 import "./leads-quiz.css";
 
 type PublicForm = Awaited<ReturnType<typeof getPublicLeadFormFn>>;
@@ -546,13 +547,17 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     phase === "quiz" && current?.type === "multi" && !typing && !busy;
   const showRedirectAction =
     phase === "quiz" && current?.type === "redirect" && redirectReady && !typing && !busy;
+  const showMediaAction =
+    phase === "quiz" && current?.type === "media" && !typing && !busy;
   const showContentAction =
     phase === "quiz" &&
     current &&
     current.type !== "redirect" &&
+    current.type !== "media" &&
     (isContentOnlyType(current.type) || current.type === "lgpd" || current.type === "confirm") &&
     !typing &&
     !busy;
+  const currentMedia = current ? resolveQuestionMedia(current) : null;
   const showTextInput =
     phase === "quiz" &&
     current &&
@@ -718,6 +723,24 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                   onClick={() => advance(multiSelected.join(" | "))}
                 >
                   Confirmar seleção
+                </button>
+              </div>
+            )}
+
+            {showMediaAction && current && (
+              <div className="sf-options">
+                {currentMedia ? (
+                  <LeadMediaView kind={currentMedia.kind} url={currentMedia.url} />
+                ) : (
+                  <p className="sf-lgpd-links">Mídia não configurada.</p>
+                )}
+                <button
+                  type="button"
+                  className="sf-cta"
+                  disabled={busy}
+                  onClick={() => advance("ok")}
+                >
+                  Continuar
                 </button>
               </div>
             )}

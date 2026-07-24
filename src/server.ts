@@ -6,6 +6,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { ebookIdFromPath, isEbookFileRoute, serveEbookPdf } from "./lib/ebook-file-server";
 import { handleUploadSyncRequest } from "./lib/upload-sync";
+import { handleLeadMediaUploadRequest } from "./lib/leads-media-upload-server";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "uploads";
 const PUBLIC_UPLOAD_URL = process.env.PUBLIC_UPLOAD_URL ?? "/uploads";
@@ -19,6 +20,15 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   ".webp": "image/webp",
   ".gif": "image/gif",
   ".pdf": "application/pdf",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".m4v": "video/mp4",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
 };
 
 async function serveUpload(pathname: string): Promise<Response | null> {
@@ -119,6 +129,9 @@ export default {
       const { pathname } = new URL(request.url);
       const syncResponse = await handleUploadSyncRequest(request);
       if (syncResponse) return syncResponse;
+
+      const mediaUploadResponse = await handleLeadMediaUploadRequest(request);
+      if (mediaUploadResponse) return mediaUploadResponse;
 
       if (request.method === "GET" || request.method === "HEAD") {
         const uploadResponse = await serveUpload(pathname);

@@ -14,6 +14,7 @@ export const LEAD_QUESTION_TYPES = [
   "confirm",
   "redirect",
   "lgpd",
+  "media",
 ] as const;
 
 export type LeadQuestionTypeValue = (typeof LEAD_QUESTION_TYPES)[number];
@@ -36,6 +37,7 @@ export const TYPE_LABEL: Record<LeadQuestionTypeValue, string> = {
   confirm: "Confirmação",
   redirect: "Redirecionamento",
   lgpd: "Aceite LGPD",
+  media: "Mídia",
 };
 
 export type BlockMenuItem = {
@@ -49,6 +51,7 @@ export const BLOCK_MENU: Array<{ section: string; items: BlockMenuItem[] }> = [
     section: "Conteúdo",
     items: [
       { type: "message", label: "Mensagem", hint: "Só texto do bot" },
+      { type: "media", label: "Mídia", hint: "Imagem, vídeo, áudio ou PDF" },
       { type: "confirm", label: "Confirmação", hint: "Revisar e confirmar" },
       { type: "redirect", label: "Redirecionamento", hint: "Abrir URL" },
       { type: "lgpd", label: "Aceite LGPD", hint: "Privacidade / termos" },
@@ -81,7 +84,7 @@ export function hasChoiceOptions(type: string) {
 }
 
 export function isContentOnlyType(type: string) {
-  return type === "message" || type === "confirm" || type === "redirect";
+  return type === "message" || type === "confirm" || type === "redirect" || type === "media";
 }
 
 export function needsAnswer(type: string, required: boolean) {
@@ -94,6 +97,8 @@ export function defaultPromptForType(type: LeadQuestionTypeValue) {
   switch (type) {
     case "message":
       return "";
+    case "media":
+      return "Confira este conteúdo:";
     case "confirm":
       return "Confere se está tudo certo?";
     case "redirect":

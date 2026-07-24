@@ -38,6 +38,8 @@ export type Rule = FormData["rules"][number];
 export type QuestionType = LeadQuestionTypeValue;
 
 export type QuestionDraft = {
+  /** Id estável no editor (não muda ao editar a variável/key). */
+  localId: string;
   id?: string;
   key: string;
   type: QuestionType;
@@ -156,6 +158,7 @@ const LeadFormEditorContext = createContext<LeadFormEditorContextValue | null>(n
 
 export function toQuestionDraft(q: Question): QuestionDraft {
   return {
+    localId: q.id,
     id: q.id,
     key: q.key,
     type: q.type as QuestionType,
@@ -448,7 +451,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
       toast.error("Informe a chave da pergunta (ex.: investimento).");
       return;
     }
-    const savingKey = q.id || q.key;
+    const savingKey = q.localId;
     setSavingQuestionId(savingKey);
     try {
       await saveLeadQuestionFn({
@@ -505,24 +508,26 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
   };
 
   const addQuestion = (type: QuestionType = "choice") => {
+    const localId = `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const key = `bloco_${Date.now().toString().slice(-4)}`;
     const draft: QuestionDraft = {
+      localId,
       key,
       type,
-      label: "",
+      label: type === "media" ? "image" : "",
       prompt: defaultPromptForType(type),
       bot_messages_text: type === "message" ? "Olá! 👋" : "",
       placeholder: type === "redirect" ? "https://" : "",
       redirect_delay_sec: 3,
       next_key: "",
       sort_order: questions.length,
-      required: type !== "message" && type !== "redirect",
+      required: type !== "message" && type !== "redirect" && type !== "media",
       score_bonus: 0,
       active: true,
       options: defaultOptionsForType(type),
     };
     setQuestions((prev) => [...prev, draft]);
-    setExpandedId(key);
+    setExpandedId(localId);
   };
 
   const removeQuestion = async (index: number) => {
