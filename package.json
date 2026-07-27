@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "tunnel": "ssh -f -N -L 5433:localhost:5432 pallazium-vps && echo Tunel SSH aberto (porta local 5433 -> VPS)",
+    "tunnel:stop": "powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='ssh.exe'\\\" | Where-Object { $_.CommandLine -match 'pallazium-vps' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }\" && echo Tunel encerrado",
     "build": "prisma generate && vite build && node scripts/ensure-server-entry.mjs",
     "build:dev": "prisma generate && vite build --mode development && node scripts/ensure-server-entry.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
