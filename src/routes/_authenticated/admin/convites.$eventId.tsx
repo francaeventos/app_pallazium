@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import {
   deletePartyMemberFn,
   ensureGuestTokenFn,
   getInvitationDetailsFn,
-  listInvitationEventsFn,
   saveGuestFn,
   saveInvitationFn,
   savePartyMemberFn,
@@ -39,12 +38,12 @@ import {
   type InvitationStatus,
   type RsvpStatus,
 } from "@/lib/invitation-utils";
-import { CheckCircle2, Copy, MailCheck, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, MailCheck, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/admin/convites")({ component: Page });
+export const Route = createFileRoute("/_authenticated/admin/convites/$eventId")({ component: Page });
 
-type EventRow = Awaited<ReturnType<typeof listInvitationEventsFn>>[number];
+type EventRow = Awaited<ReturnType<typeof getInvitationDetailsFn>>["event"];
 type Invitation = NonNullable<
   Awaited<ReturnType<typeof getInvitationDetailsFn>>["invitation"]
 >;
@@ -52,8 +51,9 @@ type Guest = Awaited<ReturnType<typeof getInvitationDetailsFn>>["guests"][number
 type PartyMember = Awaited<ReturnType<typeof getInvitationDetailsFn>>["party"][number];
 
 function Page() {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [eventId, setEventId] = useState("");
+  const { eventId } = Route.useParams();
+  const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [party, setParty] = useState<PartyMember[]>([]);
@@ -65,52 +65,40 @@ function Page() {
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [partyStatus, setPartyStatus] = useState<RsvpStatus>("pendente");
 
-  const selectedEvent = useMemo(
-    () => events.find((event) => event.id === eventId) ?? null,
-    [events, eventId],
-  );
-  const totals = useMemo(() => {
-    const confirmed = guests.filter((guest) => guest.rsvp_status === "confirmado");
-    return {
-      guests: guests.length,
-      confirmed: confirmed.length,
-      people:
-        confirmed.length +
-        confirmed.reduce((total, guest) => total + guest.confirmed_companions, 0),
-      pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
-      declined: guests.filter((guest) => guest.rsvp_status === "recusado").length,
-      party: party.length,
-    };
-  }, [guests, party]);
-
-  const loadEvents = useCallback(async () => {
-    try {
-      const data = await listInvitationEventsFn();
-      setEvents(data);
-      if (!eventId && data[0]) setEventId(data[0].id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os eventos.");
-    }
-  }, [eventId]);
+  const totals = {
+    guests: guests.length,
+    confirmed: guests.filter((guest) => guest.rsvp_status === "confirmado").length,
+    people:
+      guests.filter((guest) => guest.rsvp_status === "confirmado").length +
+      guests
+        .filter((guest) => guest.rsvp_status === "confirmado")
+        .reduce((total, guest) => total + guest.confirmed_companions, 0),
+    pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
+    declined: guests.filter((guest) => guest.rsvp_status === "recusado").length,
+    party: party.length,
+  };
 
   const loadDetails = useCallback(async (id: string) => {
     try {
-      const { invitation: invitationData, guests: guestData, party: partyData } =
-        await getInvitationDetailsFn({ data: { eventId: id } });
+      const {
+        event: eventData,
+        invitation: invitationData,
+        guests: guestData,
+        party: partyData,
+      } = await getInvitationDetailsFn({ data: { eventId: id } });
+      setSelectedEvent(eventData);
       setInvitation(invitationData);
       setGuests(guestData);
       setParty(partyData);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível carregar o convite.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
-
-  useEffect(() => {
-    if (eventId) loadDetails(eventId);
+    loadDetails(eventId);
   }, [eventId, loadDetails]);
 
   useEffect(() => {
@@ -320,36 +308,32 @@ function Page() {
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Experiência</p>
-          <h1 className="font-serif text-4xl mt-2">Convites e RSVP</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Gerencie convite digital, convidados, confirmações e padrinhos do evento.
-          </p>
-        </div>
-        <div className="w-full lg:w-80">
-          <Label>Evento</Label>
-          <Select value={eventId} onValueChange={setEventId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um evento" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.clients?.full_name ?? "Cliente"} • {event.event_type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <Link
+          to="/admin/convites"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Todos os eventos
+        </Link>
+        <p className="mt-3 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+          Experiência
+        </p>
+        <h1 className="font-serif text-4xl mt-2">
+          {selectedEvent
+            ? `${selectedEvent.clients?.full_name ?? "Cliente"} • ${selectedEvent.event_type}`
+            : "Convites e RSVP"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Gerencie convite digital, convidados, confirmações e padrinhos do evento.
+        </p>
       </div>
 
-      {!selectedEvent && (
+      {!loading && !selectedEvent && (
         <AdminEmptyState
           icon={MailCheck}
-          title="Crie um evento antes dos convites"
-          description="Depois de cadastrar um evento, você poderá criar o convite digital, lista de convidados e padrinhos."
+          title="Evento não encontrado"
+          description="Esse evento não existe mais ou foi removido. Volte para a lista e escolha outro."
         />
       )}
 

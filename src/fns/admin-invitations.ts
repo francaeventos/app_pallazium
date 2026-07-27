@@ -83,11 +83,40 @@ export const listInvitationEventsFn = createServerFn({ method: "GET" })
     return rows.map(eventRowRecord);
   });
 
+export const listInvitationOverviewFn = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    await guardAdmin(context);
+    const rows = await db.event.findMany({
+      include: {
+        client: { select: { fullName: true, email: true } },
+        invitation: { select: { status: true } },
+        guests: { select: { rsvpStatus: true } },
+        partyMembers: { select: { id: true } },
+      },
+      orderBy: { eventDate: "asc" },
+    });
+    return rows.map((row) => ({
+      ...eventRowRecord(row),
+      invitation_status: row.invitation?.status ?? null,
+      guests_total: row.guests.length,
+      guests_confirmed: row.guests.filter((guest) => guest.rsvpStatus === "confirmado").length,
+      guests_pending: row.guests.filter((guest) => guest.rsvpStatus === "pendente").length,
+      party_total: row.partyMembers.length,
+    }));
+  });
+
 export const getInvitationDetailsFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data) => eventIdSchema.parse(data))
   .handler(async ({ data, context }) => {
     await guardAdmin(context);
+
+    const eventRow = await db.event.findUnique({
+      where: { id: data.eventId },
+      include: { client: { select: { fullName: true, email: true } } },
+    });
+    if (!eventRow) throw new Error("Evento não encontrado.");
 
     const [invitation, guests, party] = await Promise.all([
       db.eventInvitation.findUnique({ where: { eventId: data.eventId } }),
@@ -113,6 +142,7 @@ export const getInvitationDetailsFn = createServerFn({ method: "GET" })
     );
 
     return {
+      event: eventRowRecord(eventRow),
       invitation: invitation ? invitationRecord(invitation) : null,
       guests: guestsWithTokens.map(guestRecord),
       party: party.map(partyMemberRecord),

@@ -25,6 +25,11 @@ function isoDateTime(value: Date) {
   return value.toISOString();
 }
 
+function decimalToNumber(value: { toNumber: () => number } | null | undefined) {
+  if (value == null) return null;
+  return value.toNumber();
+}
+
 function bigintToNumber(value: bigint | null | undefined) {
   if (value == null) return null;
   return Number(value);
@@ -253,7 +258,7 @@ export function eventRowRecord(
     end_time: row.endTime,
     location: row.location,
     estimated_guests: row.estimatedGuests,
-    contracted_value: row.contractedValue,
+    contracted_value: decimalToNumber(row.contractedValue),
     financial_status: row.financialStatus,
     status: row.status,
     internal_notes: row.internalNotes,

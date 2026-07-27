@@ -38,14 +38,15 @@ import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
 import { Route as AuthenticatedAdminEbooksRouteImport } from './routes/_authenticated/admin/ebooks'
 import { Route as AuthenticatedAdminDicasRouteImport } from './routes/_authenticated/admin/dicas'
-import { Route as AuthenticatedAdminConvitesRouteImport } from './routes/_authenticated/admin/convites'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
 import { Route as AuthenticatedAdminLeadsIndexRouteImport } from './routes/_authenticated/admin/leads.index'
+import { Route as AuthenticatedAdminConvitesIndexRouteImport } from './routes/_authenticated/admin/convites.index'
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
 import { Route as AuthenticatedAdminLeadsIntegracoesRouteImport } from './routes/_authenticated/admin/leads.integracoes'
 import { Route as AuthenticatedAdminLeadsFormularioRouteImport } from './routes/_authenticated/admin/leads.formulario'
+import { Route as AuthenticatedAdminConvitesEventIdRouteImport } from './routes/_authenticated/admin/convites.$eventId'
 import { Route as AuthenticatedAdminChecklistEventIdRouteImport } from './routes/_authenticated/admin/checklist.$eventId'
 import { Route as AuthenticatedAdminLeadsFormularioIndexRouteImport } from './routes/_authenticated/admin/leads.formulario.index'
 import { Route as AuthenticatedAdminLeadsFormularioVisualRouteImport } from './routes/_authenticated/admin/leads.formulario.visual'
@@ -214,12 +215,6 @@ const AuthenticatedAdminDicasRoute = AuthenticatedAdminDicasRouteImport.update({
   path: '/dicas',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedAdminConvitesRoute =
-  AuthenticatedAdminConvitesRouteImport.update({
-    id: '/convites',
-    path: '/convites',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/clientes',
@@ -244,6 +239,12 @@ const AuthenticatedAdminLeadsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdminLeadsRoute,
   } as any)
+const AuthenticatedAdminConvitesIndexRoute =
+  AuthenticatedAdminConvitesIndexRouteImport.update({
+    id: '/convites/',
+    path: '/convites/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminChecklistIndexRoute =
   AuthenticatedAdminChecklistIndexRouteImport.update({
     id: '/checklist/',
@@ -261,6 +262,12 @@ const AuthenticatedAdminLeadsFormularioRoute =
     id: '/formulario',
     path: '/formulario',
     getParentRoute: () => AuthenticatedAdminLeadsRoute,
+  } as any)
+const AuthenticatedAdminConvitesEventIdRoute =
+  AuthenticatedAdminConvitesEventIdRouteImport.update({
+    id: '/convites/$eventId',
+    path: '/convites/$eventId',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminChecklistEventIdRoute =
   AuthenticatedAdminChecklistEventIdRouteImport.update({
@@ -315,7 +322,6 @@ export interface FileRoutesByFullPath {
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
-  '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -339,9 +345,11 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
+  '/admin/convites/': typeof AuthenticatedAdminConvitesIndexRoute
   '/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
   '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
@@ -358,7 +366,6 @@ export interface FileRoutesByTo {
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
-  '/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -381,8 +388,10 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
+  '/admin/convites': typeof AuthenticatedAdminConvitesIndexRoute
   '/admin/leads': typeof AuthenticatedAdminLeadsIndexRoute
   '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
@@ -403,7 +412,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
-  '/_authenticated/admin/convites': typeof AuthenticatedAdminConvitesRoute
   '/_authenticated/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/_authenticated/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -427,9 +435,11 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
+  '/_authenticated/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/_authenticated/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
+  '/_authenticated/admin/convites/': typeof AuthenticatedAdminConvitesIndexRoute
   '/_authenticated/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
   '/_authenticated/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/_authenticated/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
@@ -450,7 +460,6 @@ export interface FileRouteTypes {
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
-    | '/admin/convites'
     | '/admin/dicas'
     | '/admin/ebooks'
     | '/admin/eventos'
@@ -474,9 +483,11 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/'
     | '/admin/checklist/$eventId'
+    | '/admin/convites/$eventId'
     | '/admin/leads/formulario'
     | '/admin/leads/integracoes'
     | '/admin/checklist/'
+    | '/admin/convites/'
     | '/admin/leads/'
     | '/admin/leads/formulario/diagnostico'
     | '/admin/leads/formulario/pixels'
@@ -493,7 +504,6 @@ export interface FileRouteTypes {
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
-    | '/admin/convites'
     | '/admin/dicas'
     | '/admin/ebooks'
     | '/admin/eventos'
@@ -516,8 +526,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/admin/checklist/$eventId'
+    | '/admin/convites/$eventId'
     | '/admin/leads/integracoes'
     | '/admin/checklist'
+    | '/admin/convites'
     | '/admin/leads'
     | '/admin/leads/formulario/diagnostico'
     | '/admin/leads/formulario/pixels'
@@ -537,7 +549,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/acessos'
     | '/_authenticated/admin/cardapios'
     | '/_authenticated/admin/clientes'
-    | '/_authenticated/admin/convites'
     | '/_authenticated/admin/dicas'
     | '/_authenticated/admin/ebooks'
     | '/_authenticated/admin/eventos'
@@ -561,9 +572,11 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/app/'
     | '/_authenticated/admin/checklist/$eventId'
+    | '/_authenticated/admin/convites/$eventId'
     | '/_authenticated/admin/leads/formulario'
     | '/_authenticated/admin/leads/integracoes'
     | '/_authenticated/admin/checklist/'
+    | '/_authenticated/admin/convites/'
     | '/_authenticated/admin/leads/'
     | '/_authenticated/admin/leads/formulario/diagnostico'
     | '/_authenticated/admin/leads/formulario/pixels'
@@ -786,13 +799,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDicasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/convites': {
-      id: '/_authenticated/admin/convites'
-      path: '/convites'
-      fullPath: '/admin/convites'
-      preLoaderRoute: typeof AuthenticatedAdminConvitesRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/clientes': {
       id: '/_authenticated/admin/clientes'
       path: '/clientes'
@@ -821,6 +827,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLeadsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminLeadsRoute
     }
+    '/_authenticated/admin/convites/': {
+      id: '/_authenticated/admin/convites/'
+      path: '/convites'
+      fullPath: '/admin/convites/'
+      preLoaderRoute: typeof AuthenticatedAdminConvitesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/checklist/': {
       id: '/_authenticated/admin/checklist/'
       path: '/checklist'
@@ -841,6 +854,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/leads/formulario'
       preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioRouteImport
       parentRoute: typeof AuthenticatedAdminLeadsRoute
+    }
+    '/_authenticated/admin/convites/$eventId': {
+      id: '/_authenticated/admin/convites/$eventId'
+      path: '/convites/$eventId'
+      fullPath: '/admin/convites/$eventId'
+      preLoaderRoute: typeof AuthenticatedAdminConvitesEventIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/checklist/$eventId': {
       id: '/_authenticated/admin/checklist/$eventId'
@@ -948,7 +968,6 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAcessosRoute: typeof AuthenticatedAdminAcessosRoute
   AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
-  AuthenticatedAdminConvitesRoute: typeof AuthenticatedAdminConvitesRoute
   AuthenticatedAdminDicasRoute: typeof AuthenticatedAdminDicasRoute
   AuthenticatedAdminEbooksRoute: typeof AuthenticatedAdminEbooksRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
@@ -961,14 +980,15 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminUpgradesRoute: typeof AuthenticatedAdminUpgradesRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminChecklistEventIdRoute: typeof AuthenticatedAdminChecklistEventIdRoute
+  AuthenticatedAdminConvitesEventIdRoute: typeof AuthenticatedAdminConvitesEventIdRoute
   AuthenticatedAdminChecklistIndexRoute: typeof AuthenticatedAdminChecklistIndexRoute
+  AuthenticatedAdminConvitesIndexRoute: typeof AuthenticatedAdminConvitesIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAcessosRoute: AuthenticatedAdminAcessosRoute,
   AuthenticatedAdminCardapiosRoute: AuthenticatedAdminCardapiosRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
-  AuthenticatedAdminConvitesRoute: AuthenticatedAdminConvitesRoute,
   AuthenticatedAdminDicasRoute: AuthenticatedAdminDicasRoute,
   AuthenticatedAdminEbooksRoute: AuthenticatedAdminEbooksRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,
@@ -982,7 +1002,10 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminChecklistEventIdRoute:
     AuthenticatedAdminChecklistEventIdRoute,
+  AuthenticatedAdminConvitesEventIdRoute:
+    AuthenticatedAdminConvitesEventIdRoute,
   AuthenticatedAdminChecklistIndexRoute: AuthenticatedAdminChecklistIndexRoute,
+  AuthenticatedAdminConvitesIndexRoute: AuthenticatedAdminConvitesIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
