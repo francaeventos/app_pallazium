@@ -1,15 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
+  deleteLeadsFn,
   exportLeadsCsvFn,
   getLeadFn,
   listLeadsFn,
   resendLeadWebhookFn,
   updateLeadFn,
 } from "@/fns/leads/admin";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +47,7 @@ import {
   Phone,
   RefreshCw,
   Settings2,
+  Trash2,
   Webhook,
 } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
@@ -142,6 +155,9 @@ function Page() {
   const [notes, setNotes] = useState("");
   const [editStatus, setEditStatus] = useState<Lead["status"]>("parcial");
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     try {
@@ -154,8 +170,44 @@ function Page() {
         },
       });
       setLeads(result.leads);
+      setSelectedIds((prev) => {
+        const ids = new Set(result.leads.map((l) => l.id));
+        const next = new Set([...prev].filter((id) => ids.has(id)));
+        return next;
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao carregar leads.");
+    }
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(leads.map((l) => l.id)) : new Set());
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      await deleteLeadsFn({ data: { ids: [...selectedIds] } });
+      toast.success(
+        selectedIds.size === 1 ? "Lead excluído." : `${selectedIds.size} leads excluídos.`,
+      );
+      setSelectedIds(new Set());
+      setConfirmDelete(false);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir leads.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -235,6 +287,11 @@ function Page() {
           <p className="text-sm text-muted-foreground">Quiz conversacional e score de qualificação</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="h-4 w-4" /> Excluir selecionados ({selectedIds.size})
+            </Button>
+          )}
           <Button asChild>
             <Link to="/admin/leads/formulario">
               <Settings2 className="h-4 w-4" /> Editar formulário
@@ -288,6 +345,16 @@ function Page() {
         </CardContent>
       </Card>
 
+      {leads.length > 0 && (
+        <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
+          <Checkbox
+            checked={selectedIds.size > 0 && selectedIds.size === leads.length}
+            onCheckedChange={(v) => toggleSelectAll(v === true)}
+          />
+          <span>Selecionar todos</span>
+        </div>
+      )}
+
       <div className="grid gap-3">
         {leads.map((lead) => (
           <Card
@@ -296,22 +363,30 @@ function Page() {
             onClick={() => openLead(lead.id)}
           >
             <CardContent className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-              <div>
-                <p className="font-medium">{lead.name || "Sem nome"}</p>
-                <p className="text-sm text-muted-foreground">
-                  {lead.email || "—"} · {lead.whatsapp || "—"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm")}
-                  {utmHasValues(lead.utm)
-                    ? ` · ${
-                        [lead.utm.utm_source, lead.utm.utm_campaign]
-                          .filter(Boolean)
-                          .map(String)
-                          .join(" / ") || "utm"
-                      }`
-                    : ""}
-                </p>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  className="mt-1"
+                  checked={selectedIds.has(lead.id)}
+                  onCheckedChange={(v) => toggleSelected(lead.id, v === true)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div>
+                  <p className="font-medium">{lead.name || "Sem nome"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {lead.email || "—"} · {lead.whatsapp || "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm")}
+                    {utmHasValues(lead.utm)
+                      ? ` · ${
+                          [lead.utm.utm_source, lead.utm.utm_campaign]
+                            .filter(Boolean)
+                            .map(String)
+                            .join(" / ") || "utm"
+                        }`
+                      : ""}
+                  </p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>
@@ -511,6 +586,33 @@ function Page() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {selectedIds.size === 1 ? "lead" : `${selectedIds.size} leads`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Os leads selecionados e todo o histórico
+              associado serão apagados permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteSelected();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

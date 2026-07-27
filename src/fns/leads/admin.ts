@@ -162,6 +162,17 @@ export const updateLeadFn = createServerFn({ method: "POST" })
     return { lead: leadRecord(lead) };
   });
 
+export const deleteLeadsFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const result = await db.lead.deleteMany({ where: { id: { in: data.ids } } });
+    return { ok: true as const, count: result.count };
+  });
+
 export const exportLeadsCsvFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data) => slugSchema.parse(data ?? { slug: "leads" }))
