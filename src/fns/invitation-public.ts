@@ -32,6 +32,25 @@ export type PublicInvitationGuest = {
   responded_at: string | null;
 };
 
+export type PublicInvitationPreview = {
+  invitation_id: string;
+  invitation_title: string;
+  invitation_message: string | null;
+  cover_image_url: string | null;
+  dress_code: string | null;
+  ceremony_external: boolean;
+  ceremony_location: string | null;
+  ceremony_address: string | null;
+  ceremony_map_url: string | null;
+  reception_location: string | null;
+  map_url: string | null;
+  gift_list_url: string | null;
+  event_type: string;
+  event_date: string | null;
+  start_time: string | null;
+  event_location: string | null;
+};
+
 export type PublicGiftItem = {
   id: string;
   event_id: string;
@@ -130,8 +149,42 @@ async function findPublishedGuestByToken(token: string) {
   });
 }
 
+async function findPublishedInvitationById(invitationId: string) {
+  return db.eventInvitation.findFirst({
+    where: { id: invitationId, status: "publicado" },
+    include: { event: true },
+  });
+}
+
+function formatInvitationPreview(
+  invitation: EventInvitation & { event: Event },
+): PublicInvitationPreview {
+  return {
+    invitation_id: invitation.id,
+    invitation_title: invitation.title,
+    invitation_message: invitation.message,
+    cover_image_url: invitation.coverImageUrl,
+    dress_code: invitation.dressCode,
+    ceremony_external: invitation.ceremonyExternal,
+    ceremony_location: invitation.ceremonyLocation,
+    ceremony_address: invitation.ceremonyAddress,
+    ceremony_map_url: invitation.ceremonyMapUrl,
+    reception_location: invitation.receptionLocation,
+    map_url: invitation.mapUrl,
+    gift_list_url: invitation.giftListUrl,
+    event_type: invitation.event.eventType,
+    event_date: formatDate(invitation.event.eventDate),
+    start_time: formatTime(invitation.event.startTime),
+    event_location: invitation.event.location,
+  };
+}
+
 const tokenSchema = z.object({
   guestToken: z.string().trim().min(1),
+});
+
+const invitationIdSchema = z.object({
+  invitationId: z.string().uuid(),
 });
 
 const respondSchema = tokenSchema.extend({
@@ -163,6 +216,28 @@ export const getPublicEventGiftItemsByTokenFn = createServerFn({ method: "GET" }
         eventId: guest.eventId,
         OR: [{ reservedByGuestId: null }, { reservedByGuestId: guest.id }],
       },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+
+    return items.map(formatGiftItem);
+  });
+
+export const getInvitationPreviewFn = createServerFn({ method: "GET" })
+  .inputValidator((data) => invitationIdSchema.parse(data))
+  .handler(async ({ data }) => {
+    const invitation = await findPublishedInvitationById(data.invitationId);
+    if (!invitation) return null;
+    return formatInvitationPreview(invitation);
+  });
+
+export const getPublicEventGiftItemsByInvitationFn = createServerFn({ method: "GET" })
+  .inputValidator((data) => invitationIdSchema.parse(data))
+  .handler(async ({ data }) => {
+    const invitation = await findPublishedInvitationById(data.invitationId);
+    if (!invitation) return [] as PublicGiftItem[];
+
+    const items = await db.eventGiftItem.findMany({
+      where: { eventId: invitation.eventId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     });
 

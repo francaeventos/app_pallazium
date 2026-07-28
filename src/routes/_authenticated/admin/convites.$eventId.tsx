@@ -413,6 +413,7 @@ function Page() {
                     label="Imagem de capa"
                     defaultValue={invitation?.cover_image_url ?? ""}
                     folder="capas"
+                    recommendedSize="1600 x 900 pixels"
                   />
                 </div>
                 <div>

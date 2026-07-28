@@ -18,6 +18,7 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/ap
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as ConvitePreviewInvitationIdRouteImport } from './routes/convite.preview.$invitationId'
 import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenticated/app/upgrades'
 import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
 import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
@@ -99,6 +100,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ConvitePreviewInvitationIdRoute =
+  ConvitePreviewInvitationIdRouteImport.update({
+    id: '/convite/preview/$invitationId',
+    path: '/convite/preview/$invitationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAppUpgradesRoute =
   AuthenticatedAppUpgradesRouteImport.update({
     id: '/upgrades',
@@ -342,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
@@ -385,6 +393,7 @@ export interface FileRoutesByTo {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
@@ -432,6 +441,7 @@ export interface FileRoutesById {
   '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/_authenticated/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/convite/preview/$invitationId'
     | '/admin/'
     | '/app/'
     | '/admin/checklist/$eventId'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/convite/preview/$invitationId'
     | '/admin'
     | '/app'
     | '/admin/checklist/$eventId'
@@ -569,6 +581,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/portfolio'
     | '/_authenticated/app/referencias'
     | '/_authenticated/app/upgrades'
+    | '/convite/preview/$invitationId'
     | '/_authenticated/admin/'
     | '/_authenticated/app/'
     | '/_authenticated/admin/checklist/$eventId'
@@ -592,6 +605,7 @@ export interface RootRouteChildren {
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
+  ConvitePreviewInvitationIdRoute: typeof ConvitePreviewInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -658,6 +672,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/convite/preview/$invitationId': {
+      id: '/convite/preview/$invitationId'
+      path: '/convite/preview/$invitationId'
+      fullPath: '/convite/preview/$invitationId'
+      preLoaderRoute: typeof ConvitePreviewInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/upgrades': {
       id: '/_authenticated/app/upgrades'
@@ -1062,6 +1083,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   ConviteTokenRoute: ConviteTokenRoute,
+  ConvitePreviewInvitationIdRoute: ConvitePreviewInvitationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

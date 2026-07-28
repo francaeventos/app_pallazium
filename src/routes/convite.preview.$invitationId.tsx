@@ -4,23 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  getInvitationGuestByTokenFn,
-  getPublicEventGiftItemsByTokenFn,
-  releaseEventGiftItemReservationFn,
-  reserveEventGiftItemFn,
-  respondInvitationGuestFn,
+  getInvitationPreviewFn,
+  getPublicEventGiftItemsByInvitationFn,
   type PublicGiftItem,
-  type PublicInvitationGuest,
+  type PublicInvitationPreview,
 } from "@/fns/invitation-public";
-import { rsvpStatusLabels } from "@/lib/invitation-utils";
 import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
-import { Calendar, CheckCircle2, Gift, MapPin, Navigation, Users, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { Calendar, Gift, MapPin, Navigation, Users } from "lucide-react";
 
-export const Route = createFileRoute("/convite/$token")({ component: Page });
+export const Route = createFileRoute("/convite/preview/$invitationId")({ component: Page });
 
 function formatDateBr(value?: string | null) {
   if (!value) return value ?? null;
@@ -37,18 +30,16 @@ function formatTimeBr(value?: string | null) {
 }
 
 function Page() {
-  const { token } = Route.useParams();
-  const [details, setDetails] = useState<PublicInvitationGuest | null>(null);
-  const [companions, setCompanions] = useState(0);
+  const { invitationId } = Route.useParams();
+  const [details, setDetails] = useState<PublicInvitationPreview | null>(null);
   const [giftItems, setGiftItems] = useState<PublicGiftItem[]>([]);
   const [selectedGiftImage, setSelectedGiftImage] = useState<PublicGiftItem | null>(null);
-  const [reservingGiftId, setReservingGiftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const row = await getInvitationGuestByTokenFn({ data: { guestToken: token } });
+      const row = await getInvitationPreviewFn({ data: { invitationId } });
       if (!row) {
         setDetails(null);
         setLoading(false);
@@ -56,8 +47,7 @@ function Page() {
       }
 
       setDetails(row);
-      setCompanions(row.confirmed_companions);
-      const gifts = await getPublicEventGiftItemsByTokenFn({ data: { guestToken: token } });
+      const gifts = await getPublicEventGiftItemsByInvitationFn({ data: { invitationId } });
       setGiftItems(gifts);
     } catch (error) {
       console.error("Erro ao carregar convite", error);
@@ -65,72 +55,11 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [invitationId]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const respond = async (status: "confirmado" | "recusado") => {
-    if (!details) return toast.error("Convite indisponível.");
-    try {
-      const updated = await respondInvitationGuestFn({
-        data: {
-          guestToken: token,
-          rsvpStatus: status,
-          confirmedCompanions: status === "confirmado" ? companions : 0,
-          dietaryRestrictions: null,
-        },
-      });
-      setDetails(updated);
-      setCompanions(updated.confirmed_companions);
-      toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a resposta.");
-    }
-  };
-
-  const reserveGiftItem = async (item: PublicGiftItem) => {
-    setReservingGiftId(item.id);
-    try {
-      const updated = await reserveEventGiftItemFn({
-        data: { guestToken: token, giftItemId: item.id },
-      });
-      setGiftItems((current) =>
-        current.map((giftItem) => (giftItem.id === item.id ? updated : giftItem)),
-      );
-      toast.success("Presente reservado para você");
-    } catch (error) {
-      await load();
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Este presente acabou de ser escolhido por outro convidado.",
-      );
-    } finally {
-      setReservingGiftId(null);
-    }
-  };
-
-  const releaseGiftItemReservation = async (item: PublicGiftItem) => {
-    setReservingGiftId(item.id);
-    try {
-      const updated = await releaseEventGiftItemReservationFn({
-        data: { guestToken: token, giftItemId: item.id },
-      });
-      setGiftItems((current) =>
-        current.map((giftItem) => (giftItem.id === item.id ? updated : giftItem)),
-      );
-      toast.success("Reserva cancelada");
-    } catch (error) {
-      await load();
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível cancelar a reserva deste presente.",
-      );
-    } finally {
-      setReservingGiftId(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -147,7 +76,7 @@ function Page() {
           <CardContent className="p-10">
             <h1 className="font-serif text-3xl">Convite indisponível</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Este link individual não está publicado ou não é válido.
+              Este convite não está publicado ou não é válido.
             </p>
           </CardContent>
         </Card>
@@ -155,8 +84,7 @@ function Page() {
     );
   }
 
-  const addressForMap =
-    details.reception_location || details.ceremony_location || details.event_location || "";
+  const addressForMap = details.reception_location || details.event_location || "";
   const mapEmbedUrl = addressForMap
     ? `https://maps.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
     : null;
@@ -210,74 +138,16 @@ function Page() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-6 py-10 lg:grid-cols-[0.9fr_1.1fr]">
+      <section className="mx-auto max-w-6xl px-6 py-10">
         <Card className="pallazium-invitation-card">
-          <CardContent className="p-6 space-y-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Confirmação
-              </p>
-              <h2 className="mt-2 font-serif text-3xl">Convite individual</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Este link é exclusivo para o convidado abaixo. Ele não exibe a lista completa do
-                evento.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-gold/30 bg-champagne/60 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    Convidado
-                  </p>
-                  <p className="mt-2 font-serif text-3xl">{details.guest_name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {details.guest_group_name ?? "Convidado"} •{" "}
-                    {details.allowed_companions > 0
-                      ? `até ${details.allowed_companions} acompanhante(s)`
-                      : "sem acompanhantes"}
-                  </p>
-                </div>
-                <Badge variant={details.rsvp_status === "confirmado" ? "default" : "outline"}>
-                  {rsvpStatusLabels[details.rsvp_status]}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="pallazium-invitation-card">
-          <CardContent className="p-6 space-y-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">RSVP</p>
-              <h2 className="mt-2 font-serif text-3xl">{details.guest_name}</h2>
-            </div>
-            <>
-              {details.allowed_companions > 0 && (
-                <div>
-                  <Label>Acompanhantes confirmados</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max={details.allowed_companions}
-                    value={companions}
-                    onChange={(event) => setCompanions(Number(event.target.value) || 0)}
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Permitido: {details.allowed_companions} acompanhante(s).
-                  </p>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => respond("confirmado")}>
-                  <CheckCircle2 className="mr-1 h-4 w-4" />
-                  Confirmar presença
-                </Button>
-                <Button variant="outline" onClick={() => respond("recusado")}>
-                  <XCircle className="mr-1 h-4 w-4" />
-                  Não poderei ir
-                </Button>
-              </div>
-            </>
+          <CardContent className="p-6 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+              Convite de demonstração
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esta é uma prévia geral do convite. Para confirmar presença, use o link individual
+              enviado pela organização a cada convidado.
+            </p>
           </CardContent>
         </Card>
       </section>
@@ -343,8 +213,8 @@ function Page() {
                 </p>
                 <h2 className="mt-2 font-serif text-4xl">Presentes</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                  Visualize as opções antes de decidir. Quando escolher, clique em reservar para
-                  esse presente sair da lista dos outros convidados.
+                  Visualize as opções cadastradas. Para reservar um presente, acesse pelo seu link
+                  individual de convidado.
                 </p>
               </div>
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-champagne text-gold">
@@ -354,15 +224,13 @@ function Page() {
             {giftItems.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
                 {giftItems.map((item) => {
-                  const reservedByCurrentGuest = item.reserved_by_guest_id === details.guest_id;
+                  const reserved = Boolean(item.reserved_by_guest_id);
 
                   return (
                     <div
                       key={item.id}
                       className={`rounded-2xl border p-5 shadow-soft ${
-                        reservedByCurrentGuest
-                          ? "border-gold/40 bg-champagne/45"
-                          : "bg-background/80"
+                        reserved ? "border-gold/40 bg-champagne/45" : "bg-background/80"
                       }`}
                     >
                       {item.image_url && (
@@ -382,9 +250,9 @@ function Page() {
                         <p className="font-serif text-2xl leading-tight text-[#4a3c2e]">
                           {item.name}
                         </p>
-                        {reservedByCurrentGuest && (
+                        {reserved && (
                           <Badge variant="outline" className="border-gold/50 text-gold">
-                            Reservado por você
+                            Reservado
                           </Badge>
                         )}
                       </div>
@@ -393,38 +261,15 @@ function Page() {
                           {item.notes}
                         </p>
                       )}
-                      {reservedByCurrentGuest ? (
-                        <div className="mt-4 space-y-3">
-                          <p className="rounded-xl border border-gold/30 bg-white/70 px-4 py-3 text-sm text-muted-foreground">
-                            Este presente já ficou reservado para você e não aparece para outros
-                            convidados.
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={reservingGiftId === item.id}
-                            onClick={() => releaseGiftItemReservation(item)}
-                          >
-                            {reservingGiftId === item.id ? "Cancelando..." : "Cancelar reserva"}
-                          </Button>
-                        </div>
-                      ) : (
+                      {item.reference_links.length > 0 && (
                         <div className="mt-4 flex flex-wrap gap-2">
-                          {item.reference_links.length > 0 &&
-                            item.reference_links.map((link, index) => (
-                              <Button key={link} asChild size="sm" variant="outline">
-                                <a href={link} target="_blank" rel="noreferrer">
-                                  Visualizar {index + 1}
-                                </a>
-                              </Button>
-                            ))}
-                          <Button
-                            size="sm"
-                            disabled={reservingGiftId === item.id}
-                            onClick={() => reserveGiftItem(item)}
-                          >
-                            {reservingGiftId === item.id ? "Reservando..." : "Reservar presente"}
-                          </Button>
+                          {item.reference_links.map((link, index) => (
+                            <Button key={link} asChild size="sm" variant="outline">
+                              <a href={link} target="_blank" rel="noreferrer">
+                                Visualizar {index + 1}
+                              </a>
+                            </Button>
+                          ))}
                         </div>
                       )}
                     </div>

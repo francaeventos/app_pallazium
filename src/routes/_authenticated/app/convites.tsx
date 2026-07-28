@@ -341,14 +341,16 @@ function Page() {
               </p>
               <img
                 src={qrCodeImageUrl(
-                  typeof window !== "undefined" ? `${window.location.origin}/convite/${invitation.id}` : "",
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}/convite/preview/${invitation.id}`
+                    : "",
                   200,
                 )}
                 alt="QR Code do convite"
                 className="h-40 w-40 rounded-xl border"
               />
               <p className="text-xs text-muted-foreground text-center">
-                Escaneie para abrir
+                Escaneie para ver o convite (sem confirmar presença)
               </p>
             </Card>
           )}
@@ -449,6 +451,7 @@ function Page() {
                 label="Imagem de capa"
                 defaultValue={invitation?.cover_image_url ?? ""}
                 folder="capas"
+                recommendedSize="1600 x 900 pixels"
               />
             </div>
             <div>

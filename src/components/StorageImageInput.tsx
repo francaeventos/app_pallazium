@@ -18,6 +18,8 @@ type StorageImageInputProps = {
   hideFolderHint?: boolean;
   /** Classes extras no preview da imagem. */
   previewClassName?: string;
+  /** Dimensão ideal sugerida para a imagem, ex.: "1600 x 900 pixels". */
+  recommendedSize?: string;
 };
 
 export function StorageImageInput({
@@ -29,6 +31,7 @@ export function StorageImageInput({
   onValueChange,
   hideFolderHint = false,
   previewClassName,
+  recommendedSize,
 }: StorageImageInputProps) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [uploading, setUploading] = useState(false);
@@ -118,6 +121,11 @@ export function StorageImageInput({
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
+      )}
+      {recommendedSize && (
+        <p className="text-xs text-muted-foreground">
+          Tamanho ideal: <span className="font-medium">{recommendedSize}</span>
+        </p>
       )}
       {!hideFolderHint && (
         <p className="text-xs text-muted-foreground">
