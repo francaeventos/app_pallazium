@@ -16,10 +16,18 @@ import {
   type PublicInvitationGuest,
 } from "@/fns/invitation-public";
 import { rsvpStatusLabels } from "@/lib/invitation-utils";
+import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
 import { Calendar, CheckCircle2, Gift, MapPin, Navigation, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/convite/$token")({ component: Page });
+
+function formatDateBr(value?: string | null) {
+  if (!value) return value ?? null;
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
 
 function Page() {
   const { token } = Route.useParams();
@@ -156,11 +164,11 @@ function Page() {
       <section className="pallazium-invitation-hero relative overflow-hidden">
         {details.cover_image_url && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-45"
+            className="absolute inset-0 bg-cover bg-center opacity-75"
             style={{ backgroundImage: `url(${details.cover_image_url})` }}
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(43,36,28,0.82),rgba(43,36,28,0.72)),radial-gradient(circle_at_center,rgba(144,117,84,0.2),transparent_34rem)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(43,36,28,0.55),rgba(43,36,28,0.45)),radial-gradient(circle_at_center,rgba(144,117,84,0.2),transparent_34rem)]" />
         <div className="relative mx-auto max-w-5xl px-6 py-20 text-center text-white lg:py-28">
           <div className="mx-auto mb-8 w-fit rounded-xl border border-gold/50 bg-white/95 px-5 py-3 shadow-luxe">
             <img
@@ -178,8 +186,12 @@ function Page() {
               {details.invitation_message}
             </p>
           )}
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <Info icon={<Calendar className="h-4 w-4" />} label="Data" value={details.event_date} />
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <Info
+              icon={<Calendar className="h-4 w-4" />}
+              label="Data"
+              value={formatDateBr(details.event_date)}
+            />
             <Info
               icon={<MapPin className="h-4 w-4" />}
               label="Local"
@@ -271,7 +283,12 @@ function Page() {
               </p>
               <h2 className="font-serif text-3xl">Localização do evento</h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                <InfoBox label="Cerimônia" value={details.ceremony_location} />
+                <InfoBox
+                  label="Cerimônia"
+                  value={details.ceremony_external ? details.ceremony_location : "Espaço Pallazium"}
+                  address={details.ceremony_external ? details.ceremony_address : PALLAZIUM_ADDRESS}
+                  href={details.ceremony_external ? details.ceremony_map_url : PALLAZIUM_MAP_URL}
+                />
                 <InfoBox label="Recepção" value={details.reception_location} />
               </div>
               {routeUrl ? (
@@ -466,11 +483,13 @@ function Info({
   value?: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-gold/45 bg-[#fffaf7] p-4 text-left shadow-soft">
-      <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gold">
+    <div className="rounded-xl border border-gold/45 bg-[#fffaf7] p-6 text-center shadow-soft">
+      <p className="flex items-center justify-center gap-2 text-xs uppercase tracking-wider text-gold">
         {icon} {label}
       </p>
-      <p className="mt-2 text-sm font-medium text-[#4a3c2e]">{value || "A definir"}</p>
+      <p className="mt-3 text-base font-medium leading-snug text-[#4a3c2e] sm:text-lg">
+        {value || "A definir"}
+      </p>
     </div>
   );
 }
@@ -478,26 +497,28 @@ function Info({
 function InfoBox({
   label,
   value,
+  address,
   href,
 }: {
   label: string;
   value?: string | null;
+  address?: string | null;
   href?: string | null;
 }) {
   return (
     <div className="rounded-xl border p-4">
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      {href ? (
+      <p className="mt-2 text-sm font-medium">{value || "A definir"}</p>
+      {address && <p className="mt-1 text-sm text-muted-foreground">{address}</p>}
+      {href && (
         <a
-          className="mt-2 block text-sm text-gold underline"
+          className="mt-2 inline-block text-xs font-medium text-gold underline"
           href={href}
           target="_blank"
           rel="noreferrer"
         >
-          {value}
+          Abrir mapa
         </a>
-      ) : (
-        <p className="mt-2 text-sm">{value || "A definir"}</p>
       )}
     </div>
   );

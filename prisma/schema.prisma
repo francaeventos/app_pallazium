@@ -404,7 +404,10 @@ model EventInvitation {
   message            String?
   coverImageUrl      String?          @map("cover_image_url")
   dressCode          String?          @map("dress_code")
+  ceremonyExternal   Boolean          @default(false) @map("ceremony_external")
   ceremonyLocation   String?          @map("ceremony_location")
+  ceremonyAddress    String?          @map("ceremony_address")
+  ceremonyMapUrl     String?          @map("ceremony_map_url")
   receptionLocation  String?          @map("reception_location")
   mapUrl             String?          @map("map_url")
   giftListUrl        String?          @map("gift_list_url")

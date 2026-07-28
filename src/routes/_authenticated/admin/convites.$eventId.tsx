@@ -4,6 +4,7 @@ import { AdminEmptyState } from "@/components/AdminEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/invitation-utils";
 import { ArrowLeft, CheckCircle2, Copy, MailCheck, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { DEFAULT_INVITATION_MESSAGE, PALLAZIUM_ADDRESS } from "@/lib/pallazium-venue";
 
 export const Route = createFileRoute("/_authenticated/admin/convites/$eventId")({ component: Page });
 
@@ -62,6 +64,7 @@ function Page() {
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [editingParty, setEditingParty] = useState<PartyMember | null>(null);
   const [invitationStatus, setInvitationStatus] = useState<InvitationStatus>("rascunho");
+  const [ceremonyExternal, setCeremonyExternal] = useState(false);
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [partyStatus, setPartyStatus] = useState<RsvpStatus>("pendente");
 
@@ -106,6 +109,10 @@ function Page() {
   }, [invitation?.status]);
 
   useEffect(() => {
+    setCeremonyExternal(invitation?.ceremony_external ?? false);
+  }, [invitation?.ceremony_external]);
+
+  useEffect(() => {
     if (!editingGuest) return;
     setGuestStatus(editingGuest.rsvp_status);
   }, [editingGuest]);
@@ -126,9 +133,10 @@ function Page() {
       message: String(fd.get("message") || "") || null,
       cover_image_url: String(fd.get("cover_image_url") || "") || null,
       dress_code: String(fd.get("dress_code") || "") || null,
+      ceremony_external: ceremonyExternal,
       ceremony_location: String(fd.get("ceremony_location") || "") || null,
-      reception_location: String(fd.get("reception_location") || "") || null,
-      map_url: String(fd.get("map_url") || "") || null,
+      ceremony_address: String(fd.get("ceremony_address") || "") || null,
+      ceremony_map_url: String(fd.get("ceremony_map_url") || "") || null,
       gift_list_url: String(fd.get("gift_list_url") || "") || null,
       whatsapp_text: String(fd.get("whatsapp_text") || "") || null,
       status,
@@ -144,9 +152,10 @@ function Page() {
           message: payload.message ?? undefined,
           cover_image_url: payload.cover_image_url ?? undefined,
           dress_code: payload.dress_code ?? undefined,
+          ceremony_external: payload.ceremony_external,
           ceremony_location: payload.ceremony_location ?? undefined,
-          reception_location: payload.reception_location ?? undefined,
-          map_url: payload.map_url ?? undefined,
+          ceremony_address: payload.ceremony_address ?? undefined,
+          ceremony_map_url: payload.ceremony_map_url ?? undefined,
           gift_list_url: payload.gift_list_url ?? undefined,
           whatsapp_text: payload.whatsapp_text ?? undefined,
           status,
@@ -394,8 +403,7 @@ function Page() {
                   <Textarea
                     name="message"
                     rows={4}
-                    defaultValue={invitation?.message ?? ""}
-                    placeholder="Com carinho, convidamos você para celebrar este momento especial conosco."
+                    defaultValue={invitation?.message ?? DEFAULT_INVITATION_MESSAGE}
                   />
                 </div>
                 <div>
@@ -411,23 +419,50 @@ function Page() {
                   <Label>Dress code</Label>
                   <Input name="dress_code" defaultValue={invitation?.dress_code ?? ""} />
                 </div>
-                <div>
-                  <Label>Local da cerimônia</Label>
-                  <Input
-                    name="ceremony_location"
-                    defaultValue={invitation?.ceremony_location ?? ""}
-                  />
-                </div>
-                <div>
-                  <Label>Local da recepção</Label>
-                  <Input
-                    name="reception_location"
-                    defaultValue={invitation?.reception_location ?? ""}
-                  />
-                </div>
-                <div>
-                  <Label>Link do mapa</Label>
-                  <Input name="map_url" type="url" defaultValue={invitation?.map_url ?? ""} />
+                <div className="lg:col-span-2 rounded-lg border p-4 space-y-3">
+                  <div>
+                    <Label>Cerimônia e recepção</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Padrão: cerimônia e festa no Espaço Pallazium — {PALLAZIUM_ADDRESS}.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ceremony_external"
+                      checked={ceremonyExternal}
+                      onCheckedChange={(checked) => setCeremonyExternal(checked === true)}
+                    />
+                    <Label htmlFor="ceremony_external" className="cursor-pointer font-normal">
+                      Cerimônia em local externo
+                    </Label>
+                  </div>
+                  {ceremonyExternal && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label>Nome do local da cerimônia</Label>
+                        <Input
+                          name="ceremony_location"
+                          defaultValue={invitation?.ceremony_location ?? ""}
+                        />
+                      </div>
+                      <div>
+                        <Label>Endereço da cerimônia</Label>
+                        <Input
+                          name="ceremony_address"
+                          defaultValue={invitation?.ceremony_address ?? ""}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label>Link do mapa da cerimônia</Label>
+                        <Input
+                          name="ceremony_map_url"
+                          type="url"
+                          placeholder="https://..."
+                          defaultValue={invitation?.ceremony_map_url ?? ""}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label>Lista externa de presentes</Label>

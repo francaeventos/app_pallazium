@@ -10,7 +10,10 @@ export type PublicInvitationGuest = {
   invitation_message: string | null;
   cover_image_url: string | null;
   dress_code: string | null;
+  ceremony_external: boolean;
   ceremony_location: string | null;
+  ceremony_address: string | null;
+  ceremony_map_url: string | null;
   reception_location: string | null;
   map_url: string | null;
   gift_list_url: string | null;
@@ -75,7 +78,10 @@ function formatInvitationGuest(guest: GuestWithRelations): PublicInvitationGuest
     invitation_message: invitation.message,
     cover_image_url: invitation.coverImageUrl,
     dress_code: invitation.dressCode,
+    ceremony_external: invitation.ceremonyExternal,
     ceremony_location: invitation.ceremonyLocation,
+    ceremony_address: invitation.ceremonyAddress,
+    ceremony_map_url: invitation.ceremonyMapUrl,
     reception_location: invitation.receptionLocation,
     map_url: invitation.mapUrl,
     gift_list_url: invitation.giftListUrl,

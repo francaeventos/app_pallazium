@@ -4,6 +4,7 @@ import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { clientOwnsEvent } from "@/lib/auth-session";
 import { toIsoString } from "@/lib/api-map";
 import { db } from "@/lib/db";
+import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
 
 export type InvitationRow = {
   id: string;
@@ -13,7 +14,10 @@ export type InvitationRow = {
   message: string | null;
   cover_image_url: string | null;
   dress_code: string | null;
+  ceremony_external: boolean;
   ceremony_location: string | null;
+  ceremony_address: string | null;
+  ceremony_map_url: string | null;
   reception_location: string | null;
   map_url: string | null;
   gift_list_url: string | null;
@@ -88,7 +92,10 @@ function mapInvitation(row: {
   message: string | null;
   coverImageUrl: string | null;
   dressCode: string | null;
+  ceremonyExternal: boolean;
   ceremonyLocation: string | null;
+  ceremonyAddress: string | null;
+  ceremonyMapUrl: string | null;
   receptionLocation: string | null;
   mapUrl: string | null;
   giftListUrl: string | null;
@@ -106,7 +113,10 @@ function mapInvitation(row: {
     message: row.message,
     cover_image_url: row.coverImageUrl,
     dress_code: row.dressCode,
+    ceremony_external: row.ceremonyExternal,
     ceremony_location: row.ceremonyLocation,
+    ceremony_address: row.ceremonyAddress,
+    ceremony_map_url: row.ceremonyMapUrl,
     reception_location: row.receptionLocation,
     map_url: row.mapUrl,
     gift_list_url: row.giftListUrl,
@@ -318,9 +328,10 @@ const saveInvitationInput = z.object({
   message: z.string().nullable().optional(),
   coverImageUrl: z.string().nullable().optional(),
   dressCode: z.string().nullable().optional(),
+  ceremonyExternal: z.boolean().default(false),
   ceremonyLocation: z.string().nullable().optional(),
-  receptionLocation: z.string().nullable().optional(),
-  mapUrl: z.string().nullable().optional(),
+  ceremonyAddress: z.string().nullable().optional(),
+  ceremonyMapUrl: z.string().nullable().optional(),
   status: z.enum(["rascunho", "publicado", "pausado"]),
   publishedAt: z.string().nullable().optional(),
 });
@@ -345,9 +356,12 @@ export const saveInvitationFn = createServerFn({ method: "POST" })
       message: data.message ?? null,
       coverImageUrl: data.coverImageUrl ?? null,
       dressCode: data.dressCode ?? null,
-      ceremonyLocation: data.ceremonyLocation ?? null,
-      receptionLocation: data.receptionLocation ?? null,
-      mapUrl: data.mapUrl ?? null,
+      ceremonyExternal: data.ceremonyExternal,
+      ceremonyLocation: data.ceremonyExternal ? data.ceremonyLocation ?? null : null,
+      ceremonyAddress: data.ceremonyExternal ? data.ceremonyAddress ?? null : null,
+      ceremonyMapUrl: data.ceremonyExternal ? data.ceremonyMapUrl ?? null : null,
+      receptionLocation: PALLAZIUM_ADDRESS,
+      mapUrl: PALLAZIUM_MAP_URL,
       status: data.status,
       publishedAt,
     };

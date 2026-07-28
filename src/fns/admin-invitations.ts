@@ -10,6 +10,7 @@ import {
   invitationRecord,
   partyMemberRecord,
 } from "@/lib/admin-records";
+import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
 
 async function guardAdmin(context: { userId?: string }) {
   const userId = context.userId;
@@ -30,9 +31,10 @@ const saveInvitationSchema = z.object({
   message: z.string().trim().optional(),
   cover_image_url: z.string().trim().optional(),
   dress_code: z.string().trim().optional(),
+  ceremony_external: z.boolean().default(false),
   ceremony_location: z.string().trim().optional(),
-  reception_location: z.string().trim().optional(),
-  map_url: z.string().trim().optional(),
+  ceremony_address: z.string().trim().optional(),
+  ceremony_map_url: z.string().trim().optional(),
   gift_list_url: z.string().trim().optional(),
   whatsapp_text: z.string().trim().optional(),
   status: invitationStatusSchema,
@@ -170,9 +172,12 @@ export const saveInvitationFn = createServerFn({ method: "POST" })
       message: data.message || null,
       coverImageUrl: data.cover_image_url || null,
       dressCode: data.dress_code || null,
-      ceremonyLocation: data.ceremony_location || null,
-      receptionLocation: data.reception_location || null,
-      mapUrl: data.map_url || null,
+      ceremonyExternal: data.ceremony_external,
+      ceremonyLocation: data.ceremony_external ? data.ceremony_location || null : null,
+      ceremonyAddress: data.ceremony_external ? data.ceremony_address || null : null,
+      ceremonyMapUrl: data.ceremony_external ? data.ceremony_map_url || null : null,
+      receptionLocation: PALLAZIUM_ADDRESS,
+      mapUrl: PALLAZIUM_MAP_URL,
       giftListUrl: data.gift_list_url || null,
       whatsappText: data.whatsapp_text || null,
       status: data.status,

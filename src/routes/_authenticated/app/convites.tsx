@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,6 +54,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { DEFAULT_INVITATION_MESSAGE, PALLAZIUM_ADDRESS } from "@/lib/pallazium-venue";
 
 export const Route = createFileRoute("/_authenticated/app/convites")({ component: Page });
 
@@ -66,6 +68,7 @@ function Page() {
   const [qrGuest, setQrGuest] = useState<GuestRow | null>(null);
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [invitationStatus, setInvitationStatus] = useState<InvitationRow["status"]>("rascunho");
+  const [ceremonyExternal, setCeremonyExternal] = useState(false);
 
   const event = data?.event ?? null;
   const totals = useMemo(() => {
@@ -99,6 +102,10 @@ function Page() {
   useEffect(() => {
     setInvitationStatus(invitation?.status ?? "rascunho");
   }, [invitation?.status]);
+
+  useEffect(() => {
+    setCeremonyExternal(invitation?.ceremony_external ?? false);
+  }, [invitation?.ceremony_external]);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando convites…</div>;
 
@@ -173,9 +180,10 @@ function Page() {
           message: String(fd.get("message") || "") || null,
           coverImageUrl: String(fd.get("cover_image_url") || "") || null,
           dressCode: String(fd.get("dress_code") || "") || null,
+          ceremonyExternal,
           ceremonyLocation: String(fd.get("ceremony_location") || "") || null,
-          receptionLocation: String(fd.get("reception_location") || "") || null,
-          mapUrl: String(fd.get("map_url") || "") || null,
+          ceremonyAddress: String(fd.get("ceremony_address") || "") || null,
+          ceremonyMapUrl: String(fd.get("ceremony_map_url") || "") || null,
           status,
           publishedAt: invitation?.published_at ?? null,
         },
@@ -302,7 +310,14 @@ function Page() {
               )}
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <Info label="Dress code" value={invitation.dress_code} />
-                <Info label="Cerimônia" value={invitation.ceremony_location} />
+                <Info
+                  label="Cerimônia"
+                  value={
+                    invitation.ceremony_external
+                      ? invitation.ceremony_location
+                      : "Espaço Pallazium"
+                  }
+                />
                 <Info label="Recepção" value={invitation.reception_location} />
                 <Info label="Mapa" value={invitation.map_url ? "Disponível no convite" : null} />
                 <Info
@@ -424,8 +439,7 @@ function Page() {
               <Textarea
                 name="message"
                 rows={4}
-                placeholder="Com carinho, convidamos você para celebrar este momento especial conosco."
-                defaultValue={invitation?.message ?? ""}
+                defaultValue={invitation?.message ?? DEFAULT_INVITATION_MESSAGE}
               />
             </div>
             <div>
@@ -441,25 +455,50 @@ function Page() {
               <Label>Dress code</Label>
               <Input name="dress_code" defaultValue={invitation?.dress_code ?? ""} />
             </div>
-            <div>
-              <Label>Local da cerimônia</Label>
-              <Input name="ceremony_location" defaultValue={invitation?.ceremony_location ?? ""} />
-            </div>
-            <div>
-              <Label>Local da recepção</Label>
-              <Input
-                name="reception_location"
-                defaultValue={invitation?.reception_location ?? ""}
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <Label>Link do mapa</Label>
-              <Input
-                name="map_url"
-                type="url"
-                placeholder="https://maps.google.com/..."
-                defaultValue={invitation?.map_url ?? ""}
-              />
+            <div className="lg:col-span-2 rounded-lg border p-4 space-y-3">
+              <div>
+                <Label>Cerimônia e recepção</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Padrão: cerimônia e festa no Espaço Pallazium — {PALLAZIUM_ADDRESS}.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="ceremony_external"
+                  checked={ceremonyExternal}
+                  onCheckedChange={(checked) => setCeremonyExternal(checked === true)}
+                />
+                <Label htmlFor="ceremony_external" className="cursor-pointer font-normal">
+                  Cerimônia em local externo
+                </Label>
+              </div>
+              {ceremonyExternal && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label>Nome do local da cerimônia</Label>
+                    <Input
+                      name="ceremony_location"
+                      defaultValue={invitation?.ceremony_location ?? ""}
+                    />
+                  </div>
+                  <div>
+                    <Label>Endereço da cerimônia</Label>
+                    <Input
+                      name="ceremony_address"
+                      defaultValue={invitation?.ceremony_address ?? ""}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label>Link do mapa da cerimônia</Label>
+                    <Input
+                      name="ceremony_map_url"
+                      type="url"
+                      placeholder="https://..."
+                      defaultValue={invitation?.ceremony_map_url ?? ""}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="lg:col-span-2">
               <Button type="submit">{invitation ? "Salvar convite" : "Criar convite"}</Button>
