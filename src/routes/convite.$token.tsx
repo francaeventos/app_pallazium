@@ -22,16 +22,6 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/convite/$token")({ component: Page });
 
-function showRsvpError(error: unknown, fallback: string) {
-  const message = error instanceof Error ? error.message : fallback;
-  const [title, ...rest] = message.split("\n\n");
-  if (rest.length > 0) {
-    toast.error(title, { description: rest.join("\n\n") });
-  } else {
-    toast.error(message);
-  }
-}
-
 function formatDateBr(value?: string | null) {
   if (!value) return value ?? null;
   const [year, month, day] = value.split("-");
@@ -96,7 +86,7 @@ function Page() {
       setCompanions(updated.confirmed_companions);
       toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
     } catch (error) {
-      showRsvpError(error, "Não foi possível registrar a resposta.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a resposta.");
     }
   };
 

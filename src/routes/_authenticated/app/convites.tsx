@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import {
   type RsvpStatus,
 } from "@/lib/invitation-utils";
 import {
+  AlertTriangle,
   CheckCircle2,
   Copy,
   Download,
@@ -54,6 +56,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { GUEST_LIMIT_ERROR_MESSAGE } from "@/lib/guest-limit";
 import { DEFAULT_INVITATION_MESSAGE, PALLAZIUM_ADDRESS } from "@/lib/pallazium-venue";
 
 export const Route = createFileRoute("/_authenticated/app/convites")({ component: Page });
@@ -91,6 +94,10 @@ function Page() {
       pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
     };
   }, [guests]);
+
+  const guestLimitExceeded =
+    event?.estimated_guests != null && totals.people > event.estimated_guests * 1.1;
+  const [guestLimitTitle, guestLimitBody] = GUEST_LIMIT_ERROR_MESSAGE.split("\n\n");
 
   const load = useCallback(async () => {
     if (!event) return;
@@ -288,6 +295,14 @@ function Page() {
           Cada convidado recebe um link individual para confirmar presença.
         </p>
       </div>
+
+      {guestLimitExceeded && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{guestLimitTitle}</AlertTitle>
+          <AlertDescription>{guestLimitBody}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={Users} label="Convidados" value={guests.length} />
