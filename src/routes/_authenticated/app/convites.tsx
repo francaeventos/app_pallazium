@@ -58,6 +58,16 @@ import { DEFAULT_INVITATION_MESSAGE, PALLAZIUM_ADDRESS } from "@/lib/pallazium-v
 
 export const Route = createFileRoute("/_authenticated/app/convites")({ component: Page });
 
+function showGuestError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : fallback;
+  const [title, ...rest] = message.split("\n\n");
+  if (rest.length > 0) {
+    toast.error(title, { description: rest.join("\n\n") });
+  } else {
+    toast.error(message);
+  }
+}
+
 function Page() {
   const { data, loading } = useMyEvent();
   const [invitation, setInvitation] = useState<InvitationRow | null>(null);
@@ -151,7 +161,7 @@ function Page() {
       setGuestStatus("pendente");
       load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar convidado");
+      showGuestError(error, "Erro ao salvar convidado");
     }
   };
 

@@ -4,6 +4,7 @@ import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { clientOwnsEvent } from "@/lib/auth-session";
 import { toIsoString } from "@/lib/api-map";
 import { db } from "@/lib/db";
+import { assertGuestLimitNotExceeded } from "@/lib/guest-limit";
 import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
 
 export type InvitationRow = {
@@ -281,6 +282,20 @@ export const createGuestFn = createServerFn({ method: "POST" })
   .inputValidator((data) => saveGuestInput.parse(data))
   .handler(async ({ data, context }) => {
     await assertEventAccess(context.userId, data.eventId);
+
+    if (data.rsvpStatus === "confirmado") {
+      const [event, confirmedTotals] = await Promise.all([
+        db.event.findUnique({ where: { id: data.eventId }, select: { estimatedGuests: true } }),
+        db.eventGuest.aggregate({
+          where: { eventId: data.eventId, rsvpStatus: "confirmado" },
+          _count: true,
+          _sum: { confirmedCompanions: true },
+        }),
+      ]);
+      const currentPeople = confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0);
+      const prospectivePeople = currentPeople + 1 + data.confirmedCompanions;
+      assertGuestLimitNotExceeded(event?.estimatedGuests, prospectivePeople);
+    }
 
     const guest = await db.eventGuest.create({
       data: {

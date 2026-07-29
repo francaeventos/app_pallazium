@@ -16,11 +16,21 @@ import {
   type PublicInvitationGuest,
 } from "@/fns/invitation-public";
 import { rsvpStatusLabels } from "@/lib/invitation-utils";
-import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
-import { Calendar, CheckCircle2, Gift, MapPin, Navigation, Users, XCircle } from "lucide-react";
+import { PALLAZIUM_ADDRESS } from "@/lib/pallazium-venue";
+import { Calendar, CheckCircle2, Gift, MapPin, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/convite/$token")({ component: Page });
+
+function showRsvpError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : fallback;
+  const [title, ...rest] = message.split("\n\n");
+  if (rest.length > 0) {
+    toast.error(title, { description: rest.join("\n\n") });
+  } else {
+    toast.error(message);
+  }
+}
 
 function formatDateBr(value?: string | null) {
   if (!value) return value ?? null;
@@ -86,7 +96,7 @@ function Page() {
       setCompanions(updated.confirmed_companions);
       toast.success(status === "confirmado" ? "Presença confirmada" : "Resposta registrada");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a resposta.");
+      showRsvpError(error, "Não foi possível registrar a resposta.");
     }
   };
 
@@ -155,16 +165,15 @@ function Page() {
     );
   }
 
-  const addressForMap =
-    details.reception_location || details.ceremony_location || details.event_location || "";
-  const mapEmbedUrl = addressForMap
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
+  const ceremonyAddressForMap = details.ceremony_address || details.ceremony_location || "";
+  const ceremonyMapEmbedUrl = ceremonyAddressForMap
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(ceremonyAddressForMap)}&output=embed`
     : null;
-  const routeUrl =
-    details.map_url ||
-    (addressForMap
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`
-      : null);
+
+  const receptionAddressForMap = details.reception_location || PALLAZIUM_ADDRESS;
+  const receptionMapEmbedUrl = receptionAddressForMap
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(receptionAddressForMap)}&output=embed`
+    : null;
 
   return (
     <main className="pallazium-invitation-shell min-h-screen">
@@ -283,56 +292,41 @@ function Page() {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-12">
-        <Card className="pallazium-invitation-card overflow-hidden">
-          <CardContent className="grid gap-0 p-0 md:grid-cols-[1fr_0.9fr]">
-            <div className="space-y-4 p-6">
-              <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                Como chegar
-              </p>
-              <h2 className="font-serif text-3xl">Localização do evento</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoBox
-                  label="Cerimônia"
-                  value={details.ceremony_external ? details.ceremony_location : "Espaço Pallazium"}
-                  address={details.ceremony_external ? details.ceremony_address : PALLAZIUM_ADDRESS}
-                  href={details.ceremony_external ? details.ceremony_map_url : PALLAZIUM_MAP_URL}
-                />
-                <InfoBox label="Recepção" value={details.reception_location} />
-              </div>
-              {routeUrl ? (
-                <Button asChild className="mt-2">
-                  <a href={routeUrl} target="_blank" rel="noreferrer">
-                    <Navigation className="mr-2 h-4 w-4" />
-                    Abrir rota no mapa
-                  </a>
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  A rota será disponibilizada pela organização em breve.
-                </p>
-              )}
-            </div>
-            {mapEmbedUrl ? (
-              <iframe
-                title="Mapa do evento"
-                src={mapEmbedUrl}
-                className="min-h-72 w-full border-0 md:min-h-full"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
+        {details.ceremony_external ? (
+          <>
+            <LocationCard
+              eyebrow="Como chegar ao local da cerimônia"
+              title={details.ceremony_location || "Local da cerimônia"}
+              mapEmbedUrl={ceremonyMapEmbedUrl}
+              mapTitle="Mapa da cerimônia"
+            >
+              <InfoBox
+                label="Cerimônia"
+                value={details.ceremony_location}
+                address={details.ceremony_address}
+                href={details.ceremony_map_url}
               />
-            ) : (
-              <div className="flex min-h-64 items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(144,117,84,0.25),transparent_18rem),linear-gradient(135deg,#efe6da,#fffaf7)] p-8 text-center">
-                <div className="rounded-3xl border border-gold/30 bg-white/80 p-6 shadow-soft">
-                  <MapPin className="mx-auto h-10 w-10 text-gold" />
-                  <p className="mt-3 font-serif text-2xl text-[#4a3c2e]">Mapa e rota</p>
-                  <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-                    A localização aparecerá aqui quando o endereço for informado.
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </LocationCard>
+
+            <LocationCard
+              eyebrow="Como chegar ao local da recepção"
+              title="Espaço Pallazium"
+              mapEmbedUrl={receptionMapEmbedUrl}
+              mapTitle="Mapa da recepção"
+            >
+              <InfoBox label="Recepção" value={details.reception_location} />
+            </LocationCard>
+          </>
+        ) : (
+          <LocationCard
+            eyebrow="Como chegar ao local da cerimônia e recepção"
+            title="Espaço Pallazium"
+            mapEmbedUrl={receptionMapEmbedUrl}
+            mapTitle="Mapa do evento"
+          >
+            <InfoBox label="Cerimônia e recepção" value={PALLAZIUM_ADDRESS} />
+          </LocationCard>
+        )}
 
         <Card className="pallazium-invitation-card">
           <CardContent className="space-y-6 p-6">
@@ -536,5 +530,50 @@ function InfoBox({
         </a>
       )}
     </div>
+  );
+}
+
+function LocationCard({
+  eyebrow,
+  title,
+  mapEmbedUrl,
+  mapTitle,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  mapEmbedUrl: string | null;
+  mapTitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="pallazium-invitation-card overflow-hidden">
+      <CardContent className="grid gap-0 p-0 md:grid-cols-[1fr_0.9fr]">
+        <div className="space-y-4 p-6">
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">{eyebrow}</p>
+          <h2 className="font-serif text-3xl">{title}</h2>
+          {children}
+        </div>
+        {mapEmbedUrl ? (
+          <iframe
+            title={mapTitle}
+            src={mapEmbedUrl}
+            className="min-h-72 w-full border-0 md:min-h-full"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        ) : (
+          <div className="flex min-h-64 items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(144,117,84,0.25),transparent_18rem),linear-gradient(135deg,#efe6da,#fffaf7)] p-8 text-center">
+            <div className="rounded-3xl border border-gold/30 bg-white/80 p-6 shadow-soft">
+              <MapPin className="mx-auto h-10 w-10 text-gold" />
+              <p className="mt-3 font-serif text-2xl text-[#4a3c2e]">Mapa e rota</p>
+              <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+                A localização aparecerá aqui quando o endereço for informado.
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

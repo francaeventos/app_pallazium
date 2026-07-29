@@ -14,8 +14,6 @@ type StorageImageInputProps = {
   defaultValue?: string | null;
   folder?: string;
   onValueChange?: (url: string) => void;
-  /** Oculta o caminho técnico bucket/folder (útil em telas de operação). */
-  hideFolderHint?: boolean;
   /** Classes extras no preview da imagem. */
   previewClassName?: string;
   /** Dimensão ideal sugerida para a imagem, ex.: "1600 x 900 pixels". */
@@ -29,7 +27,6 @@ export function StorageImageInput({
   defaultValue,
   folder = "uploads",
   onValueChange,
-  hideFolderHint = false,
   previewClassName,
   recommendedSize,
 }: StorageImageInputProps) {
@@ -125,11 +122,6 @@ export function StorageImageInput({
       {recommendedSize && (
         <p className="text-xs text-muted-foreground">
           Tamanho ideal: <span className="font-medium">{recommendedSize}</span>
-        </p>
-      )}
-      {!hideFolderHint && (
-        <p className="text-xs text-muted-foreground">
-          Pasta: <span className="font-medium">{bucket}/{folder}</span>
         </p>
       )}
     </div>
@@ -264,9 +256,7 @@ export function StorageImagesTextarea({
           />
         </label>
       </Button>
-      <p className="text-xs text-muted-foreground">
-        Pasta: <span className="font-medium">{bucket}/{folder}</span>. Você pode enviar várias fotos.
-      </p>
+      <p className="text-xs text-muted-foreground">Você pode enviar várias fotos.</p>
     </div>
   );
 }

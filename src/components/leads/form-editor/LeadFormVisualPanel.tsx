@@ -140,7 +140,6 @@ export function LeadFormVisualPanel() {
               folder="avatars"
               name="agent_avatar"
               label="Avatar"
-              hideFolderHint
               previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
               defaultValue={meta.agent_avatar_url}
               onValueChange={(url) => setMeta({ ...meta, agent_avatar_url: url })}
@@ -150,7 +149,6 @@ export function LeadFormVisualPanel() {
               folder="wallpapers"
               name="wallpaper_light"
               label="Fundo claro"
-              hideFolderHint
               previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
               defaultValue={meta.wallpaper_url}
               onValueChange={(url) => setMeta({ ...meta, wallpaper_url: url })}
@@ -160,7 +158,6 @@ export function LeadFormVisualPanel() {
               folder="wallpapers"
               name="wallpaper_dark"
               label="Fundo escuro"
-              hideFolderHint
               previewClassName="h-16 rounded-lg border bg-muted bg-cover bg-center"
               defaultValue={meta.wallpaper_dark_url}
               onValueChange={(url) => setMeta({ ...meta, wallpaper_dark_url: url })}
