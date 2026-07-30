@@ -316,6 +316,64 @@ export const createGuestFn = createServerFn({ method: "POST" })
     return mapGuest(guest);
   });
 
+const updateGuestInput = z.object({
+  eventId: z.string().uuid(),
+  guestId: z.string().uuid(),
+  name: z.string().trim().min(1),
+  phone: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
+  allowedCompanions: z.number().int().min(0),
+  confirmedCompanions: z.number().int().min(0),
+  rsvpStatus: z.enum(["pendente", "confirmado", "recusado"]),
+  notes: z.string().nullable().optional(),
+});
+
+export const updateGuestFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => updateGuestInput.parse(data))
+  .handler(async ({ data, context }) => {
+    await assertEventAccess(context.userId, data.eventId);
+
+    const existing = await db.eventGuest.findFirst({
+      where: { id: data.guestId, eventId: data.eventId },
+    });
+    if (!existing) throw new Error("Convidado não encontrado.");
+
+    const confirmedCompanions = Math.min(data.confirmedCompanions, data.allowedCompanions);
+
+    if (data.rsvpStatus === "confirmado") {
+      const [event, confirmedTotals] = await Promise.all([
+        db.event.findUnique({ where: { id: data.eventId }, select: { estimatedGuests: true } }),
+        db.eventGuest.aggregate({
+          where: { eventId: data.eventId, rsvpStatus: "confirmado", id: { not: data.guestId } },
+          _count: true,
+          _sum: { confirmedCompanions: true },
+        }),
+      ]);
+      const otherPeople = confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0);
+      const prospectivePeople = otherPeople + 1 + confirmedCompanions;
+      assertGuestLimitNotExceeded(event?.estimatedGuests, prospectivePeople);
+    }
+
+    const guest = await db.eventGuest.update({
+      where: { id: data.guestId },
+      data: {
+        name: data.name,
+        phone: data.phone ?? null,
+        email: data.email ?? null,
+        groupName: data.groupName ?? null,
+        allowedCompanions: data.allowedCompanions,
+        confirmedCompanions,
+        rsvpStatus: data.rsvpStatus,
+        notes: data.notes ?? null,
+        respondedAt: data.rsvpStatus === "pendente" ? null : new Date(),
+      },
+    });
+
+    return mapGuest(guest);
+  });
+
 const deleteGuestInput = z.object({
   eventId: z.string().uuid(),
   guestId: z.string().uuid(),

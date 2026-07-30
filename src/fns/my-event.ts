@@ -45,6 +45,7 @@ export type EventBundle = {
   event: EventSummary | null;
   client: ClientSummary | null;
   checklist: ChecklistSummary[];
+  guestLimitExceeded: boolean;
 };
 
 export const getMyEventFn = createServerFn({ method: "GET" })
@@ -52,7 +53,7 @@ export const getMyEventFn = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<EventBundle> => {
     const client = await getClientForUser(context.userId);
     if (!client) {
-      return { event: null, client: null, checklist: [] };
+      return { event: null, client: null, checklist: [], guestLimitExceeded: false };
     }
 
     const event = await db.event.findFirst({
@@ -75,13 +76,26 @@ export const getMyEventFn = createServerFn({ method: "GET" })
           status: client.status,
         },
         checklist: [],
+        guestLimitExceeded: false,
       };
     }
 
-    const checklistItems = await db.checklistItem.findMany({
-      where: { eventId: event.id },
-      orderBy: { sortOrder: "asc" },
-    });
+    const [checklistItems, confirmedGuests] = await Promise.all([
+      db.checklistItem.findMany({
+        where: { eventId: event.id },
+        orderBy: { sortOrder: "asc" },
+      }),
+      db.eventGuest.aggregate({
+        where: { eventId: event.id, rsvpStatus: "confirmado" },
+        _count: { _all: true },
+        _sum: { confirmedCompanions: true },
+      }),
+    ]);
+
+    const confirmedPeopleTotal =
+      confirmedGuests._count._all + (confirmedGuests._sum.confirmedCompanions ?? 0);
+    const guestLimitExceeded =
+      event.estimatedGuests != null && confirmedPeopleTotal > event.estimatedGuests * 1.1;
 
     return {
       client: {
@@ -118,5 +132,6 @@ export const getMyEventFn = createServerFn({ method: "GET" })
         created_at: toIsoString(item.createdAt)!,
         updated_at: toIsoString(item.updatedAt)!,
       })),
+      guestLimitExceeded,
     };
   });

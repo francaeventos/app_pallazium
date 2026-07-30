@@ -30,7 +30,7 @@ export function useMyEvent(): { data: EventBundle | null; loading: boolean; relo
       } catch (error) {
         console.error("Erro ao carregar evento", error);
         if (!cancelled) {
-          setData({ event: null, client: null, checklist: [] });
+          setData({ event: null, client: null, checklist: [], guestLimitExceeded: false });
           setLoading(false);
         }
       }

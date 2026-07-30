@@ -25,6 +25,7 @@ import {
   getConvitesPageDataFn,
   saveGiftItemFn,
   saveInvitationFn,
+  updateGuestFn,
   type GiftItemRow,
   type GuestRow,
   type InvitationRow,
@@ -79,6 +80,9 @@ function Page() {
   const [giftItems, setGiftItems] = useState<GiftItemRow[]>([]);
   const [editingGiftItem, setEditingGiftItem] = useState<GiftItemRow | null>(null);
   const [qrGuest, setQrGuest] = useState<GuestRow | null>(null);
+  const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null);
+  const [editGuestOpen, setEditGuestOpen] = useState(false);
+  const [editGuestStatus, setEditGuestStatus] = useState<RsvpStatus>("pendente");
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [invitationStatus, setInvitationStatus] = useState<InvitationRow["status"]>("rascunho");
   const [ceremonyExternal, setCeremonyExternal] = useState(false);
@@ -180,6 +184,53 @@ function Page() {
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao excluir convidado");
+    }
+  };
+
+  const openEditGuest = (guest: GuestRow) => {
+    setEditingGuest(guest);
+    setEditGuestStatus(guest.rsvp_status);
+    setEditGuestOpen(true);
+  };
+
+  const closeEditGuest = () => {
+    setEditGuestOpen(false);
+    setEditingGuest(null);
+    setEditGuestStatus("pendente");
+  };
+
+  const updateGuest = async (formEvent: FormEvent<HTMLFormElement>) => {
+    formEvent.preventDefault();
+    if (!editingGuest) return;
+    const fd = new FormData(formEvent.currentTarget);
+    const allowed = Number(fd.get("allowed_companions")) || 0;
+    const status = editGuestStatus;
+
+    try {
+      const updatedGuest = await updateGuestFn({
+        data: {
+          eventId: event.id,
+          guestId: editingGuest.id,
+          name: String(fd.get("name")),
+          phone: String(fd.get("phone") || "") || null,
+          email: String(fd.get("email") || "") || null,
+          groupName: String(fd.get("group_name") || "") || null,
+          allowedCompanions: allowed,
+          confirmedCompanions:
+            status === "confirmado"
+              ? Math.min(Number(fd.get("confirmed_companions")) || 0, allowed)
+              : 0,
+          rsvpStatus: status,
+          notes: String(fd.get("notes") || "") || null,
+        },
+      });
+      setGuests((current) =>
+        current.map((item) => (item.id === updatedGuest.id ? updatedGuest : item)),
+      );
+      toast.success("Convidado atualizado");
+      closeEditGuest();
+    } catch (error) {
+      showGuestError(error, "Erro ao atualizar convidado");
     }
   };
 
@@ -297,7 +348,7 @@ function Page() {
       </div>
 
       {guestLimitExceeded && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="border-destructive/70 bg-destructive/10">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>{guestLimitTitle}</AlertTitle>
           <AlertDescription>{guestLimitBody}</AlertDescription>
@@ -425,6 +476,83 @@ function Page() {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editGuestOpen} onOpenChange={(open) => (open ? setEditGuestOpen(true) : closeEditGuest())}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar convidado</DialogTitle>
+          </DialogHeader>
+          {editingGuest && (
+            <form key={editingGuest.id} onSubmit={updateGuest} className="space-y-3">
+              <div>
+                <Label>Nome</Label>
+                <Input name="name" required defaultValue={editingGuest.name} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" defaultValue={editingGuest.phone ?? ""} />
+                </div>
+                <div>
+                  <Label>E-mail</Label>
+                  <Input name="email" type="email" defaultValue={editingGuest.email ?? ""} />
+                </div>
+              </div>
+              <div>
+                <Label>Grupo</Label>
+                <Input
+                  name="group_name"
+                  placeholder="Família, amigos..."
+                  defaultValue={editingGuest.group_name ?? ""}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Acompanhantes</Label>
+                  <Input
+                    name="allowed_companions"
+                    type="number"
+                    min="0"
+                    defaultValue={editingGuest.allowed_companions}
+                  />
+                </div>
+                <div>
+                  <Label>Confirmados</Label>
+                  <Input
+                    name="confirmed_companions"
+                    type="number"
+                    min="0"
+                    defaultValue={editingGuest.confirmed_companions}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={editGuestStatus}
+                  onValueChange={(value) => setEditGuestStatus(value as RsvpStatus)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="confirmado">Confirmado</SelectItem>
+                    <SelectItem value="recusado">Recusado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" defaultValue={editingGuest.notes ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -763,6 +891,10 @@ function Page() {
                     Acompanhantes: {guest.confirmed_companions}/{guest.allowed_companions}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEditGuest(guest)}>
+                      <Pencil className="mr-1 h-3 w-3" />
+                      Editar
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

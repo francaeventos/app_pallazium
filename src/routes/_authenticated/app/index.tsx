@@ -4,6 +4,7 @@ import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import {
   Calendar,
@@ -16,9 +17,11 @@ import {
   UtensilsCrossed,
   Images,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GUEST_LIMIT_ERROR_MESSAGE } from "@/lib/guest-limit";
 
 export const Route = createFileRoute("/_authenticated/app/")({ component: Dashboard });
 
@@ -47,7 +50,8 @@ function Dashboard() {
     );
   }
 
-  const { event, client, checklist } = data;
+  const { event, client, checklist, guestLimitExceeded } = data;
+  const [guestLimitTitle, guestLimitBody] = GUEST_LIMIT_ERROR_MESSAGE.split("\n\n");
   const done = checklist.filter((c) => c.status === "concluido").length;
   const total = checklist.length || 1;
   const pct = Math.round((done / total) * 100);
@@ -72,6 +76,14 @@ function Dashboard() {
           {event.status.replace("_", " ")}
         </Badge>
       </div>
+
+      {guestLimitExceeded && (
+        <Alert variant="destructive" className="border-destructive/70 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{guestLimitTitle}</AlertTitle>
+          <AlertDescription>{guestLimitBody}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="pallazium-feature-card shadow-luxe overflow-hidden">
         <CardContent className="p-6 lg:p-8">
