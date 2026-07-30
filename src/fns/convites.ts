@@ -5,6 +5,7 @@ import { clientOwnsEvent } from "@/lib/auth-session";
 import { toIsoString } from "@/lib/api-map";
 import { db } from "@/lib/db";
 import { assertGuestLimitNotExceeded } from "@/lib/guest-limit";
+import { getConfirmedPartyCount } from "@/lib/guest-limit-server";
 import { PALLAZIUM_ADDRESS, PALLAZIUM_MAP_URL } from "@/lib/pallazium-venue";
 
 export type InvitationRow = {
@@ -284,15 +285,17 @@ export const createGuestFn = createServerFn({ method: "POST" })
     await assertEventAccess(context.userId, data.eventId);
 
     if (data.rsvpStatus === "confirmado") {
-      const [event, confirmedTotals] = await Promise.all([
+      const [event, confirmedTotals, confirmedParty] = await Promise.all([
         db.event.findUnique({ where: { id: data.eventId }, select: { estimatedGuests: true } }),
         db.eventGuest.aggregate({
           where: { eventId: data.eventId, rsvpStatus: "confirmado" },
           _count: true,
           _sum: { confirmedCompanions: true },
         }),
+        getConfirmedPartyCount(data.eventId),
       ]);
-      const currentPeople = confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0);
+      const currentPeople =
+        confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0) + confirmedParty;
       const prospectivePeople = currentPeople + 1 + data.confirmedCompanions;
       assertGuestLimitNotExceeded(event?.estimatedGuests, prospectivePeople);
     }
@@ -343,15 +346,17 @@ export const updateGuestFn = createServerFn({ method: "POST" })
     const confirmedCompanions = Math.min(data.confirmedCompanions, data.allowedCompanions);
 
     if (data.rsvpStatus === "confirmado") {
-      const [event, confirmedTotals] = await Promise.all([
+      const [event, confirmedTotals, confirmedParty] = await Promise.all([
         db.event.findUnique({ where: { id: data.eventId }, select: { estimatedGuests: true } }),
         db.eventGuest.aggregate({
           where: { eventId: data.eventId, rsvpStatus: "confirmado", id: { not: data.guestId } },
           _count: true,
           _sum: { confirmedCompanions: true },
         }),
+        getConfirmedPartyCount(data.eventId),
       ]);
-      const otherPeople = confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0);
+      const otherPeople =
+        confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0) + confirmedParty;
       const prospectivePeople = otherPeople + 1 + confirmedCompanions;
       assertGuestLimitNotExceeded(event?.estimatedGuests, prospectivePeople);
     }

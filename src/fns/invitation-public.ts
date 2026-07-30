@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { EventGiftItem, EventGuest, EventInvitation, Event, RsvpStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { assertGuestLimitNotExceeded } from "@/lib/guest-limit";
+import { getConfirmedPartyCount } from "@/lib/guest-limit-server";
 
 export type PublicInvitationGuest = {
   event_id: string;
@@ -254,6 +256,26 @@ export const respondInvitationGuestFn = createServerFn({ method: "POST" })
       data.rsvpStatus === "confirmado"
         ? Math.min(Math.max(data.confirmedCompanions ?? 0, 0), guest.allowedCompanions)
         : 0;
+
+    if (data.rsvpStatus === "confirmado") {
+      const [event, confirmedTotals, confirmedParty] = await Promise.all([
+        db.event.findUnique({ where: { id: guest.eventId }, select: { estimatedGuests: true } }),
+        db.eventGuest.aggregate({
+          where: {
+            eventId: guest.eventId,
+            rsvpStatus: "confirmado",
+            id: { not: guest.id },
+          },
+          _count: true,
+          _sum: { confirmedCompanions: true },
+        }),
+        getConfirmedPartyCount(guest.eventId),
+      ]);
+      const otherPeople =
+        confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0) + confirmedParty;
+      const prospectivePeople = otherPeople + 1 + safeCompanions;
+      assertGuestLimitNotExceeded(event?.estimatedGuests, prospectivePeople);
+    }
 
     const dietaryRestrictions = data.dietaryRestrictions?.trim() || null;
 

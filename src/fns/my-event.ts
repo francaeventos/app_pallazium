@@ -3,6 +3,7 @@ import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { getClientForUser } from "@/lib/auth-session";
 import { toDateString, toIsoString, toTimeString } from "@/lib/api-map";
 import { db } from "@/lib/db";
+import { getConfirmedPartyCount } from "@/lib/guest-limit-server";
 
 export type ClientSummary = {
   id: string;
@@ -80,7 +81,7 @@ export const getMyEventFn = createServerFn({ method: "GET" })
       };
     }
 
-    const [checklistItems, confirmedGuests] = await Promise.all([
+    const [checklistItems, confirmedGuests, confirmedParty] = await Promise.all([
       db.checklistItem.findMany({
         where: { eventId: event.id },
         orderBy: { sortOrder: "asc" },
@@ -90,10 +91,11 @@ export const getMyEventFn = createServerFn({ method: "GET" })
         _count: { _all: true },
         _sum: { confirmedCompanions: true },
       }),
+      getConfirmedPartyCount(event.id),
     ]);
 
     const confirmedPeopleTotal =
-      confirmedGuests._count._all + (confirmedGuests._sum.confirmedCompanions ?? 0);
+      confirmedGuests._count._all + (confirmedGuests._sum.confirmedCompanions ?? 0) + confirmedParty;
     const guestLimitExceeded =
       event.estimatedGuests != null && confirmedPeopleTotal > event.estimatedGuests * 1.1;
 

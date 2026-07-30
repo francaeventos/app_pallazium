@@ -89,15 +89,20 @@ function Page() {
 
   const event = data?.event ?? null;
   const totals = useMemo(() => {
-    const confirmed = guests.filter((guest) => guest.rsvp_status === "confirmado");
+    const confirmedGuests = guests.filter((guest) => guest.rsvp_status === "confirmado");
+    const confirmedParty = party.filter((member) => member.rsvp_status === "confirmado");
     return {
-      confirmed: confirmed.length,
+      total: guests.length + party.length,
+      confirmed: confirmedGuests.length + confirmedParty.length,
       people:
-        confirmed.length +
-        confirmed.reduce((total, guest) => total + guest.confirmed_companions, 0),
-      pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
+        confirmedGuests.length +
+        confirmedGuests.reduce((total, guest) => total + guest.confirmed_companions, 0) +
+        confirmedParty.length,
+      pending:
+        guests.filter((guest) => guest.rsvp_status === "pendente").length +
+        party.filter((member) => member.rsvp_status === "pendente").length,
     };
-  }, [guests]);
+  }, [guests, party]);
 
   const guestLimitExceeded =
     event?.estimated_guests != null && totals.people > event.estimated_guests * 1.1;
@@ -356,9 +361,9 @@ function Page() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={Users} label="Convidados" value={guests.length} />
-        <Metric icon={CheckCircle2} label="Confirmados" value={totals.confirmed} />
-        <Metric icon={Users} label="Pessoas confirmadas" value={totals.people} />
+        <Metric icon={Users} label="Convidados" value={totals.total} />
+        <Metric icon={CheckCircle2} label="Convites confirmados" value={totals.confirmed} />
+        <Metric icon={Users} label="Total de pessoas confirmadas" value={totals.people} />
         <Metric icon={MailCheck} label="Pendentes" value={totals.pending} />
       </div>
 

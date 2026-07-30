@@ -68,16 +68,21 @@ function Page() {
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
   const [partyStatus, setPartyStatus] = useState<RsvpStatus>("pendente");
 
+  const confirmedGuests = guests.filter((guest) => guest.rsvp_status === "confirmado");
+  const confirmedParty = party.filter((member) => member.rsvp_status === "confirmado");
   const totals = {
-    guests: guests.length,
-    confirmed: guests.filter((guest) => guest.rsvp_status === "confirmado").length,
+    guests: guests.length + party.length,
+    confirmed: confirmedGuests.length + confirmedParty.length,
     people:
-      guests.filter((guest) => guest.rsvp_status === "confirmado").length +
-      guests
-        .filter((guest) => guest.rsvp_status === "confirmado")
-        .reduce((total, guest) => total + guest.confirmed_companions, 0),
-    pending: guests.filter((guest) => guest.rsvp_status === "pendente").length,
-    declined: guests.filter((guest) => guest.rsvp_status === "recusado").length,
+      confirmedGuests.length +
+      confirmedGuests.reduce((total, guest) => total + guest.confirmed_companions, 0) +
+      confirmedParty.length,
+    pending:
+      guests.filter((guest) => guest.rsvp_status === "pendente").length +
+      party.filter((member) => member.rsvp_status === "pendente").length,
+    declined:
+      guests.filter((guest) => guest.rsvp_status === "recusado").length +
+      party.filter((member) => member.rsvp_status === "recusado").length,
     party: party.length,
   };
 
@@ -350,8 +355,8 @@ function Page() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Metric icon={Users} label="Convidados" value={totals.guests} />
-            <Metric icon={CheckCircle2} label="Confirmados" value={totals.confirmed} />
-            <Metric icon={Users} label="Pessoas confirmadas" value={totals.people} />
+            <Metric icon={CheckCircle2} label="Convites confirmados" value={totals.confirmed} />
+            <Metric icon={Users} label="Total de pessoas confirmadas" value={totals.people} />
             <Metric icon={MailCheck} label="Pendentes" value={totals.pending} />
             <Metric icon={Users} label="Recusados" value={totals.declined} />
             <Metric icon={Users} label="Padrinhos" value={totals.party} />
