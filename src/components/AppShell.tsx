@@ -104,7 +104,7 @@ export function AppShell({
   const supportNumber = String(import.meta.env.VITE_WHATSAPP_SUPPORT ?? "").replace(/\D/g, "");
   const supportHref = supportNumber
     ? `https://wa.me/${supportNumber}`
-    : "https://wa.me/5511999999999";
+    : "https://wa.me/5511998418349";
 
   useEffect(() => {
     setProfileName(displayName);
