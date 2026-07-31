@@ -18,9 +18,9 @@ const saveReferenceSchema = z.object({
   event_id: z.string().uuid(),
   title: z.string().trim().min(1),
   category: z.string().trim().min(1),
-  image_url: z.string().trim().optional(),
-  inspiration_link: z.string().trim().optional(),
-  notes: z.string().trim().optional(),
+  image_url: z.string().trim().nullable().optional(),
+  inspiration_link: z.string().trim().nullable().optional(),
+  notes: z.string().trim().nullable().optional(),
 });
 
 export const listReferencesFn = createServerFn({ method: "GET" })

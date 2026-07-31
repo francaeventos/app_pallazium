@@ -25,11 +25,11 @@ const menuSaveSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1),
   category: z.string().trim().min(1),
-  description: z.string().trim().optional(),
-  items: z.string().trim().optional(),
-  image_url: z.string().trim().optional(),
+  description: z.string().trim().nullable().optional(),
+  items: z.string().trim().nullable().optional(),
+  image_url: z.string().trim().nullable().optional(),
   images: z.array(z.string()).optional(),
-  notes: z.string().trim().optional(),
+  notes: z.string().trim().nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -37,9 +37,9 @@ const upgradeSaveSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1),
   category: z.string().trim().min(1),
-  description: z.string().trim().optional(),
-  price_text: z.string().trim().optional(),
-  image_url: z.string().trim().optional(),
+  description: z.string().trim().nullable().optional(),
+  price_text: z.string().trim().nullable().optional(),
+  image_url: z.string().trim().nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -47,11 +47,11 @@ const partnerSaveSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1),
   category: z.string().trim().min(1),
-  description: z.string().trim().optional(),
-  phone: z.string().trim().optional(),
-  whatsapp: z.string().trim().optional(),
-  instagram: z.string().trim().optional(),
-  image_url: z.string().trim().optional(),
+  description: z.string().trim().nullable().optional(),
+  phone: z.string().trim().nullable().optional(),
+  whatsapp: z.string().trim().nullable().optional(),
+  instagram: z.string().trim().nullable().optional(),
+  image_url: z.string().trim().nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -60,7 +60,7 @@ const tipSaveSchema = z.object({
   title: z.string().trim().min(1),
   category: z.string().trim().min(1),
   content: z.string().trim().min(1),
-  image_url: z.string().trim().optional(),
+  image_url: z.string().trim().nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -69,8 +69,8 @@ const portfolioSaveSchema = z.object({
   event_name: z.string().trim().min(1),
   event_type: z.string().trim().min(1),
   category: z.string().trim().min(1),
-  description: z.string().trim().optional(),
-  highlights: z.string().trim().optional(),
+  description: z.string().trim().nullable().optional(),
+  highlights: z.string().trim().nullable().optional(),
   images: z.array(z.string()).optional(),
   active: z.boolean().default(true),
 });
