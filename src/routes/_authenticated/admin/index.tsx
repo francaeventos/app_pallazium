@@ -4,6 +4,7 @@ import { getAdminDashboardFn } from "@/fns/admin-dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isGuestLimitExceeded } from "@/lib/guest-limit";
 import {
   AlertCircle,
   Calendar,
@@ -56,6 +57,7 @@ function Dashboard() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [confirmedPartyByEvent, setConfirmedPartyByEvent] = useState<string[]>([]);
   const [upgradeInterests, setUpgradeInterests] = useState<UpgradeInterest[]>([]);
   const [menuInterests, setMenuInterests] = useState<MenuInterest[]>([]);
 
@@ -67,6 +69,7 @@ function Dashboard() {
         setEvents(data.events as EventRow[]);
         setChecklistItems(data.checklist_items);
         setGuests(data.guests);
+        setConfirmedPartyByEvent(data.confirmed_party_by_event);
         setUpgradeInterests(data.upgrade_interests);
         setMenuInterests(data.menu_interests);
       } finally {
@@ -111,12 +114,35 @@ function Dashboard() {
     { total: 0, confirmed: 0, people: 0, pending: 0, declined: 0 },
   );
 
+  const confirmedPeopleByEvent = new Map<string, number>();
+  for (const guest of guests) {
+    if (guest.rsvp_status !== "confirmado") continue;
+    const current = confirmedPeopleByEvent.get(guest.event_id) ?? 0;
+    confirmedPeopleByEvent.set(guest.event_id, current + 1 + guest.confirmed_companions);
+  }
+  for (const eventId of confirmedPartyByEvent) {
+    confirmedPeopleByEvent.set(eventId, (confirmedPeopleByEvent.get(eventId) ?? 0) + 1);
+  }
+  const overLimitEvents = events.filter((event) =>
+    isGuestLimitExceeded(event.estimated_guests, confirmedPeopleByEvent.get(event.id) ?? 0),
+  );
+
   const attentionItems = [
+    ...overLimitEvents.slice(0, 4).map((event) => ({
+      id: `guest-limit-${event.id}`,
+      title: "Lista de convidados ultrapassou o limite",
+      meta: `+10% do contratado • ${eventLabel(events, event.id)}`,
+      tone: "critical" as const,
+      badge: "Limite excedido",
+      to: "/admin/convites/$eventId" as const,
+      params: { eventId: event.id },
+    })),
     ...overdueChecklist.slice(0, 4).map((item) => ({
       id: item.id,
       title: item.title,
       meta: `Checklist vencido • ${eventLabel(events, item.event_id)}`,
       tone: "danger" as const,
+      badge: "Vencido",
       to: "/admin/checklist/$eventId" as const,
       params: { eventId: item.event_id },
     })),
@@ -128,10 +154,11 @@ function Dashboard() {
         title: item.title,
         meta: `Alta prioridade • ${eventLabel(events, item.event_id)}`,
         tone: "warning" as const,
+        badge: "Alta prioridade",
         to: "/admin/checklist/$eventId" as const,
         params: { eventId: item.event_id },
       })),
-  ].slice(0, 6);
+  ].slice(0, 8);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando operação…</div>;
 
@@ -217,12 +244,27 @@ function Dashboard() {
                   key={item.id}
                   to={item.to}
                   params={item.params}
-                  className="block rounded-2xl border p-4 transition-colors hover:bg-muted/40"
+                  className={
+                    item.tone === "critical"
+                      ? "block rounded-2xl border border-destructive/70 bg-destructive/10 p-4 transition-colors hover:bg-destructive/15"
+                      : "block rounded-2xl border p-4 transition-colors hover:bg-muted/40"
+                  }
                 >
-                  <Badge variant="outline" className={item.tone === "danger" ? "text-rose" : ""}>
-                    {item.tone === "danger" ? "Vencido" : "Alta prioridade"}
+                  <Badge
+                    variant={item.tone === "critical" ? "destructive" : "outline"}
+                    className={item.tone === "danger" ? "text-rose" : ""}
+                  >
+                    {item.badge}
                   </Badge>
-                  <p className="mt-2 font-medium">{item.title}</p>
+                  <p
+                    className={
+                      item.tone === "critical"
+                        ? "mt-2 font-medium text-destructive"
+                        : "mt-2 font-medium"
+                    }
+                  >
+                    {item.title}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
                 </Link>
               ))}

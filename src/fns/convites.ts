@@ -52,6 +52,7 @@ export type GuestRow = {
 export type PartyMemberRow = {
   id: string;
   event_id: string;
+  public_token: string;
   name: string;
   role: string;
   side: string | null;
@@ -171,6 +172,7 @@ function mapGuest(row: {
 function mapPartyMember(row: {
   id: string;
   eventId: string;
+  publicToken: string;
   name: string;
   role: string;
   side: string | null;
@@ -186,6 +188,7 @@ function mapPartyMember(row: {
   return {
     id: row.id,
     event_id: row.eventId,
+    public_token: row.publicToken,
     name: row.name,
     role: row.role,
     side: row.side,
@@ -396,6 +399,82 @@ export const deleteGuestFn = createServerFn({ method: "POST" })
     if (!guest) throw new Error("Convidado não encontrado.");
 
     await db.eventGuest.delete({ where: { id: data.guestId } });
+    return { ok: true as const };
+  });
+
+const updatePartyMemberInput = z.object({
+  eventId: z.string().uuid(),
+  partyMemberId: z.string().uuid(),
+  name: z.string().trim().min(1),
+  role: z.string().trim().min(1),
+  side: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  attire: z.string().nullable().optional(),
+  rsvpStatus: z.enum(["pendente", "confirmado", "recusado"]),
+  notes: z.string().nullable().optional(),
+});
+
+export const updatePartyMemberFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => updatePartyMemberInput.parse(data))
+  .handler(async ({ data, context }) => {
+    await assertEventAccess(context.userId, data.eventId);
+
+    const existing = await db.eventPartyMember.findFirst({
+      where: { id: data.partyMemberId, eventId: data.eventId },
+    });
+    if (!existing) throw new Error("Padrinho não encontrado.");
+
+    if (data.rsvpStatus === "confirmado" && existing.rsvpStatus !== "confirmado") {
+      const [event, confirmedTotals, confirmedParty] = await Promise.all([
+        db.event.findUnique({ where: { id: data.eventId }, select: { estimatedGuests: true } }),
+        db.eventGuest.aggregate({
+          where: { eventId: data.eventId, rsvpStatus: "confirmado" },
+          _count: true,
+          _sum: { confirmedCompanions: true },
+        }),
+        getConfirmedPartyCount(data.eventId),
+      ]);
+      const otherPeople =
+        confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0) + confirmedParty;
+      assertGuestLimitNotExceeded(event?.estimatedGuests, otherPeople + 1);
+    }
+
+    const member = await db.eventPartyMember.update({
+      where: { id: data.partyMemberId },
+      data: {
+        name: data.name,
+        role: data.role,
+        side: data.side ?? null,
+        phone: data.phone ?? null,
+        email: data.email ?? null,
+        attire: data.attire ?? null,
+        rsvpStatus: data.rsvpStatus,
+        notes: data.notes ?? null,
+      },
+    });
+
+    return mapPartyMember(member);
+  });
+
+const deletePartyMemberInput = z.object({
+  eventId: z.string().uuid(),
+  partyMemberId: z.string().uuid(),
+});
+
+export const deletePartyMemberFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => deletePartyMemberInput.parse(data))
+  .handler(async ({ data, context }) => {
+    await assertEventAccess(context.userId, data.eventId);
+
+    const member = await db.eventPartyMember.findFirst({
+      where: { id: data.partyMemberId, eventId: data.eventId },
+    });
+    if (!member) throw new Error("Padrinho não encontrado.");
+
+    await db.eventPartyMember.delete({ where: { id: data.partyMemberId } });
     return { ok: true as const };
   });
 

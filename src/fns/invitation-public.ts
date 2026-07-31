@@ -1,9 +1,40 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { EventGiftItem, EventGuest, EventInvitation, Event, RsvpStatus } from "@/generated/prisma/client";
+import type {
+  EventGiftItem,
+  EventGuest,
+  EventInvitation,
+  EventPartyMember,
+  Event,
+  RsvpStatus,
+} from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { assertGuestLimitNotExceeded } from "@/lib/guest-limit";
 import { getConfirmedPartyCount } from "@/lib/guest-limit-server";
+
+export type PublicInvitationPartyMember = {
+  event_id: string;
+  invitation_title: string;
+  invitation_message: string | null;
+  cover_image_url: string | null;
+  dress_code: string | null;
+  ceremony_external: boolean;
+  ceremony_location: string | null;
+  ceremony_address: string | null;
+  ceremony_map_url: string | null;
+  reception_location: string | null;
+  map_url: string | null;
+  event_type: string;
+  event_date: string | null;
+  start_time: string | null;
+  event_location: string | null;
+  party_member_id: string;
+  party_member_name: string;
+  role: string;
+  side: string | null;
+  attire: string | null;
+  rsvp_status: RsvpStatus;
+};
 
 export type PublicInvitationGuest = {
   event_id: string;
@@ -138,6 +169,41 @@ function formatGiftItem(item: EventGiftItem): PublicGiftItem {
   };
 }
 
+type PartyMemberWithRelations = EventPartyMember & {
+  event: Event & { invitation: EventInvitation | null };
+};
+
+function formatInvitationPartyMember(member: PartyMemberWithRelations): PublicInvitationPartyMember {
+  const invitation = member.event.invitation;
+  if (!invitation) {
+    throw new Error("Convite não encontrado.");
+  }
+
+  return {
+    event_id: member.eventId,
+    invitation_title: invitation.title,
+    invitation_message: invitation.message,
+    cover_image_url: invitation.coverImageUrl,
+    dress_code: invitation.dressCode,
+    ceremony_external: invitation.ceremonyExternal,
+    ceremony_location: invitation.ceremonyLocation,
+    ceremony_address: invitation.ceremonyAddress,
+    ceremony_map_url: invitation.ceremonyMapUrl,
+    reception_location: invitation.receptionLocation,
+    map_url: invitation.mapUrl,
+    event_type: member.event.eventType,
+    event_date: formatDate(member.event.eventDate),
+    start_time: formatTime(member.event.startTime),
+    event_location: member.event.location,
+    party_member_id: member.id,
+    party_member_name: member.name,
+    role: member.role,
+    side: member.side,
+    attire: member.attire,
+    rsvp_status: member.rsvpStatus,
+  };
+}
+
 async function findPublishedGuestByToken(token: string) {
   return db.eventGuest.findFirst({
     where: {
@@ -147,6 +213,18 @@ async function findPublishedGuestByToken(token: string) {
     include: {
       invitation: true,
       event: true,
+    },
+  });
+}
+
+async function findPublishedPartyMemberByToken(token: string) {
+  return db.eventPartyMember.findFirst({
+    where: {
+      publicToken: token,
+      event: { invitation: { status: "publicado" } },
+    },
+    include: {
+      event: { include: { invitation: true } },
     },
   });
 }
@@ -197,6 +275,14 @@ const respondSchema = tokenSchema.extend({
 
 const giftItemSchema = tokenSchema.extend({
   giftItemId: z.string().uuid(),
+});
+
+const partyTokenSchema = z.object({
+  memberToken: z.string().trim().min(1),
+});
+
+const respondPartySchema = partyTokenSchema.extend({
+  rsvpStatus: z.enum(["confirmado", "recusado"]),
 });
 
 export const getInvitationGuestByTokenFn = createServerFn({ method: "GET" })
@@ -346,4 +432,43 @@ export const releaseEventGiftItemReservationFn = createServerFn({ method: "POST"
     const item = await db.eventGiftItem.findUnique({ where: { id: data.giftItemId } });
     if (!item) throw new Error("Presente não encontrado.");
     return formatGiftItem(item);
+  });
+
+export const getInvitationPartyMemberByTokenFn = createServerFn({ method: "GET" })
+  .inputValidator((data) => partyTokenSchema.parse(data))
+  .handler(async ({ data }) => {
+    const member = await findPublishedPartyMemberByToken(data.memberToken);
+    if (!member?.event.invitation) return null;
+    return formatInvitationPartyMember(member);
+  });
+
+export const respondInvitationPartyMemberFn = createServerFn({ method: "POST" })
+  .inputValidator((data) => respondPartySchema.parse(data))
+  .handler(async ({ data }) => {
+    const member = await findPublishedPartyMemberByToken(data.memberToken);
+    if (!member) throw new Error("Convite indisponível.");
+
+    if (data.rsvpStatus === "confirmado" && member.rsvpStatus !== "confirmado") {
+      const [event, confirmedTotals, confirmedParty] = await Promise.all([
+        db.event.findUnique({ where: { id: member.eventId }, select: { estimatedGuests: true } }),
+        db.eventGuest.aggregate({
+          where: { eventId: member.eventId, rsvpStatus: "confirmado" },
+          _count: true,
+          _sum: { confirmedCompanions: true },
+        }),
+        getConfirmedPartyCount(member.eventId),
+      ]);
+      const otherPeople =
+        confirmedTotals._count + (confirmedTotals._sum.confirmedCompanions ?? 0) + confirmedParty;
+      assertGuestLimitNotExceeded(event?.estimatedGuests, otherPeople + 1);
+    }
+
+    await db.eventPartyMember.update({
+      where: { id: member.id },
+      data: { rsvpStatus: data.rsvpStatus },
+    });
+
+    const updated = await findPublishedPartyMemberByToken(data.memberToken);
+    if (!updated?.event.invitation) throw new Error("Convite indisponível.");
+    return formatInvitationPartyMember(updated);
   });

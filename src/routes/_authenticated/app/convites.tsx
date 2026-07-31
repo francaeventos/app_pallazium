@@ -22,10 +22,12 @@ import {
   createGuestFn,
   deleteGiftItemFn,
   deleteGuestFn,
+  deletePartyMemberFn,
   getConvitesPageDataFn,
   saveGiftItemFn,
   saveInvitationFn,
   updateGuestFn,
+  updatePartyMemberFn,
   type GiftItemRow,
   type GuestRow,
   type InvitationRow,
@@ -34,6 +36,7 @@ import {
 import {
   invitationStatusLabels,
   publicInvitationUrl,
+  publicPartyMemberInvitationUrl,
   rsvpStatusLabels,
   type RsvpStatus,
 } from "@/lib/invitation-utils";
@@ -57,7 +60,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { GUEST_LIMIT_ERROR_MESSAGE } from "@/lib/guest-limit";
+import { GUEST_LIMIT_ERROR_MESSAGE, isGuestLimitExceeded } from "@/lib/guest-limit";
 import { DEFAULT_INVITATION_MESSAGE, PALLAZIUM_ADDRESS } from "@/lib/pallazium-venue";
 
 export const Route = createFileRoute("/_authenticated/app/convites")({ component: Page });
@@ -84,6 +87,10 @@ function Page() {
   const [editGuestOpen, setEditGuestOpen] = useState(false);
   const [editGuestStatus, setEditGuestStatus] = useState<RsvpStatus>("pendente");
   const [guestStatus, setGuestStatus] = useState<RsvpStatus>("pendente");
+  const [qrParty, setQrParty] = useState<PartyMemberRow | null>(null);
+  const [editingParty, setEditingParty] = useState<PartyMemberRow | null>(null);
+  const [editPartyOpen, setEditPartyOpen] = useState(false);
+  const [editPartyStatus, setEditPartyStatus] = useState<RsvpStatus>("pendente");
   const [invitationStatus, setInvitationStatus] = useState<InvitationRow["status"]>("rascunho");
   const [ceremonyExternal, setCeremonyExternal] = useState(false);
 
@@ -104,8 +111,7 @@ function Page() {
     };
   }, [guests, party]);
 
-  const guestLimitExceeded =
-    event?.estimated_guests != null && totals.people > event.estimated_guests * 1.1;
+  const guestLimitExceeded = isGuestLimitExceeded(event?.estimated_guests, totals.people);
   const [guestLimitTitle, guestLimitBody] = GUEST_LIMIT_ERROR_MESSAGE.split("\n\n");
 
   const load = useCallback(async () => {
@@ -337,6 +343,77 @@ function Page() {
     a.click();
   };
 
+  const openEditParty = (member: PartyMemberRow) => {
+    setEditingParty(member);
+    setEditPartyStatus(member.rsvp_status);
+    setEditPartyOpen(true);
+  };
+
+  const closeEditParty = () => {
+    setEditPartyOpen(false);
+    setEditingParty(null);
+    setEditPartyStatus("pendente");
+  };
+
+  const updateParty = async (formEvent: FormEvent<HTMLFormElement>) => {
+    formEvent.preventDefault();
+    if (!editingParty) return;
+    const fd = new FormData(formEvent.currentTarget);
+
+    try {
+      const updatedMember = await updatePartyMemberFn({
+        data: {
+          eventId: event.id,
+          partyMemberId: editingParty.id,
+          name: String(fd.get("name")),
+          role: String(fd.get("role")),
+          side: String(fd.get("side") || "") || null,
+          phone: String(fd.get("phone") || "") || null,
+          email: String(fd.get("email") || "") || null,
+          attire: String(fd.get("attire") || "") || null,
+          rsvpStatus: editPartyStatus,
+          notes: String(fd.get("notes") || "") || null,
+        },
+      });
+      setParty((current) =>
+        current.map((item) => (item.id === updatedMember.id ? updatedMember : item)),
+      );
+      toast.success("Padrinho atualizado");
+      closeEditParty();
+    } catch (error) {
+      showGuestError(error, "Erro ao atualizar padrinho");
+    }
+  };
+
+  const removeParty = async (id: string) => {
+    if (!window.confirm("Excluir esta pessoa do cortejo?")) return;
+    try {
+      await deletePartyMemberFn({ data: { eventId: event.id, partyMemberId: id } });
+      setParty((current) => current.filter((item) => item.id !== id));
+      toast.success("Removido do cortejo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir padrinho");
+    }
+  };
+
+  const copyPartyLink = async (member: PartyMemberRow) => {
+    const url = publicPartyMemberInvitationUrl(member.public_token);
+    if (!url) return toast.error("Link individual indisponível.");
+    await navigator.clipboard.writeText(url);
+    toast.success(`Link de ${member.name} copiado`);
+  };
+
+  const downloadPartyQr = (member: PartyMemberRow) => {
+    const url = publicPartyMemberInvitationUrl(member.public_token);
+    if (!url) return;
+    const qrUrl = qrCodeImageUrl(url, 600);
+    const a = document.createElement("a");
+    a.href = qrUrl;
+    a.download = `qr-${member.name.replace(/\s+/g, "-").toLowerCase()}.png`;
+    a.target = "_blank";
+    a.click();
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -552,6 +629,124 @@ function Page() {
               <div>
                 <Label>Observações</Label>
                 <Textarea name="notes" defaultValue={editingGuest.notes ?? ""} />
+              </div>
+              <Button type="submit" className="w-full">
+                Salvar
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!qrParty} onOpenChange={(v) => !v && setQrParty(null)}>
+        <DialogContent className="sm:max-w-xs rounded-2xl p-0 gap-0 overflow-hidden">
+          {qrParty && (() => {
+            const url = publicPartyMemberInvitationUrl(qrParty.public_token);
+            return (
+              <>
+                <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                  <DialogTitle className="font-serif text-xl">QR Code</DialogTitle>
+                  <p className="text-sm text-muted-foreground mt-1">{qrParty.name}</p>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 px-6 py-6">
+                  <img
+                    src={qrCodeImageUrl(url, 280)}
+                    alt={`QR Code de ${qrParty.name}`}
+                    className="h-56 w-56 rounded-xl border"
+                  />
+                  <p className="text-xs text-muted-foreground text-center break-all">{url}</p>
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(url);
+                        toast.success("Link copiado");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Copiar link
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => downloadPartyQr(qrParty)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Baixar QR
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editPartyOpen} onOpenChange={(open) => (open ? setEditPartyOpen(true) : closeEditParty())}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Editar padrinho</DialogTitle>
+          </DialogHeader>
+          {editingParty && (
+            <form key={editingParty.id} onSubmit={updateParty} className="space-y-3">
+              <div>
+                <Label>Nome</Label>
+                <Input name="name" required defaultValue={editingParty.name} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Função</Label>
+                  <Input
+                    name="role"
+                    required
+                    placeholder="Padrinho, madrinha..."
+                    defaultValue={editingParty.role}
+                  />
+                </div>
+                <div>
+                  <Label>Lado</Label>
+                  <Input
+                    name="side"
+                    placeholder="Noiva, noivo, família..."
+                    defaultValue={editingParty.side ?? ""}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Telefone</Label>
+                  <Input name="phone" defaultValue={editingParty.phone ?? ""} />
+                </div>
+                <div>
+                  <Label>E-mail</Label>
+                  <Input name="email" type="email" defaultValue={editingParty.email ?? ""} />
+                </div>
+              </div>
+              <div>
+                <Label>Traje / orientação</Label>
+                <Input name="attire" defaultValue={editingParty.attire ?? ""} />
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={editPartyStatus}
+                  onValueChange={(value) => setEditPartyStatus(value as RsvpStatus)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="confirmado">Confirmado</SelectItem>
+                    <SelectItem value="recusado">Recusado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea name="notes" defaultValue={editingParty.notes ?? ""} />
               </div>
               <Button type="submit" className="w-full">
                 Salvar
@@ -957,6 +1152,39 @@ function Page() {
                   {member.attire && (
                     <p className="mt-2 text-xs text-muted-foreground">Traje: {member.attire}</p>
                   )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEditParty(member)}>
+                      <Pencil className="mr-1 h-3 w-3" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!invitation || invitation.status !== "publicado"}
+                      onClick={() => copyPartyLink(member)}
+                    >
+                      <Copy className="mr-1 h-3 w-3" />
+                      Copiar link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!invitation || invitation.status !== "publicado"}
+                      onClick={() => setQrParty(member)}
+                    >
+                      <QrCode className="mr-1 h-3 w-3" />
+                      QR Code
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose"
+                      onClick={() => removeParty(member.id)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      Excluir
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>

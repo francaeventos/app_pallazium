@@ -20,6 +20,11 @@ export function publicInvitationUrl(token?: string | null) {
   return `${window.location.origin}/convite/${token}`;
 }
 
+export function publicPartyMemberInvitationUrl(token?: string | null) {
+  if (!token || typeof window === "undefined") return "";
+  return `${window.location.origin}/convite/padrinho/${token}`;
+}
+
 export function rsvpBadgeVariant(status: RsvpStatus) {
   return status === "confirmado" ? "default" : "outline";
 }

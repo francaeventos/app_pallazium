@@ -320,6 +320,7 @@ export function partyMemberRecord(row: EventPartyMember) {
   return {
     id: row.id,
     event_id: row.eventId,
+    public_token: row.publicToken,
     name: row.name,
     role: row.role,
     side: row.side,

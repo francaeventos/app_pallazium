@@ -452,19 +452,20 @@ model EventGuest {
 }
 
 model EventPartyMember {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  eventId    String     @map("event_id") @db.Uuid
-  name       String
-  role       String
-  side       String?
-  phone      String?
-  email      String?
-  attire     String?
-  rsvpStatus RsvpStatus @default(pendente) @map("rsvp_status")
-  notes      String?
-  sortOrder  Int        @default(0) @map("sort_order")
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId     String     @map("event_id") @db.Uuid
+  publicToken String     @unique @default(dbgenerated("replace(gen_random_uuid()::text, '-', '')")) @map("public_token")
+  name        String
+  role        String
+  side        String?
+  phone       String?
+  email       String?
+  attire      String?
+  rsvpStatus  RsvpStatus @default(pendente) @map("rsvp_status")
+  notes       String?
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 

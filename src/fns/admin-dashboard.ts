@@ -9,7 +9,7 @@ export const getAdminDashboardFn = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
 
-    const [events, checklistItems, guests, upgradeInterests, menuInterests] =
+    const [events, checklistItems, guests, party, upgradeInterests, menuInterests] =
       await Promise.all([
         db.event.findMany({
           include: {
@@ -38,6 +38,10 @@ export const getAdminDashboardFn = createServerFn({ method: "GET" })
         db.eventGuest.findMany({
           select: { eventId: true, rsvpStatus: true, confirmedCompanions: true },
         }),
+        db.eventPartyMember.findMany({
+          where: { rsvpStatus: "confirmado" },
+          select: { eventId: true },
+        }),
         db.upgradeInterest.findMany({
           select: { id: true, eventId: true, status: true, createdAt: true },
         }),
@@ -54,6 +58,7 @@ export const getAdminDashboardFn = createServerFn({ method: "GET" })
         rsvp_status: g.rsvpStatus,
         confirmed_companions: g.confirmedCompanions,
       })),
+      confirmed_party_by_event: party.map((p) => p.eventId),
       upgrade_interests: upgradeInterests.map((i) => ({
         id: i.id,
         event_id: i.eventId,
