@@ -153,6 +153,7 @@ function Page() {
                   label="Imagem"
                   defaultValue={editing?.image_url ?? ""}
                   folder="parceiros"
+                  recommendedSize="600 x 600 pixels"
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">
