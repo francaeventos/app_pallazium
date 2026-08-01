@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
 import {
   Select,
@@ -51,6 +52,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/admin/eventos")({ component: Page });
 
 type Client = { id: string; full_name: string };
+type MenuOption = { id: string; name: string; category: string };
+type UpgradeOption = { id: string; name: string; category: string; price_text: string | null };
+const NO_MENU_VALUE = "__none__";
 type EventStatus = "novo" | "em_organizacao" | "proximo" | "concluido" | "cancelado";
 type FinancialStatusOption = {
   id: string;
@@ -62,6 +66,9 @@ type FinancialStatusOption = {
 type EventWithClient = {
   id: string;
   client_id: string;
+  menu_id: string | null;
+  menu: { id: string; name: string; category: string } | null;
+  upgrade_ids: string[];
   event_type: string;
   event_date: string | null;
   start_time: string | null;
@@ -103,12 +110,18 @@ const DEFAULT_FINANCIAL_STATUSES: FinancialStatusOption[] = [
 function Page() {
   const [events, setEvents] = useState<EventWithClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [menus, setMenus] = useState<MenuOption[]>([]);
+  const [upgrades, setUpgrades] = useState<UpgradeOption[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EventWithClient | null>(null);
   const [createClientId, setCreateClientId] = useState("");
   const [createStatus, setCreateStatus] = useState<EventStatus>("novo");
+  const [createMenuId, setCreateMenuId] = useState(NO_MENU_VALUE);
+  const [createUpgradeIds, setCreateUpgradeIds] = useState<string[]>([]);
   const [editClientId, setEditClientId] = useState("");
   const [editStatus, setEditStatus] = useState<EventStatus>("novo");
+  const [editMenuId, setEditMenuId] = useState(NO_MENU_VALUE);
+  const [editUpgradeIds, setEditUpgradeIds] = useState<string[]>([]);
   const [financialStatusOptions, setFinancialStatusOptions] = useState<FinancialStatusOption[]>(
     DEFAULT_FINANCIAL_STATUSES,
   );
@@ -135,6 +148,8 @@ function Page() {
       const data = await listEventsFn();
       setEvents(data.events);
       setClients(data.clients);
+      setMenus(data.menus);
+      setUpgrades(data.upgrades);
       setFinancialStatusOptions(
         data.financial_status_options.length
           ? data.financial_status_options
@@ -153,7 +168,12 @@ function Page() {
     setEditClientId(editing.client_id);
     setEditStatus(editing.status);
     setEditFinancialStatus(editing.financial_status || "Em aberto");
+    setEditMenuId(editing.menu_id ?? NO_MENU_VALUE);
+    setEditUpgradeIds(editing.upgrade_ids ?? []);
   }, [editing]);
+
+  const toggleUpgradeId = (ids: string[], upgradeId: string, checked: boolean) =>
+    checked ? [...ids, upgradeId] : ids.filter((id) => id !== upgradeId);
 
   const create = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -175,6 +195,8 @@ function Page() {
           status: createStatus,
           client_notes: String(fd.get("client_notes") || "") || null,
           internal_notes: String(fd.get("internal_notes") || "") || null,
+          menu_id: createMenuId === NO_MENU_VALUE ? null : createMenuId,
+          upgrade_ids: createUpgradeIds,
         },
       });
       toast.success(
@@ -186,6 +208,8 @@ function Page() {
       setCreateClientId("");
       setCreateStatus("novo");
       setCreateFinancialStatus("Em aberto");
+      setCreateMenuId(NO_MENU_VALUE);
+      setCreateUpgradeIds([]);
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao criar evento.");
@@ -213,6 +237,8 @@ function Page() {
           status: editStatus,
           client_notes: String(fd.get("client_notes") || "") || null,
           internal_notes: String(fd.get("internal_notes") || "") || null,
+          menu_id: editMenuId === NO_MENU_VALUE ? null : editMenuId,
+          upgrade_ids: editUpgradeIds,
         },
       });
       toast.success("Evento atualizado");
@@ -318,6 +344,8 @@ function Page() {
               setCreateClientId("");
               setCreateStatus("novo");
               setCreateFinancialStatus("Em aberto");
+              setCreateMenuId(NO_MENU_VALUE);
+              setCreateUpgradeIds([]);
             }
           }}
         >
@@ -374,6 +402,32 @@ function Page() {
               <div>
                 <Label>Local</Label>
                 <Input name="location" />
+              </div>
+              <div>
+                <Label>Cardápio contratado</Label>
+                <Select value={createMenuId} onValueChange={setCreateMenuId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar cardápio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_MENU_VALUE}>Selecionar cardápio</SelectItem>
+                    {menus.map((menu) => (
+                      <SelectItem key={menu.id} value={menu.id}>
+                        {menu.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Upgrades contratados</Label>
+                <UpgradeCheckboxList
+                  upgrades={upgrades}
+                  selectedIds={createUpgradeIds}
+                  onToggle={(upgradeId, checked) =>
+                    setCreateUpgradeIds((ids) => toggleUpgradeId(ids, upgradeId, checked))
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -569,6 +623,32 @@ function Page() {
               <div>
                 <Label>Local</Label>
                 <Input name="location" defaultValue={editing.location ?? ""} />
+              </div>
+              <div>
+                <Label>Cardápio contratado</Label>
+                <Select value={editMenuId} onValueChange={setEditMenuId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar cardápio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_MENU_VALUE}>Selecionar cardápio</SelectItem>
+                    {menus.map((menu) => (
+                      <SelectItem key={menu.id} value={menu.id}>
+                        {menu.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Upgrades contratados</Label>
+                <UpgradeCheckboxList
+                  upgrades={upgrades}
+                  selectedIds={editUpgradeIds}
+                  onToggle={(upgradeId, checked) =>
+                    setEditUpgradeIds((ids) => toggleUpgradeId(ids, upgradeId, checked))
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -811,6 +891,39 @@ function EventActions({
         <Trash2 className={iconClassName} />
         {!compact && "Excluir"}
       </Button>
+    </div>
+  );
+}
+
+function UpgradeCheckboxList({
+  upgrades,
+  selectedIds,
+  onToggle,
+}: {
+  upgrades: UpgradeOption[];
+  selectedIds: string[];
+  onToggle: (upgradeId: string, checked: boolean) => void;
+}) {
+  if (upgrades.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+        Nenhum upgrade cadastrado ainda.
+      </p>
+    );
+  }
+
+  return (
+    <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
+      {upgrades.map((upgrade) => (
+        <label key={upgrade.id} className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={selectedIds.includes(upgrade.id)}
+            onCheckedChange={(checked) => onToggle(upgrade.id, checked === true)}
+          />
+          <span className="flex-1">{upgrade.name}</span>
+          <span className="text-xs capitalize text-muted-foreground">{upgrade.category}</span>
+        </label>
+      ))}
     </div>
   );
 }

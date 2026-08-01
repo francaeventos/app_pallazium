@@ -215,6 +215,7 @@ model Client {
 model Event {
   id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId         String      @map("client_id") @db.Uuid
+  menuId           String?     @map("menu_id") @db.Uuid
   eventType        String      @map("event_type")
   eventDate        DateTime?   @map("event_date") @db.Date
   startTime        DateTime?   @map("start_time") @db.Time(6)
@@ -230,9 +231,11 @@ model Event {
   updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   client           Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  menu             Menu?             @relation(fields: [menuId], references: [id], onDelete: SetNull)
   checklistItems   ChecklistItem[]
   upgradeInterests UpgradeInterest[]
   menuInterests    MenuInterest[]
+  eventUpgrades    EventUpgrade[]
   eventReferences  EventReference[]
   invitation       EventInvitation?
   guests           EventGuest[]
@@ -275,6 +278,7 @@ model Menu {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   menuInterests MenuInterest[]
+  events        Event[]
 
   @@map("menus")
 }
@@ -307,6 +311,7 @@ model Upgrade {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   upgradeInterests UpgradeInterest[]
+  eventUpgrades    EventUpgrade[]
 
   @@map("upgrades")
 }
@@ -325,6 +330,19 @@ model UpgradeInterest {
   client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("upgrade_interests")
+}
+
+model EventUpgrade {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  upgradeId String   @map("upgrade_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  upgrade Upgrade @relation(fields: [upgradeId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, upgradeId])
+  @@map("event_upgrades")
 }
 
 model Partner {

@@ -51,6 +51,15 @@ type MenuInterest = {
   status: string;
   created_at: string;
 };
+type PendingUpgradeRequest = {
+  id: string;
+  event_id: string;
+  client_name: string;
+  upgrade_name: string;
+  event_type: string;
+  event_date: string | null;
+  created_at: string;
+};
 
 function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -60,6 +69,9 @@ function Dashboard() {
   const [confirmedPartyByEvent, setConfirmedPartyByEvent] = useState<string[]>([]);
   const [upgradeInterests, setUpgradeInterests] = useState<UpgradeInterest[]>([]);
   const [menuInterests, setMenuInterests] = useState<MenuInterest[]>([]);
+  const [pendingUpgradeRequests, setPendingUpgradeRequests] = useState<PendingUpgradeRequest[]>(
+    [],
+  );
 
   useEffect(() => {
     (async () => {
@@ -72,6 +84,7 @@ function Dashboard() {
         setConfirmedPartyByEvent(data.confirmed_party_by_event);
         setUpgradeInterests(data.upgrade_interests);
         setMenuInterests(data.menu_interests);
+        setPendingUpgradeRequests(data.pending_upgrade_requests);
       } finally {
         setLoading(false);
       }
@@ -228,7 +241,7 @@ function Dashboard() {
               <CardTitle className="font-serif text-2xl">Atenção hoje</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {attentionItems.length === 0 && (
+              {attentionItems.length === 0 && pendingUpgradeRequests.length === 0 && (
                 <div className="rounded-2xl border border-gold/20 bg-champagne/40 p-4">
                   <p className="flex items-center gap-2 font-medium">
                     <CheckCircle2 className="h-4 w-4 text-gold" />
@@ -239,6 +252,22 @@ function Dashboard() {
                   </p>
                 </div>
               )}
+              {pendingUpgradeRequests.map((request) => (
+                <Link
+                  key={`upgrade-request-${request.id}`}
+                  to="/admin/interesses"
+                  className="block rounded-2xl border border-destructive/70 bg-destructive/10 p-4 transition-colors hover:bg-destructive/15"
+                >
+                  <Badge variant="destructive">🔴 Solicitação pendente</Badge>
+                  <p className="mt-2 font-medium text-destructive">
+                    Solicitação de upgrade pendente
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Cliente: {request.client_name} • Evento: {request.event_type} –{" "}
+                    {formatDate(request.event_date)} • Upgrade solicitado: {request.upgrade_name}
+                  </p>
+                </Link>
+              ))}
               {attentionItems.map((item) => (
                 <Link
                   key={item.id}

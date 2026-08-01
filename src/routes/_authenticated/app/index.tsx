@@ -4,8 +4,10 @@ import { useMyEvent } from "@/hooks/use-my-event";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
+import { MenuDetailsDialog } from "@/components/MenuDetailsDialog";
 import {
   Calendar,
   MapPin,
@@ -18,6 +20,7 @@ import {
   Images,
   AlertCircle,
   AlertTriangle,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,6 +38,7 @@ const quickLinks = [
 
 function Dashboard() {
   const { data, loading } = useMyEvent();
+  const [menuDialogOpen, setMenuDialogOpen] = useState(false);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando seu evento…</div>;
 
@@ -135,6 +139,56 @@ function Dashboard() {
           </p>
         </CardContent>
       </Card>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-serif text-2xl">Cardápio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {event.menu ? (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-serif text-xl">{event.menu.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{event.menu.category}</p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setMenuDialogOpen(true)}>
+                  Ver cardápio completo
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Cardápio ainda não definido.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-serif text-2xl">Upgrades contratados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {event.upgrades.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum upgrade adicional contratado.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {event.upgrades.map((upgrade) => (
+                  <li key={upgrade.id} className="flex items-center gap-2 text-sm">
+                    <Check className="h-4 w-4 text-gold" />
+                    {upgrade.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <MenuDetailsDialog
+        menu={menuDialogOpen ? event.menu : null}
+        onClose={() => setMenuDialogOpen(false)}
+      />
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>

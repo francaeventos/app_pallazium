@@ -35,6 +35,8 @@ const eventPayloadSchema = z.object({
   status: eventStatusSchema.optional(),
   client_notes: z.string().nullable().optional(),
   internal_notes: z.string().nullable().optional(),
+  menu_id: z.string().uuid().nullable().optional(),
+  upgrade_ids: z.array(z.string().uuid()).optional(),
 });
 
 function toEventData(data: z.infer<typeof eventPayloadSchema>) {
@@ -52,18 +54,44 @@ function toEventData(data: z.infer<typeof eventPayloadSchema>) {
     status: (data.status ?? "novo") as EventStatus,
     clientNotes: data.client_notes ?? null,
     internalNotes: data.internal_notes ?? null,
+    menuId: data.menu_id ?? null,
   };
+}
+
+async function syncEventUpgrades(tx: Prisma.TransactionClient, eventId: string, upgradeIds: string[]) {
+  await tx.eventUpgrade.deleteMany({
+    where: { eventId, upgradeId: { notIn: upgradeIds } },
+  });
+  if (upgradeIds.length > 0) {
+    await tx.eventUpgrade.createMany({
+      data: upgradeIds.map((upgradeId) => ({ eventId, upgradeId })),
+      skipDuplicates: true,
+    });
+  }
 }
 
 const eventInclude = {
   client: { select: { fullName: true, email: true, whatsapp: true } },
+  menu: { select: { id: true, name: true, category: true } },
+  eventUpgrades: { select: { upgradeId: true } },
 } as const;
+
+type EventWithRelations = Prisma.EventGetPayload<{ include: typeof eventInclude }>;
+
+function mapEventWithRelations(event: EventWithRelations) {
+  return mapEventRow(
+    event,
+    event.client,
+    event.menu,
+    event.eventUpgrades.map((u) => u.upgradeId),
+  );
+}
 
 export const listEventsFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
-    const [events, clients, financialOptions] = await Promise.all([
+    const [events, clients, financialOptions, menus, upgrades] = await Promise.all([
       db.event.findMany({
         include: eventInclude,
         orderBy: { eventDate: "asc" },
@@ -75,12 +103,27 @@ export const listEventsFn = createServerFn({ method: "GET" })
       db.financialStatusOption.findMany({
         orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
       }),
+      db.menu.findMany({
+        select: { id: true, name: true, category: true },
+        orderBy: { name: "asc" },
+      }),
+      db.upgrade.findMany({
+        select: { id: true, name: true, category: true, priceText: true },
+        orderBy: { name: "asc" },
+      }),
     ]);
 
     return {
-      events: events.map((e) => mapEventRow(e, e.client)),
+      events: events.map(mapEventWithRelations),
       clients: clients.map(mapClientBrief),
       financial_status_options: financialOptions.map(mapFinancialStatusOption),
+      menus,
+      upgrades: upgrades.map((u) => ({
+        id: u.id,
+        name: u.name,
+        category: u.category,
+        price_text: u.priceText,
+      })),
     };
   });
 
@@ -93,8 +136,12 @@ export const createEventFn = createServerFn({ method: "POST" })
     const event = await db.$transaction(async (tx) => {
       const created = await tx.event.create({
         data: toEventData(data),
-        include: eventInclude,
       });
+
+      const upgradeIds = data.upgrade_ids ?? [];
+      if (upgradeIds.length > 0) {
+        await syncEventUpgrades(tx, created.id, upgradeIds);
+      }
 
       const template = checklistTemplateForEvent(data.event_type);
       const items = template.map((item, i) => ({
@@ -106,11 +153,11 @@ export const createEventFn = createServerFn({ method: "POST" })
       }));
       await tx.checklistItem.createMany({ data: items });
 
-      return created;
+      return tx.event.findUniqueOrThrow({ where: { id: created.id }, include: eventInclude });
     });
 
     return {
-      event: mapEventRow(event, event.client),
+      event: mapEventWithRelations(event),
       checklist_template: checklistTemplateForEvent(data.event_type),
       is_bride_checklist: checklistTemplateForEvent(data.event_type) === BRIDE_CHECKLIST,
     };
@@ -124,12 +171,17 @@ export const updateEventFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { id, ...payload } = data;
-    const event = await db.event.update({
-      where: { id },
-      data: toEventData(payload),
-      include: eventInclude,
+    const event = await db.$transaction(async (tx) => {
+      await tx.event.update({
+        where: { id },
+        data: toEventData(payload),
+      });
+      if (payload.upgrade_ids) {
+        await syncEventUpgrades(tx, id, payload.upgrade_ids);
+      }
+      return tx.event.findUniqueOrThrow({ where: { id }, include: eventInclude });
     });
-    return mapEventRow(event, event.client);
+    return mapEventWithRelations(event);
   });
 
 export const updateEventStatusFn = createServerFn({ method: "POST" })
@@ -144,7 +196,7 @@ export const updateEventStatusFn = createServerFn({ method: "POST" })
       data: { status: data.status as EventStatus },
       include: eventInclude,
     });
-    return mapEventRow(event, event.client);
+    return mapEventWithRelations(event);
   });
 
 export const deleteEventFn = createServerFn({ method: "POST" })

@@ -14,6 +14,24 @@ export type ClientSummary = {
   status: string;
 };
 
+export type EventMenuSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  items: string | null;
+  image_url: string | null;
+  images: string[];
+};
+
+export type EventUpgradeSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_text: string | null;
+  image_url: string | null;
+};
+
 export type EventSummary = {
   id: string;
   client_id: string;
@@ -25,6 +43,8 @@ export type EventSummary = {
   estimated_guests: number | null;
   status: string;
   client_notes: string | null;
+  menu: EventMenuSummary | null;
+  upgrades: EventUpgradeSummary[];
 };
 
 export type ChecklistSummary = {
@@ -81,18 +101,25 @@ export const getMyEventFn = createServerFn({ method: "GET" })
       };
     }
 
-    const [checklistItems, confirmedGuests, confirmedParty] = await Promise.all([
-      db.checklistItem.findMany({
-        where: { eventId: event.id },
-        orderBy: { sortOrder: "asc" },
-      }),
-      db.eventGuest.aggregate({
-        where: { eventId: event.id, rsvpStatus: "confirmado" },
-        _count: { _all: true },
-        _sum: { confirmedCompanions: true },
-      }),
-      getConfirmedPartyCount(event.id),
-    ]);
+    const [checklistItems, confirmedGuests, confirmedParty, menu, eventUpgrades] =
+      await Promise.all([
+        db.checklistItem.findMany({
+          where: { eventId: event.id },
+          orderBy: { sortOrder: "asc" },
+        }),
+        db.eventGuest.aggregate({
+          where: { eventId: event.id, rsvpStatus: "confirmado" },
+          _count: { _all: true },
+          _sum: { confirmedCompanions: true },
+        }),
+        getConfirmedPartyCount(event.id),
+        event.menuId ? db.menu.findUnique({ where: { id: event.menuId } }) : null,
+        db.eventUpgrade.findMany({
+          where: { eventId: event.id },
+          include: { upgrade: true },
+          orderBy: { createdAt: "asc" },
+        }),
+      ]);
 
     const confirmedPeopleTotal =
       confirmedGuests._count._all + (confirmedGuests._sum.confirmedCompanions ?? 0) + confirmedParty;
@@ -119,6 +146,24 @@ export const getMyEventFn = createServerFn({ method: "GET" })
         estimated_guests: event.estimatedGuests,
         status: event.status,
         client_notes: event.clientNotes,
+        menu: menu
+          ? {
+              id: menu.id,
+              name: menu.name,
+              description: menu.description,
+              category: menu.category,
+              items: menu.items,
+              image_url: menu.imageUrl,
+              images: menu.images,
+            }
+          : null,
+        upgrades: eventUpgrades.map((eu) => ({
+          id: eu.upgrade.id,
+          name: eu.upgrade.name,
+          description: eu.upgrade.description,
+          price_text: eu.upgrade.priceText,
+          image_url: eu.upgrade.imageUrl,
+        })),
       },
       checklist: checklistItems.map((item) => ({
         id: item.id,

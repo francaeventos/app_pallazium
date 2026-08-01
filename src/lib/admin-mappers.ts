@@ -87,6 +87,7 @@ export function mapEventRow(
   e: {
     id: string;
     clientId: string;
+    menuId: string | null;
     eventType: string;
     eventDate: Date | null;
     startTime: Date | null;
@@ -102,10 +103,13 @@ export function mapEventRow(
     updatedAt: Date;
   },
   client?: { fullName: string; email: string; whatsapp?: string | null } | null,
+  menu?: { id: string; name: string; category: string } | null,
+  upgradeIds?: string[],
 ) {
   return {
     id: e.id,
     client_id: e.clientId,
+    menu_id: e.menuId,
     event_type: e.eventType,
     event_date: toDateString(e.eventDate),
     start_time: toTimeString(e.startTime),
@@ -120,6 +124,8 @@ export function mapEventRow(
     created_at: toIso(e.createdAt),
     updated_at: toIso(e.updatedAt),
     clients: client ? mapClientNested(client) : null,
+    menu: menu ? { id: menu.id, name: menu.name, category: menu.category } : null,
+    upgrade_ids: upgradeIds ?? [],
   };
 }
 
