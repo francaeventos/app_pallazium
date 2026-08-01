@@ -18,13 +18,19 @@ export const Route = createFileRoute("/_authenticated/app/upgrades")({ component
 function Page() {
   const { data } = useMyEvent();
   const [upgrades, setUpgrades] = useState<UpgradeRow[]>([]);
+  const [contractedUpgrades, setContractedUpgrades] = useState<UpgradeRow[]>([]);
   const [interests, setInterests] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
-      const { upgrades: ups, interests: ints } = await getUpgradesPageDataFn();
+      const {
+        upgrades: ups,
+        interests: ints,
+        contracted_upgrades,
+      } = await getUpgradesPageDataFn();
       setUpgrades(ups);
+      setContractedUpgrades(contracted_upgrades);
       setInterests(new Map(ints.map((i) => [i.upgrade_id, i.status])));
     } finally {
       setLoading(false);
@@ -65,7 +71,25 @@ function Page() {
         )}
       </div>
 
-      {upgrades.length === 0 && (
+      {contractedUpgrades.length > 0 && (
+        <Card className="border-gold/40 bg-champagne/30">
+          <CardContent className="p-5">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+              Upgrades contratados
+            </p>
+            <ul className="space-y-2">
+              {contractedUpgrades.map((upgrade) => (
+                <li key={upgrade.id} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-gold" />
+                  {upgrade.name}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {upgrades.length === 0 && contractedUpgrades.length === 0 && (
         <ClientEmptyState
           icon={Sparkles}
           title="Experiências em curadoria"

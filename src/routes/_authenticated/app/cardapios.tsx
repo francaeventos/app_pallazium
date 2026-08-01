@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/app/cardapios")({ componen
 function Page() {
   const { data } = useMyEvent();
   const [menus, setMenus] = useState<MenuRow[]>([]);
+  const [contractedMenu, setContractedMenu] = useState<MenuRow | null>(null);
   const [interests, setInterests] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedMenu, setSelectedMenu] = useState<MenuRow | null>(null);
@@ -23,8 +24,13 @@ function Page() {
   const load = async () => {
     setLoading(true);
     try {
-      const { menus: menuRows, interests: interestRows } = await getMenusPageDataFn();
+      const {
+        menus: menuRows,
+        interests: interestRows,
+        contracted_menu,
+      } = await getMenusPageDataFn();
       setMenus(menuRows);
+      setContractedMenu(contracted_menu);
       setInterests(new Map(interestRows.map((item) => [item.menu_id, item.status])));
     } finally {
       setLoading(false);
@@ -69,7 +75,30 @@ function Page() {
         </p>
       </div>
 
-      {menus.length === 0 && (
+      {contractedMenu && (
+        <Card className="border-gold/40 bg-champagne/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Cardápio contratado
+              </p>
+              <p className="font-serif text-xl mt-1">{contractedMenu.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">{contractedMenu.category}</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedMenu(contractedMenu);
+                setSelectedImageIndex(0);
+              }}
+            >
+              Ver cardápio completo
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {menus.length === 0 && !contractedMenu && (
         <ClientEmptyState
           icon={ChefHat}
           title="Cardápios em preparação"
@@ -164,8 +193,12 @@ function Page() {
         imageIndex={selectedImageIndex}
         onImageIndexChange={setSelectedImageIndex}
         onClose={() => setSelectedMenu(null)}
-        isSelected={selectedMenu ? interests.has(selectedMenu.id) : false}
-        canChoose={!!data?.event}
+        isSelected={
+          selectedMenu
+            ? interests.has(selectedMenu.id) || selectedMenu.id === contractedMenu?.id
+            : false
+        }
+        canChoose={!!data?.event && selectedMenu?.id !== contractedMenu?.id}
         onChoose={(menuId) => chooseMenu(menuId)}
       />
     </div>

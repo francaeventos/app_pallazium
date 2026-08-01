@@ -25,12 +25,35 @@ export type UpgradeInterestRow = {
 export type UpgradesPageData = {
   upgrades: UpgradeRow[];
   interests: UpgradeInterestRow[];
+  contracted_upgrades: UpgradeRow[];
 };
 
 const registerUpgradeInterestInput = z.object({
   upgradeId: z.string().uuid(),
   eventId: z.string().uuid(),
 });
+
+function mapUpgradeRow(upgrade: {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  imageUrl: string | null;
+  priceText: string | null;
+  active: boolean;
+  createdAt: Date;
+}): UpgradeRow {
+  return {
+    id: upgrade.id,
+    name: upgrade.name,
+    description: upgrade.description,
+    category: upgrade.category,
+    image_url: upgrade.imageUrl,
+    price_text: upgrade.priceText,
+    active: upgrade.active,
+    created_at: toIsoString(upgrade.createdAt)!,
+  };
+}
 
 export const getUpgradesPageDataFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -42,6 +65,7 @@ export const getUpgradesPageDataFn = createServerFn({ method: "GET" })
 
     const client = await getClientForUser(context.userId);
     let interests: UpgradeInterestRow[] = [];
+    let contractedUpgrades: UpgradeRow[] = [];
 
     if (client) {
       const event = await db.event.findFirst({
@@ -53,29 +77,29 @@ export const getUpgradesPageDataFn = createServerFn({ method: "GET" })
       });
 
       if (event) {
-        const rows = await db.upgradeInterest.findMany({
-          where: { clientId: client.id, eventId: event.id },
-          select: { upgradeId: true, status: true },
-        });
+        const [rows, eventUpgrades] = await Promise.all([
+          db.upgradeInterest.findMany({
+            where: { clientId: client.id, eventId: event.id },
+            select: { upgradeId: true, status: true },
+          }),
+          db.eventUpgrade.findMany({
+            where: { eventId: event.id },
+            include: { upgrade: true },
+            orderBy: { createdAt: "asc" },
+          }),
+        ]);
         interests = rows.map((row) => ({
           upgrade_id: row.upgradeId,
           status: row.status,
         }));
+        contractedUpgrades = eventUpgrades.map((eu) => mapUpgradeRow(eu.upgrade));
       }
     }
 
     return {
-      upgrades: upgrades.map((upgrade) => ({
-        id: upgrade.id,
-        name: upgrade.name,
-        description: upgrade.description,
-        category: upgrade.category,
-        image_url: upgrade.imageUrl,
-        price_text: upgrade.priceText,
-        active: upgrade.active,
-        created_at: toIsoString(upgrade.createdAt)!,
-      })),
+      upgrades: upgrades.map(mapUpgradeRow),
       interests,
+      contracted_upgrades: contractedUpgrades,
     };
   });
 

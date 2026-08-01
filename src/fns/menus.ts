@@ -27,12 +27,39 @@ export type MenuInterestRow = {
 export type MenusPageData = {
   menus: MenuRow[];
   interests: MenuInterestRow[];
+  contracted_menu: MenuRow | null;
 };
 
 const registerMenuInterestInput = z.object({
   menuId: z.string().uuid(),
   eventId: z.string().uuid(),
 });
+
+function mapMenuRow(menu: {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  items: string | null;
+  imageUrl: string | null;
+  images: string[];
+  notes: string | null;
+  active: boolean;
+  createdAt: Date;
+}): MenuRow {
+  return {
+    id: menu.id,
+    name: menu.name,
+    description: menu.description,
+    category: menu.category,
+    items: menu.items,
+    image_url: menu.imageUrl,
+    images: menu.images,
+    notes: menu.notes,
+    active: menu.active,
+    created_at: toIsoString(menu.createdAt)!,
+  };
+}
 
 export const getMenusPageDataFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -44,6 +71,7 @@ export const getMenusPageDataFn = createServerFn({ method: "GET" })
 
     const client = await getClientForUser(context.userId);
     let interests: MenuInterestRow[] = [];
+    let contractedMenu: MenuRow | null = null;
 
     if (client) {
       const event = await db.event.findFirst({
@@ -52,6 +80,7 @@ export const getMenusPageDataFn = createServerFn({ method: "GET" })
           status: { not: "cancelado" },
         },
         orderBy: { eventDate: "asc" },
+        include: { menu: true },
       });
 
       if (event) {
@@ -63,23 +92,14 @@ export const getMenusPageDataFn = createServerFn({ method: "GET" })
           menu_id: row.menuId,
           status: row.status,
         }));
+        if (event.menu) contractedMenu = mapMenuRow(event.menu);
       }
     }
 
     return {
-      menus: menus.map((menu) => ({
-        id: menu.id,
-        name: menu.name,
-        description: menu.description,
-        category: menu.category,
-        items: menu.items,
-        image_url: menu.imageUrl,
-        images: menu.images,
-        notes: menu.notes,
-        active: menu.active,
-        created_at: toIsoString(menu.createdAt)!,
-      })),
+      menus: menus.map(mapMenuRow),
       interests,
+      contracted_menu: contractedMenu,
     };
   });
 
