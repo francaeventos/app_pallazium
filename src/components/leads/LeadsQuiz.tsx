@@ -448,6 +448,18 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
+  const closeWindow = useCallback(() => {
+    // Navegadores só permitem window.close() em abas abertas via script; em
+    // links normais (WhatsApp/Instagram/anúncio) isso costuma falhar em
+    // silêncio, então tentamos e também deixamos o texto de apoio na tela.
+    try {
+      window.open("", "_self");
+      window.close();
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     if (!bootstrapped || phase !== "quiz" || !current) return;
     const shownKey = `${flowSession}:${stepIndex}`;
@@ -926,13 +938,14 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                     {closing.buttonLabel || "Continuar"}
                   </button>
                 ) : closing.action === "close" ? (
-                  <button
-                    type="button"
-                    className="sf-cta"
-                    onClick={() => window.close()}
-                  >
-                    {closing.buttonLabel || "Fechar janela"}
-                  </button>
+                  <>
+                    <button type="button" className="sf-cta" onClick={closeWindow}>
+                      {closing.buttonLabel || "Fechar janela"}
+                    </button>
+                    <p className="sf-closing-countdown">
+                      Se o botão não fechar sozinho, pode fechar esta aba com segurança.
+                    </p>
+                  </>
                 ) : null}
                 {closing.url && redirectCountdown != null && redirectCountdown > 0 ? (
                   <p className="sf-closing-countdown">
