@@ -506,12 +506,10 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     nextAnswers: Record<string, string>,
     nextBubbles: ChatBubble[],
   ) => {
-    const redirectQuestion = [...questions].reverse().find((q) => q.type === "redirect");
-    if (redirectQuestion) {
-      beginClosingFromQuestion(redirectQuestion, nextAnswers, nextBubbles);
-      return;
-    }
-
+    // Encerramentos customizados (parceria, trabalhe conosco...) são blocos
+    // "redirect" alcançados por nextKey explícito de uma opção/bloco — quando
+    // chegamos aqui é porque o fluxo terminou sem apontar para nenhum deles,
+    // então o encerramento padrão (WhatsApp) é sempre o correto.
     const card: ClosingCard = {
       title: "Obrigado pelas informações!",
       body: "Vamos continuar a conversa no WhatsApp para alinhar os detalhes do seu evento.",
