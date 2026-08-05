@@ -25,6 +25,9 @@ export const FLOW_END = "__end__";
 /** Sentinel (placeholder de bloco redirect): encerramento sem CTA/redirecionamento, só mensagem final. */
 export const NO_REDIRECT = "__none__";
 
+/** Sentinel (placeholder de bloco redirect): encerramento com botão para fechar a janela/aba. */
+export const CLOSE_WINDOW = "__close__";
+
 export const TYPE_LABEL: Record<LeadQuestionTypeValue, string> = {
   text: "Texto",
   email: "E-mail",

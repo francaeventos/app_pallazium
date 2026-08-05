@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { temperatureLabel, type ConversionMinTemperature } from "@/lib/leads/score";
 import {
   BLOCK_MENU,
+  CLOSE_WINDOW,
   FLOW_END,
   NO_REDIRECT,
   TYPE_LABEL,
@@ -498,48 +499,60 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                             />
                           </Field>
 
-                          <Field label="URL de redirecionamento">
-                            <VariableChips
-                              tokens={flowChips}
-                              onInsert={(token) =>
+                          <Field label="Tipo de encerramento">
+                            <Select
+                              value={
+                                q.placeholder === NO_REDIRECT
+                                  ? "none"
+                                  : q.placeholder === CLOSE_WINDOW
+                                    ? "close"
+                                    : "url"
+                              }
+                              onValueChange={(v) =>
                                 updateQuestionLocal(index, {
-                                  placeholder: q.placeholder
-                                    ? `${q.placeholder}${token}`
-                                    : token,
+                                  placeholder:
+                                    v === "none" ? NO_REDIRECT : v === "close" ? CLOSE_WINDOW : "",
                                 })
                               }
-                            />
-                            <Textarea
-                              value={q.placeholder === NO_REDIRECT ? "" : q.placeholder}
-                              rows={4}
-                              disabled={q.placeholder === NO_REDIRECT}
-                              className="mt-2 font-mono text-xs"
-                              placeholder="https://wa.me/55...?text=Olá, eu sou {{nome}}... (vazio = WhatsApp padrão do formulário)"
-                              onChange={(e) =>
-                                updateQuestionLocal(index, { placeholder: e.target.value })
-                              }
-                            />
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="url">Abrir link (WhatsApp ou outro)</SelectItem>
+                                <SelectItem value="none">Sem botão (só mensagem)</SelectItem>
+                                <SelectItem value="close">Botão para fechar janela</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Use "Sem botão" ou "Fechar janela" para fluxos que não devem cair no
+                              WhatsApp comercial (ex.: parcerias, trabalhe conosco).
+                            </p>
                           </Field>
 
-                          <label className="flex items-start gap-2 rounded-xl border bg-muted/30 p-3 text-sm">
-                            <Switch
-                              checked={q.placeholder === NO_REDIRECT}
-                              onCheckedChange={(checked) =>
-                                updateQuestionLocal(index, {
-                                  placeholder: checked ? NO_REDIRECT : "",
-                                })
-                              }
-                            />
-                            <span>
-                              <span className="font-medium">Encerramento sem botão/link</span>
-                              <br />
-                              <span className="text-xs text-muted-foreground">
-                                Mostra só a mensagem final (título + descrição), sem CTA e sem
-                                abrir WhatsApp ou outro link. Use para fluxos que não devem cair
-                                no WhatsApp comercial (ex.: parcerias).
-                              </span>
-                            </span>
-                          </label>
+                          {q.placeholder !== NO_REDIRECT && q.placeholder !== CLOSE_WINDOW ? (
+                            <Field label="URL de redirecionamento">
+                              <VariableChips
+                                tokens={flowChips}
+                                onInsert={(token) =>
+                                  updateQuestionLocal(index, {
+                                    placeholder: q.placeholder
+                                      ? `${q.placeholder}${token}`
+                                      : token,
+                                  })
+                                }
+                              />
+                              <Textarea
+                                value={q.placeholder}
+                                rows={4}
+                                className="mt-2 font-mono text-xs"
+                                placeholder="https://wa.me/55...?text=Olá, eu sou {{nome}}... (vazio = WhatsApp padrão do formulário)"
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, { placeholder: e.target.value })
+                                }
+                              />
+                            </Field>
+                          ) : null}
 
                           <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -573,7 +586,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                                 type="number"
                                 min={0}
                                 max={120}
-                                disabled={q.placeholder === NO_REDIRECT}
+                                disabled={q.placeholder === NO_REDIRECT || q.placeholder === CLOSE_WINDOW}
                                 value={q.redirect_delay_sec}
                                 onChange={(e) =>
                                   updateQuestionLocal(index, {
@@ -587,7 +600,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                             </Field>
                             <Field
                               label="Texto do botão"
-                              hint='Vazio = "Falar no WhatsApp" (link wa.me) ou "Continuar" (outro link).'
+                              hint='Vazio = "Falar no WhatsApp" (wa.me), "Fechar janela" (fechar) ou "Continuar" (outro link).'
                             >
                               <Input
                                 disabled={q.placeholder === NO_REDIRECT}

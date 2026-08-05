@@ -16,6 +16,7 @@ import {
 } from "@/lib/leads/tracking";
 import { darkenHex } from "@/lib/leads/theme";
 import {
+  CLOSE_WINDOW,
   hasChoiceOptions,
   isContentOnlyType,
   NO_REDIRECT,
@@ -53,6 +54,7 @@ type ClosingCard = {
   url: string;
   delaySec: number;
   buttonLabel?: string;
+  action?: "url" | "close";
 };
 
 function inferClosingButtonLabel(url: string): string | undefined {
@@ -381,8 +383,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         nextAnswers,
       );
       const rawUrl = question.placeholder?.trim();
+      const isCloseAction = rawUrl === CLOSE_WINDOW;
       const url =
-        rawUrl === NO_REDIRECT
+        rawUrl === NO_REDIRECT || isCloseAction
           ? ""
           : rawUrl
             ? resolveRedirectUrl(rawUrl, nextAnswers)
@@ -394,7 +397,10 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         body,
         url,
         delaySec: Math.max(0, question.redirectDelaySec ?? 3),
-        buttonLabel: question.redirectButtonLabel?.trim() || inferClosingButtonLabel(url),
+        buttonLabel:
+          question.redirectButtonLabel?.trim() ||
+          (isCloseAction ? "Fechar janela" : inferClosingButtonLabel(url)),
+        action: isCloseAction ? "close" : "url",
       };
     },
     [form.whatsappDestination, form.whatsappMessage],
@@ -918,6 +924,14 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                     onClick={() => openClosingUrl(closing.url)}
                   >
                     {closing.buttonLabel || "Continuar"}
+                  </button>
+                ) : closing.action === "close" ? (
+                  <button
+                    type="button"
+                    className="sf-cta"
+                    onClick={() => window.close()}
+                  >
+                    {closing.buttonLabel || "Fechar janela"}
                   </button>
                 ) : null}
                 {closing.url && redirectCountdown != null && redirectCountdown > 0 ? (
