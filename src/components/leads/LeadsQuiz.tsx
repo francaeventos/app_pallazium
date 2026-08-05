@@ -396,7 +396,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         title,
         body,
         url,
-        delaySec: Math.max(0, question.redirectDelaySec ?? 3),
+        delaySec: question.redirectDelaySec ?? 3,
         buttonLabel:
           question.redirectButtonLabel?.trim() ||
           (isCloseAction ? "Fechar janela" : inferClosingButtonLabel(url)),
@@ -638,7 +638,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       setRedirectCountdown(0);
       return;
     }
-    const delaySec = Math.max(0, closing.delaySec);
+    // delaySec < 0: só abre pelo clique no botão, sem redirecionamento automático.
+    if (closing.delaySec < 0) return;
+    const delaySec = closing.delaySec;
     if (delaySec <= 0) {
       openClosingUrl(closing.url);
       setRedirectCountdown(0);

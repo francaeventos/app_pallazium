@@ -586,8 +586,12 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                                 type="number"
                                 min={0}
                                 max={120}
-                                disabled={q.placeholder === NO_REDIRECT || q.placeholder === CLOSE_WINDOW}
-                                value={q.redirect_delay_sec}
+                                disabled={
+                                  q.placeholder === NO_REDIRECT ||
+                                  q.placeholder === CLOSE_WINDOW ||
+                                  q.redirect_delay_sec < 0
+                                }
+                                value={q.redirect_delay_sec < 0 ? "" : q.redirect_delay_sec}
                                 onChange={(e) =>
                                   updateQuestionLocal(index, {
                                     redirect_delay_sec: Math.max(
@@ -614,6 +618,20 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                               />
                             </Field>
                           </div>
+
+                          {q.placeholder !== NO_REDIRECT && q.placeholder !== CLOSE_WINDOW ? (
+                            <label className="flex items-center gap-2 rounded-xl border bg-muted/30 p-3 text-sm">
+                              <Switch
+                                checked={q.redirect_delay_sec < 0}
+                                onCheckedChange={(checked) =>
+                                  updateQuestionLocal(index, {
+                                    redirect_delay_sec: checked ? -1 : 3,
+                                  })
+                                }
+                              />
+                              Não abrir automaticamente — só quando a pessoa clicar no botão
+                            </label>
+                          ) : null}
 
                           <div className="flex flex-wrap items-end gap-6 pb-1">
                             <label className="flex items-center gap-2 text-sm">
@@ -1362,7 +1380,9 @@ export function LeadFormSimulatorPanel() {
                       : null}
                     {current.type === "redirect" && current.placeholder?.trim() ? (
                       <p className="text-center text-[11px] text-muted-foreground">
-                        Atraso: {current.redirect_delay_sec ?? 3}s · abre o link no quiz real
+                        {(current.redirect_delay_sec ?? 3) < 0
+                          ? "Só abre pelo botão · abre o link no quiz real"
+                          : `Atraso: ${current.redirect_delay_sec ?? 3}s · abre o link no quiz real`}
                       </p>
                     ) : null}
                     <Button

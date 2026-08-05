@@ -475,7 +475,7 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
         prompt: z.string().trim().max(2000).nullable().optional(),
         bot_messages: z.array(z.string().max(4000)).optional(),
         placeholder: z.string().trim().max(4000).nullable().optional(),
-        redirect_delay_sec: z.number().int().min(0).max(120).optional(),
+        redirect_delay_sec: z.number().int().min(-1).max(120).optional(),
         redirect_button_label: z.string().trim().max(60).nullable().optional(),
         next_key: z.string().trim().max(60).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
