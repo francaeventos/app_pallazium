@@ -185,7 +185,7 @@ function TrabalheConoscoPage() {
               Se surgir uma oportunidade compatível com seu perfil e disponibilidade, nossa equipe
               poderá entrar em contato.
             </p>
-            <p>
+            <p className="font-semibold text-foreground">
               Obs: pedimos a gentileza de não entrar em contato pelo canal de whatsapp, que é
               exclusivo para atendimento dos nossos clientes. Caso queira enviar seu currículo,
               faça isso via e-mail.

@@ -31,6 +31,6 @@ export const CAREERS_STATUS_LABEL: Record<string, string> = {
 export function careersContactEmail() {
   return (
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_CAREERS_EMAIL) ||
-    "trabalheconosco@espacopallazium.com.br"
+    "contato@espacopallazium.com.br"
   );
 }
