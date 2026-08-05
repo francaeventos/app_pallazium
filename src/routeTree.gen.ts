@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrabalheConoscoRouteImport } from './routes/trabalhe-conosco'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
@@ -48,6 +49,7 @@ import { Route as AuthenticatedAdminConvitesIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
 import { Route as AuthenticatedAdminLeadsIntegracoesRouteImport } from './routes/_authenticated/admin/leads.integracoes'
 import { Route as AuthenticatedAdminLeadsFormularioRouteImport } from './routes/_authenticated/admin/leads.formulario'
+import { Route as AuthenticatedAdminLeadsCandidaturasRouteImport } from './routes/_authenticated/admin/leads.candidaturas'
 import { Route as AuthenticatedAdminConvitesEventIdRouteImport } from './routes/_authenticated/admin/convites.$eventId'
 import { Route as AuthenticatedAdminChecklistEventIdRouteImport } from './routes/_authenticated/admin/checklist.$eventId'
 import { Route as AuthenticatedAdminLeadsFormularioIndexRouteImport } from './routes/_authenticated/admin/leads.formulario.index'
@@ -57,6 +59,11 @@ import { Route as AuthenticatedAdminLeadsFormularioScoreRouteImport } from './ro
 import { Route as AuthenticatedAdminLeadsFormularioPixelsRouteImport } from './routes/_authenticated/admin/leads.formulario.pixels'
 import { Route as AuthenticatedAdminLeadsFormularioDiagnosticoRouteImport } from './routes/_authenticated/admin/leads.formulario.diagnostico'
 
+const TrabalheConoscoRoute = TrabalheConoscoRouteImport.update({
+  id: '/trabalhe-conosco',
+  path: '/trabalhe-conosco',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -276,6 +283,12 @@ const AuthenticatedAdminLeadsFormularioRoute =
     path: '/formulario',
     getParentRoute: () => AuthenticatedAdminLeadsRoute,
   } as any)
+const AuthenticatedAdminLeadsCandidaturasRoute =
+  AuthenticatedAdminLeadsCandidaturasRouteImport.update({
+    id: '/candidaturas',
+    path: '/candidaturas',
+    getParentRoute: () => AuthenticatedAdminLeadsRoute,
+  } as any)
 const AuthenticatedAdminConvitesEventIdRoute =
   AuthenticatedAdminConvitesEventIdRouteImport.update({
     id: '/convites/$eventId',
@@ -329,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/trabalhe-conosco': typeof TrabalheConoscoRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/convite/$token': typeof ConviteTokenRoute
@@ -361,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
+  '/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
   '/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
@@ -377,6 +392,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/trabalhe-conosco': typeof TrabalheConoscoRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
@@ -406,6 +422,7 @@ export interface FileRoutesByTo {
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
+  '/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
   '/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
   '/admin/convites': typeof AuthenticatedAdminConvitesIndexRoute
@@ -423,6 +440,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/trabalhe-conosco': typeof TrabalheConoscoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/convite/$token': typeof ConviteTokenRoute
@@ -455,6 +473,7 @@ export interface FileRoutesById {
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/_authenticated/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
+  '/_authenticated/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
   '/_authenticated/admin/leads/formulario': typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   '/_authenticated/admin/leads/integracoes': typeof AuthenticatedAdminLeadsIntegracoesRoute
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
@@ -473,6 +492,7 @@ export interface FileRouteTypes {
     | '/'
     | '/leads'
     | '/login'
+    | '/trabalhe-conosco'
     | '/admin'
     | '/app'
     | '/convite/$token'
@@ -505,6 +525,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/checklist/$eventId'
     | '/admin/convites/$eventId'
+    | '/admin/leads/candidaturas'
     | '/admin/leads/formulario'
     | '/admin/leads/integracoes'
     | '/admin/checklist/'
@@ -521,6 +542,7 @@ export interface FileRouteTypes {
     | '/'
     | '/leads'
     | '/login'
+    | '/trabalhe-conosco'
     | '/convite/$token'
     | '/admin/acessos'
     | '/admin/cardapios'
@@ -550,6 +572,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/checklist/$eventId'
     | '/admin/convites/$eventId'
+    | '/admin/leads/candidaturas'
     | '/admin/leads/integracoes'
     | '/admin/checklist'
     | '/admin/convites'
@@ -566,6 +589,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/leads'
     | '/login'
+    | '/trabalhe-conosco'
     | '/_authenticated/admin'
     | '/_authenticated/app'
     | '/convite/$token'
@@ -598,6 +622,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/'
     | '/_authenticated/admin/checklist/$eventId'
     | '/_authenticated/admin/convites/$eventId'
+    | '/_authenticated/admin/leads/candidaturas'
     | '/_authenticated/admin/leads/formulario'
     | '/_authenticated/admin/leads/integracoes'
     | '/_authenticated/admin/checklist/'
@@ -616,6 +641,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
+  TrabalheConoscoRoute: typeof TrabalheConoscoRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
   ConvitePadrinhoTokenRoute: typeof ConvitePadrinhoTokenRoute
   ConvitePreviewInvitationIdRoute: typeof ConvitePreviewInvitationIdRoute
@@ -623,6 +649,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trabalhe-conosco': {
+      id: '/trabalhe-conosco'
+      path: '/trabalhe-conosco'
+      fullPath: '/trabalhe-conosco'
+      preLoaderRoute: typeof TrabalheConoscoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -896,6 +929,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLeadsFormularioRouteImport
       parentRoute: typeof AuthenticatedAdminLeadsRoute
     }
+    '/_authenticated/admin/leads/candidaturas': {
+      id: '/_authenticated/admin/leads/candidaturas'
+      path: '/candidaturas'
+      fullPath: '/admin/leads/candidaturas'
+      preLoaderRoute: typeof AuthenticatedAdminLeadsCandidaturasRouteImport
+      parentRoute: typeof AuthenticatedAdminLeadsRoute
+    }
     '/_authenticated/admin/convites/$eventId': {
       id: '/_authenticated/admin/convites/$eventId'
       path: '/convites/$eventId'
@@ -986,6 +1026,7 @@ const AuthenticatedAdminLeadsFormularioRouteWithChildren =
   )
 
 interface AuthenticatedAdminLeadsRouteChildren {
+  AuthenticatedAdminLeadsCandidaturasRoute: typeof AuthenticatedAdminLeadsCandidaturasRoute
   AuthenticatedAdminLeadsFormularioRoute: typeof AuthenticatedAdminLeadsFormularioRouteWithChildren
   AuthenticatedAdminLeadsIntegracoesRoute: typeof AuthenticatedAdminLeadsIntegracoesRoute
   AuthenticatedAdminLeadsIndexRoute: typeof AuthenticatedAdminLeadsIndexRoute
@@ -993,6 +1034,8 @@ interface AuthenticatedAdminLeadsRouteChildren {
 
 const AuthenticatedAdminLeadsRouteChildren: AuthenticatedAdminLeadsRouteChildren =
   {
+    AuthenticatedAdminLeadsCandidaturasRoute:
+      AuthenticatedAdminLeadsCandidaturasRoute,
     AuthenticatedAdminLeadsFormularioRoute:
       AuthenticatedAdminLeadsFormularioRouteWithChildren,
     AuthenticatedAdminLeadsIntegracoesRoute:
@@ -1102,6 +1145,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
+  TrabalheConoscoRoute: TrabalheConoscoRoute,
   ConviteTokenRoute: ConviteTokenRoute,
   ConvitePadrinhoTokenRoute: ConvitePadrinhoTokenRoute,
   ConvitePreviewInvitationIdRoute: ConvitePreviewInvitationIdRoute,

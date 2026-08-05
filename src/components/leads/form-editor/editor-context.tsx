@@ -49,6 +49,7 @@ export type QuestionDraft = {
   bot_messages_text: string;
   placeholder: string;
   redirect_delay_sec: number;
+  redirect_button_label: string;
   next_key: string;
   sort_order: number;
   required: boolean;
@@ -168,6 +169,7 @@ export function toQuestionDraft(q: Question): QuestionDraft {
     bot_messages_text: (q.bot_messages || []).join("\n\n"),
     placeholder: q.placeholder || "",
     redirect_delay_sec: q.redirect_delay_sec ?? 3,
+    redirect_button_label: q.redirect_button_label || "",
     next_key: q.next_key || "",
     sort_order: q.sort_order,
     required: q.required,
@@ -486,6 +488,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
           bot_messages: parseBotMessages(q.bot_messages_text),
           placeholder: q.placeholder || null,
           redirect_delay_sec: q.redirect_delay_sec ?? 3,
+          redirect_button_label: q.redirect_button_label || null,
           next_key: q.next_key || null,
           sort_order: index,
           required: q.required,
@@ -558,6 +561,7 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
       bot_messages_text: type === "message" ? "Olá! 👋" : "",
       placeholder: type === "redirect" ? "https://" : "",
       redirect_delay_sec: 3,
+      redirect_button_label: "",
       next_key: "",
       sort_order: insertAt,
       required: type !== "message" && type !== "redirect" && type !== "media",

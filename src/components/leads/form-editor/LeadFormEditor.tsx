@@ -45,6 +45,7 @@ import { temperatureLabel, type ConversionMinTemperature } from "@/lib/leads/sco
 import {
   BLOCK_MENU,
   FLOW_END,
+  NO_REDIRECT,
   TYPE_LABEL,
   defaultOptionsForType,
   hasChoiceOptions,
@@ -509,15 +510,36 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                               }
                             />
                             <Textarea
-                              value={q.placeholder}
+                              value={q.placeholder === NO_REDIRECT ? "" : q.placeholder}
                               rows={4}
+                              disabled={q.placeholder === NO_REDIRECT}
                               className="mt-2 font-mono text-xs"
-                              placeholder="https://wa.me/55...?text=Olá, eu sou {{nome}}..."
+                              placeholder="https://wa.me/55...?text=Olá, eu sou {{nome}}... (vazio = WhatsApp padrão do formulário)"
                               onChange={(e) =>
                                 updateQuestionLocal(index, { placeholder: e.target.value })
                               }
                             />
                           </Field>
+
+                          <label className="flex items-start gap-2 rounded-xl border bg-muted/30 p-3 text-sm">
+                            <Switch
+                              checked={q.placeholder === NO_REDIRECT}
+                              onCheckedChange={(checked) =>
+                                updateQuestionLocal(index, {
+                                  placeholder: checked ? NO_REDIRECT : "",
+                                })
+                              }
+                            />
+                            <span>
+                              <span className="font-medium">Encerramento sem botão/link</span>
+                              <br />
+                              <span className="text-xs text-muted-foreground">
+                                Mostra só a mensagem final (título + descrição), sem CTA e sem
+                                abrir WhatsApp ou outro link. Use para fluxos que não devem cair
+                                no WhatsApp comercial (ex.: parcerias).
+                              </span>
+                            </span>
+                          </label>
 
                           <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -551,6 +573,7 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                                 type="number"
                                 min={0}
                                 max={120}
+                                disabled={q.placeholder === NO_REDIRECT}
                                 value={q.redirect_delay_sec}
                                 onChange={(e) =>
                                   updateQuestionLocal(index, {
@@ -562,17 +585,31 @@ export function LeadFormFlowColumn({ compact = false }: { compact?: boolean }) {
                                 }
                               />
                             </Field>
-                            <div className="flex flex-wrap items-end gap-6 pb-1">
-                              <label className="flex items-center gap-2 text-sm">
-                                <Switch
-                                  checked={q.active}
-                                  onCheckedChange={(v) =>
-                                    updateQuestionLocal(index, { active: v })
-                                  }
-                                />
-                                Ativa
-                              </label>
-                            </div>
+                            <Field
+                              label="Texto do botão"
+                              hint='Vazio = "Falar no WhatsApp" (link wa.me) ou "Continuar" (outro link).'
+                            >
+                              <Input
+                                disabled={q.placeholder === NO_REDIRECT}
+                                value={q.redirect_button_label}
+                                placeholder="Ex.: ACESSAR TRABALHE CONOSCO"
+                                onChange={(e) =>
+                                  updateQuestionLocal(index, {
+                                    redirect_button_label: e.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                          </div>
+
+                          <div className="flex flex-wrap items-end gap-6 pb-1">
+                            <label className="flex items-center gap-2 text-sm">
+                              <Switch
+                                checked={q.active}
+                                onCheckedChange={(v) => updateQuestionLocal(index, { active: v })}
+                              />
+                              Ativa
+                            </label>
                           </div>
 
                           <details className="rounded-lg border px-3 py-2 text-sm">

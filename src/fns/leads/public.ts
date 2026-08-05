@@ -13,8 +13,9 @@ import {
   recordLeadEvent,
   scoreLeadAnswers,
 } from "@/lib/leads/service";
-import { needsAnswer } from "@/lib/leads/question-types";
+import { needsAnswer, resolveVisitedQuestionKeys } from "@/lib/leads/question-types";
 import { mergeUtmFirstTouch, type UtmParams } from "@/lib/leads/utm";
+import { computeLeadIntent } from "@/lib/leads/intent";
 
 const slugSchema = z.object({ slug: z.string().trim().min(1).default("leads") });
 
@@ -71,6 +72,7 @@ function publicFormShape(form: {
     botMessages: string[];
     placeholder: string | null;
     redirectDelaySec: number;
+    redirectButtonLabel: string | null;
     nextKey: string | null;
     sortOrder: number;
     required: boolean;
@@ -126,6 +128,7 @@ function publicFormShape(form: {
       botMessages: q.botMessages,
       placeholder: q.placeholder,
       redirectDelaySec: q.redirectDelaySec,
+      redirectButtonLabel: q.redirectButtonLabel,
       nextKey: q.nextKey,
       sortOrder: q.sortOrder,
       required: q.required,
@@ -288,6 +291,7 @@ export const upsertLeadPartialFn = createServerFn({ method: "POST" })
       fbc: data.fbc ?? lead?.fbc ?? null,
       sourceUrl: data.sourceUrl || lead?.sourceUrl || null,
       status: lead?.status === "agendado" ? lead.status : ("parcial" as const),
+      intent: computeLeadIntent(answers),
     };
 
     if (lead) {
@@ -330,7 +334,9 @@ export const completeLeadFn = createServerFn({ method: "POST" })
     if (phoneError) throw new Error(phoneError);
     const whatsapp = normalizePhone(whatsappRaw);
 
+    const visitedKeys = resolveVisitedQuestionKeys(form.questions, answers);
     for (const q of form.questions) {
+      if (!visitedKeys.has(q.key)) continue;
       if (!needsAnswer(q.type, q.required)) continue;
       const value = answers[q.key];
       if (!value || !String(value).trim()) {
@@ -368,6 +374,7 @@ export const completeLeadFn = createServerFn({ method: "POST" })
       score: scored.score,
       temperature: scored.temperature,
       qualified: scored.qualified,
+      intent: computeLeadIntent(answers),
       status: lead?.status === "agendado" ? ("agendado" as const) : ("completo" as const),
       completedAt: new Date(),
       qualifiedAt: scored.qualified ? lead?.qualifiedAt ?? new Date() : null,

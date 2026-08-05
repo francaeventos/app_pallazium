@@ -48,6 +48,7 @@ import {
   RefreshCw,
   Settings2,
   Trash2,
+  UserSquare2,
   Webhook,
 } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
@@ -56,6 +57,7 @@ import { UTM_KEYS, UTM_LABELS, utmHasValues, type UtmKey } from "@/lib/leads/utm
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { temperatureLabel, type LeadTemperature } from "@/lib/leads/score";
+import { LEAD_INTENT_LABEL, type LeadIntentValue } from "@/lib/leads/intent";
 
 export const Route = createFileRoute("/_authenticated/admin/leads/")({ component: Page });
 
@@ -77,6 +79,13 @@ const ANSWER_LABEL: Record<string, string> = {
   convidados: "Convidados",
   dataEvento: "Data do evento",
   investimento: "Investimento",
+  Procura: "O que buscava",
+  parceria_nome: "Nome/empresa (parceria)",
+  parceria_tipo: "Tipo de parceria",
+  parceria_descricao: "Como imagina a parceria",
+  parceria_contato_forma: "Forma de contato preferida",
+  parceria_email: "E-mail (parceria)",
+  parceria_telefone: "Telefone (parceria)",
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -130,6 +139,12 @@ function TemperatureBadge({ temperature }: { temperature: string }) {
   );
 }
 
+function IntentBadge({ intent }: { intent?: string }) {
+  const value = (intent || "evento") as LeadIntentValue;
+  if (value === "evento") return null;
+  return <Badge variant="outline">{LEAD_INTENT_LABEL[value] || value}</Badge>;
+}
+
 function WhatsAppLink({ phone }: { phone: string }) {
   const digits = phone.replace(/\D/g, "");
   if (!digits) return <span>{phone || "—"}</span>;
@@ -149,6 +164,7 @@ function WhatsAppLink({ phone }: { phone: string }) {
 function Page() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [status, setStatus] = useState<string>("all");
+  const [intent, setIntent] = useState<string>("all");
   const [qualified, setQualified] = useState<string>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<LeadDetail | null>(null);
@@ -165,6 +181,7 @@ function Page() {
         data: {
           slug: "leads",
           status: status === "all" ? undefined : (status as Lead["status"]),
+          intent: intent === "all" ? undefined : (intent as LeadIntentValue),
           qualified: qualified as "true" | "false" | "all",
           q: q || undefined,
         },
@@ -302,6 +319,11 @@ function Page() {
               <Webhook className="h-4 w-4" /> Integrações
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link to="/admin/leads/candidaturas">
+              <UserSquare2 className="h-4 w-4" /> Trabalhe Conosco
+            </Link>
+          </Button>
           <Button variant="outline" onClick={exportCsv}>
             <Download className="h-4 w-4" /> CSV
           </Button>
@@ -329,6 +351,17 @@ function Page() {
               <SelectItem value="completo">Completo</SelectItem>
               <SelectItem value="agendado">Agendado</SelectItem>
               <SelectItem value="descartado">Descartado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={intent} onValueChange={setIntent}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Intenção" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas intenções</SelectItem>
+              <SelectItem value="evento">💍 Evento</SelectItem>
+              <SelectItem value="parceria">🤝 Parceria</SelectItem>
+              <SelectItem value="trabalhe_conosco">👥 Trabalhe Conosco</SelectItem>
             </SelectContent>
           </Select>
           <Select value={qualified} onValueChange={setQualified}>
@@ -389,6 +422,7 @@ function Page() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <IntentBadge intent={lead.intent} />
                 <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>
                 <TemperatureBadge temperature={lead.temperature} />
                 <Badge variant={lead.qualified ? "default" : "secondary"}>
@@ -426,6 +460,7 @@ function Page() {
                     </DialogDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <IntentBadge intent={selected.intent} />
                     <Badge variant="outline">{STATUS_LABEL[selected.status] || selected.status}</Badge>
                     <TemperatureBadge temperature={selected.temperature} />
                     <Badge variant={selected.qualified ? "default" : "secondary"}>

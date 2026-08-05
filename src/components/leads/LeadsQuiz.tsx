@@ -18,6 +18,7 @@ import { darkenHex } from "@/lib/leads/theme";
 import {
   hasChoiceOptions,
   isContentOnlyType,
+  NO_REDIRECT,
   resolveNextStepIndex,
 } from "@/lib/leads/question-types";
 import { buildLeadTemplateVars, interpolateLeadTemplate, formatLeadMessageHtml, resolveRedirectUrl } from "@/lib/leads/variables";
@@ -51,7 +52,14 @@ type ClosingCard = {
   body: string;
   url: string;
   delaySec: number;
+  buttonLabel?: string;
 };
+
+function inferClosingButtonLabel(url: string): string | undefined {
+  if (!url) return undefined;
+  if (/wa\.me|api\.whatsapp\.com/i.test(url)) return "Falar no WhatsApp";
+  return "Continuar";
+}
 
 function nowTime() {
   return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -239,6 +247,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           body: saved.diagnosis.body,
           url: fallbackUrl,
           delaySec: 3,
+          buttonLabel: "Falar no WhatsApp",
         });
         closingStartedRef.current = true;
         redirectOpenedRef.current = true;
@@ -372,16 +381,20 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         nextAnswers,
       );
       const rawUrl = question.placeholder?.trim();
-      const url = rawUrl
-        ? resolveRedirectUrl(rawUrl, nextAnswers)
-        : `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
-            interpolate(form.whatsappMessage || "Olá!", nextAnswers),
-          )}`;
+      const url =
+        rawUrl === NO_REDIRECT
+          ? ""
+          : rawUrl
+            ? resolveRedirectUrl(rawUrl, nextAnswers)
+            : `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
+                interpolate(form.whatsappMessage || "Olá!", nextAnswers),
+              )}`;
       return {
         title,
         body,
         url,
         delaySec: Math.max(0, question.redirectDelaySec ?? 3),
+        buttonLabel: question.redirectButtonLabel?.trim() || inferClosingButtonLabel(url),
       };
     },
     [form.whatsappDestination, form.whatsappMessage],
@@ -422,6 +435,10 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   const openClosingUrl = useCallback((url: string) => {
     if (redirectOpenedRef.current || !url) return;
     redirectOpenedRef.current = true;
+    if (url.startsWith("/")) {
+      window.location.href = url;
+      return;
+    }
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
@@ -484,6 +501,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
         interpolate(form.whatsappMessage || "Olá!", nextAnswers),
       )}`,
       delaySec: 3,
+      buttonLabel: "Falar no WhatsApp",
     };
     closingStartedRef.current = true;
     setClosing(card);
@@ -597,7 +615,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
   };
 
   useEffect(() => {
-    if (phase !== "closing" || !closing) return;
+    if (phase !== "closing" || !closing || !closing.url) return;
     if (redirectOpenedRef.current) {
       setRedirectCountdown(0);
       return;
@@ -893,15 +911,21 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
                     __html: formatBubbleHtml(closing.body, answers),
                   }}
                 />
-                <button
-                  type="button"
-                  className="sf-cta wa"
-                  onClick={() => openClosingUrl(closing.url)}
-                >
-                  Falar no WhatsApp
-                </button>
-                {redirectCountdown != null && redirectCountdown > 0 ? (
-                  <p className="sf-closing-countdown">Abrindo WhatsApp em {redirectCountdown}s…</p>
+                {closing.url ? (
+                  <button
+                    type="button"
+                    className={`sf-cta${/wa\.me|api\.whatsapp\.com/i.test(closing.url) ? " wa" : ""}`}
+                    onClick={() => openClosingUrl(closing.url)}
+                  >
+                    {closing.buttonLabel || "Continuar"}
+                  </button>
+                ) : null}
+                {closing.url && redirectCountdown != null && redirectCountdown > 0 ? (
+                  <p className="sf-closing-countdown">
+                    {/wa\.me|api\.whatsapp\.com/i.test(closing.url)
+                      ? `Abrindo WhatsApp em ${redirectCountdown}s…`
+                      : `Redirecionando em ${redirectCountdown}s…`}
+                  </p>
                 ) : null}
               </div>
             </div>

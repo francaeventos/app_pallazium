@@ -30,6 +30,7 @@ function leadRecord(lead: {
   email: string | null;
   whatsapp: string | null;
   status: string;
+  intent?: string;
   score: number;
   temperature?: string;
   qualified: boolean;
@@ -52,6 +53,7 @@ function leadRecord(lead: {
     email: lead.email,
     whatsapp: lead.whatsapp,
     status: lead.status,
+    intent: lead.intent ?? "evento",
     score: lead.score,
     temperature: lead.temperature ?? "frio",
     qualified: lead.qualified,
@@ -81,6 +83,7 @@ export const listLeadsFn = createServerFn({ method: "GET" })
       .object({
         slug: z.string().optional(),
         status: z.enum(["parcial", "completo", "agendado", "descartado"]).optional(),
+        intent: z.enum(["evento", "parceria", "trabalhe_conosco"]).optional(),
         qualified: z.enum(["true", "false", "all"]).optional(),
         q: z.string().optional(),
       })
@@ -97,6 +100,7 @@ export const listLeadsFn = createServerFn({ method: "GET" })
       where: {
         formId: form.id,
         ...(data.status ? { status: data.status } : {}),
+        ...(data.intent ? { intent: data.intent } : {}),
         ...(data.qualified === "true"
           ? { qualified: true }
           : data.qualified === "false"
@@ -192,6 +196,7 @@ export const exportLeadsCsvFn = createServerFn({ method: "GET" })
       "email",
       "whatsapp",
       "status",
+      "intent",
       "score",
       "qualified",
       "slot",
@@ -214,6 +219,7 @@ export const exportLeadsCsvFn = createServerFn({ method: "GET" })
         lead.email,
         lead.whatsapp,
         lead.status,
+        lead.intent,
         String(lead.score),
         String(lead.qualified),
         lead.slot,
@@ -306,6 +312,7 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           bot_messages: q.botMessages,
           placeholder: q.placeholder,
           redirect_delay_sec: q.redirectDelaySec,
+          redirect_button_label: q.redirectButtonLabel,
           next_key: q.nextKey || "",
           sort_order: q.sortOrder,
           required: q.required,
@@ -469,6 +476,7 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
         bot_messages: z.array(z.string().max(4000)).optional(),
         placeholder: z.string().trim().max(4000).nullable().optional(),
         redirect_delay_sec: z.number().int().min(0).max(120).optional(),
+        redirect_button_label: z.string().trim().max(60).nullable().optional(),
         next_key: z.string().trim().max(60).nullable().optional(),
         sort_order: z.number().int().min(0).default(0),
         required: z.boolean().default(true),
@@ -487,6 +495,7 @@ export const saveLeadQuestionFn = createServerFn({ method: "POST" })
       botMessages: data.bot_messages ?? [],
       placeholder: data.placeholder ?? null,
       redirectDelaySec: data.redirect_delay_sec ?? 3,
+      redirectButtonLabel: data.redirect_button_label?.trim() || null,
       nextKey: data.next_key?.trim() || null,
       sortOrder: data.sort_order,
       required: data.required,

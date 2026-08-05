@@ -133,6 +133,24 @@ enum LeadConversionMinTemperature {
   @@map("lead_conversion_min_temperature")
 }
 
+/// Origem/intenção do contato capturado pelo quiz de leads.
+enum LeadIntent {
+  evento
+  parceria
+  trabalhe_conosco
+
+  @@map("lead_intent")
+}
+
+enum JobApplicationStatus {
+  novo
+  em_analise
+  contatado
+  descartado
+
+  @@map("job_application_status")
+}
+
 model User {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String   @unique
@@ -590,6 +608,8 @@ model LeadFormQuestion {
   placeholder  String?
   /// Atraso em segundos antes de abrir a URL (bloco redirect). 0 = imediato.
   redirectDelaySec Int          @default(3) @map("redirect_delay_sec")
+  /// Texto do botão de encerramento (bloco redirect). Vazio = padrão inferido pela URL.
+  redirectButtonLabel String?  @map("redirect_button_label")
   /// Próximo bloco por chave; vazio = ordem padrão; "__end__" = diagnóstico.
   nextKey      String?          @map("next_key")
   sortOrder    Int              @default(0) @map("sort_order")
@@ -652,6 +672,8 @@ model Lead {
   email         String?
   whatsapp      String?
   status        LeadStatus @default(parcial)
+  /// Origem/intenção do contato: evento (padrão comercial), parceria ou trabalhe_conosco.
+  intent        LeadIntent @default(evento)
   score         Int             @default(0)
   temperature   LeadTemperature @default(frio)
   qualified     Boolean         @default(false)
@@ -678,6 +700,7 @@ model Lead {
   @@index([temperature])
   @@index([createdAt])
   @@index([slot])
+  @@index([intent])
   @@map("leads")
 }
 
@@ -717,4 +740,30 @@ model LeadIntegrationSettings {
   form LeadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@map("lead_integration_settings")
+}
+
+/// Candidaturas recebidas pela página pública /trabalhe-conosco.
+model JobApplication {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fullName          String                @map("full_name")
+  whatsapp          String
+  email             String
+  city              String
+  birthDate         DateTime?             @map("birth_date") @db.Date
+  roleInterest      String                @map("role_interest")
+  hasExperience     Boolean               @default(false) @map("has_experience")
+  experienceDetails String?               @map("experience_details")
+  availability      String[]              @default([])
+  additionalInfo    String?               @map("additional_info")
+  consent           Boolean               @default(false)
+  status            JobApplicationStatus  @default(novo)
+  notes             String?
+  sourceUrl         String?               @map("source_url")
+  utm               Json                  @default("{}")
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("job_applications")
 }

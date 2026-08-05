@@ -22,6 +22,9 @@ export type LeadQuestionTypeValue = (typeof LEAD_QUESTION_TYPES)[number];
 /** Sentinel: encerra o quiz e vai ao diagnóstico. */
 export const FLOW_END = "__end__";
 
+/** Sentinel (placeholder de bloco redirect): encerramento sem CTA/redirecionamento, só mensagem final. */
+export const NO_REDIRECT = "__none__";
+
 export const TYPE_LABEL: Record<LeadQuestionTypeValue, string> = {
   text: "Texto",
   email: "E-mail",
@@ -138,6 +141,45 @@ export function defaultOptionsForType(type: LeadQuestionTypeValue) {
     ];
   }
   return [];
+}
+
+/**
+ * Reconstrói, a partir das respostas finais, quais blocos foram de fato
+ * percorridos nesse atendimento (o mesmo caminho que o player segue no
+ * cliente). Usado para não exigir resposta de blocos de outra ramificação
+ * (ex.: perguntas do fluxo comercial quando o lead seguiu para parceria).
+ */
+export function resolveVisitedQuestionKeys(
+  questions: Array<{
+    key: string;
+    type: string;
+    nextKey: string | null;
+    options: Array<{ label: string; nextKey: string | null }>;
+  }>,
+  answers: Record<string, unknown>,
+): Set<string> {
+  const visited = new Set<string>();
+  let idx = 0;
+  let steps = 0;
+  const guard = questions.length + 5;
+  while (idx >= 0 && idx < questions.length && steps < guard) {
+    const q = questions[idx];
+    if (visited.has(q.key)) break;
+    visited.add(q.key);
+    steps++;
+
+    let branchKey = q.nextKey;
+    const answerValue = answers[q.key];
+    if (hasChoiceOptions(q.type) && typeof answerValue === "string" && answerValue) {
+      const chosen = q.type === "multi" ? answerValue.split(" | ") : [answerValue];
+      const opt = q.options.find((o) => chosen.includes(o.label));
+      if (opt?.nextKey) branchKey = opt.nextKey;
+    }
+    const next = resolveNextStepIndex(questions, idx, branchKey);
+    if (next === "end") break;
+    idx = next;
+  }
+  return visited;
 }
 
 /** Resolve o próximo índice do fluxo (ou fim). */
