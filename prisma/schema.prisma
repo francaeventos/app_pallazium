@@ -151,6 +151,15 @@ enum JobApplicationStatus {
   @@map("job_application_status")
 }
 
+enum PartnerApplicationStatus {
+  novo
+  em_analise
+  contatado
+  descartado
+
+  @@map("partner_application_status")
+}
+
 model User {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String   @unique
@@ -766,4 +775,28 @@ model JobApplication {
   @@index([status])
   @@index([createdAt])
   @@map("job_applications")
+}
+
+/// Propostas recebidas pela página pública /seja-parceiro.
+model PartnerApplication {
+  id               String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contactName      String                    @map("contact_name")
+  whatsapp         String
+  email            String
+  companyName      String                    @map("company_name")
+  website          String?
+  instagram        String?
+  partnershipType  String                    @map("partnership_type")
+  description      String
+  consent          Boolean                   @default(false)
+  status           PartnerApplicationStatus  @default(novo)
+  notes            String?
+  sourceUrl        String?                   @map("source_url")
+  utm              Json                      @default("{}")
+  createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("partner_applications")
 }

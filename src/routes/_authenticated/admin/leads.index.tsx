@@ -45,6 +45,7 @@ import {
   Download,
   Mail,
   Phone,
+  Handshake,
   RefreshCw,
   Settings2,
   Trash2,
@@ -322,6 +323,11 @@ function Page() {
           <Button variant="outline" asChild>
             <Link to="/admin/leads/candidaturas">
               <UserSquare2 className="h-4 w-4" /> Trabalhe Conosco
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/admin/leads/parceiros">
+              <Handshake className="h-4 w-4" /> Parcerias
             </Link>
           </Button>
           <Button variant="outline" onClick={exportCsv}>
