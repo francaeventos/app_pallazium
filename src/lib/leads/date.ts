@@ -58,17 +58,6 @@ export function parseLeadDate(value: string): { iso: string; date: Date } | null
   return { iso: `${year}-${mm}-${dd}`, date };
 }
 
-/** Idade em anos completos a partir de uma data ISO (yyyy-mm-dd). */
-export function calculateAgeFromIso(iso: string): number {
-  const [y, m, d] = iso.split("-").map(Number);
-  const today = new Date();
-  let age = today.getFullYear() - y;
-  const hadBirthdayThisYear =
-    today.getMonth() + 1 > m || (today.getMonth() + 1 === m && today.getDate() >= d);
-  if (!hadBirthdayThisYear) age -= 1;
-  return age;
-}
-
 export function validateLeadDate(value: string, opts?: { futureOnly?: boolean }): string | null {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "Escolhe uma data pra continuar.";

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizePhone, validateWhatsApp } from "@/lib/leads/phone";
-import { calculateAgeFromIso, parseLeadDate } from "@/lib/leads/date";
+import { parseLeadDate } from "@/lib/leads/date";
 
 const utmSchema = z
   .object({
@@ -49,9 +49,6 @@ export const submitJobApplicationFn = createServerFn({ method: "POST" })
 
     const parsedBirthDate = parseLeadDate(data.birthDate.trim());
     if (!parsedBirthDate) throw new Error("Data de nascimento inválida. Use dd/mm/aaaa.");
-    if (calculateAgeFromIso(parsedBirthDate.iso) < 18) {
-      throw new Error("É necessário ter 18 anos ou mais para se candidatar.");
-    }
     const birthDate = parsedBirthDate.date;
 
     const application = await db.jobApplication.create({

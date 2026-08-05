@@ -4,7 +4,7 @@ import { submitJobApplicationFn } from "@/fns/careers/public";
 import { CAREERS_AVAILABILITY_OPTIONS, CAREERS_ROLE_OPTIONS, careersContactEmail } from "@/lib/careers";
 import { captureLeadUtm } from "@/lib/leads/utm";
 import { formatPhoneMask, validateWhatsApp } from "@/lib/leads/phone";
-import { calculateAgeFromIso, formatDateMaskBr, parseLeadDate, validateLeadDate } from "@/lib/leads/date";
+import { formatDateMaskBr, validateLeadDate } from "@/lib/leads/date";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -123,11 +123,6 @@ function TrabalheConoscoPage() {
       const dateError = validateLeadDate(form.birthDate, { futureOnly: false });
       if (dateError && dateError !== "Escolhe uma data pra continuar.") {
         next.birthDate = dateError;
-      } else {
-        const parsed = parseLeadDate(form.birthDate);
-        if (parsed && calculateAgeFromIso(parsed.iso) < 18) {
-          next.birthDate = "É necessário ter 18 anos ou mais para se candidatar.";
-        }
       }
     }
     if (!form.roleInterest) next.roleInterest = "Escolha a função de interesse.";
