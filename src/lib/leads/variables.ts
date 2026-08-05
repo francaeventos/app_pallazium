@@ -136,13 +136,31 @@ export function buildFlowVariableChips(questionKeys: string[]) {
   return chips;
 }
 
-/** Monta URL de redirect com variáveis ({{br}} → %0A para WhatsApp). */
+/**
+ * Monta URL de redirect com variáveis, codificando cada valor substituído
+ * (encodeURIComponent) para não quebrar a query string com espaços/acentos/
+ * caracteres reservados (&, =, ?...) — {{br}} → %0A para WhatsApp.
+ */
 export function resolveRedirectUrl(
   template: string,
   answers: Record<string, string>,
 ) {
-  const raw = interpolateLeadTemplate(template, buildLeadTemplateVars(answers));
-  return raw.replace(/\r?\n/g, "%0A");
+  const vars = buildLeadTemplateVars(answers);
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(vars)) {
+    if (value == null) continue;
+    normalized[key.toLowerCase()] = String(value);
+  }
+
+  const lookup = (rawKey: string) => {
+    const key = rawKey.trim().toLowerCase();
+    if (key === "br") return "%0A";
+    return encodeURIComponent(normalized[key] ?? "");
+  };
+
+  return template
+    .replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => lookup(key))
+    .replace(/\{\s*([a-zA-Z0-9_]+)\s*\}/g, (_, key: string) => lookup(key));
 }
 
 /** Modelo pronto de link WhatsApp (Ativa Dash). */

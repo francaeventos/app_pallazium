@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizePhone, validateWhatsApp } from "@/lib/leads/phone";
-import { parseLeadDate } from "@/lib/leads/date";
+import { calculateAgeFromIso, parseLeadDate } from "@/lib/leads/date";
 
 const utmSchema = z
   .object({
@@ -23,7 +23,7 @@ const submitSchema = z.object({
   whatsapp: z.string().trim().min(8, "Informe um WhatsApp válido."),
   email: z.string().trim().email("Informe um e-mail válido.").max(255),
   city: z.string().trim().min(2, "Informe sua cidade.").max(120),
-  birthDate: z.string().trim().optional().or(z.literal("")),
+  birthDate: z.string().trim().min(1, "Informe sua data de nascimento."),
   roleInterest: z.string().trim().min(1, "Escolha a função de interesse.").max(80),
   hasExperience: z.boolean(),
   experienceDetails: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -47,12 +47,12 @@ export const submitJobApplicationFn = createServerFn({ method: "POST" })
       throw new Error("Conte brevemente sobre sua experiência.");
     }
 
-    let birthDate: Date | null = null;
-    if (data.birthDate && data.birthDate.trim()) {
-      const parsed = parseLeadDate(data.birthDate.trim());
-      if (!parsed) throw new Error("Data de nascimento inválida. Use dd/mm/aaaa.");
-      birthDate = parsed.date;
+    const parsedBirthDate = parseLeadDate(data.birthDate.trim());
+    if (!parsedBirthDate) throw new Error("Data de nascimento inválida. Use dd/mm/aaaa.");
+    if (calculateAgeFromIso(parsedBirthDate.iso) < 18) {
+      throw new Error("É necessário ter 18 anos ou mais para se candidatar.");
     }
+    const birthDate = parsedBirthDate.date;
 
     const application = await db.jobApplication.create({
       data: {

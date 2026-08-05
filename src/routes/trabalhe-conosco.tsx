@@ -4,7 +4,7 @@ import { submitJobApplicationFn } from "@/fns/careers/public";
 import { CAREERS_AVAILABILITY_OPTIONS, CAREERS_ROLE_OPTIONS, careersContactEmail } from "@/lib/careers";
 import { captureLeadUtm } from "@/lib/leads/utm";
 import { formatPhoneMask, validateWhatsApp } from "@/lib/leads/phone";
-import { formatDateMaskBr, validateLeadDate } from "@/lib/leads/date";
+import { calculateAgeFromIso, formatDateMaskBr, parseLeadDate, validateLeadDate } from "@/lib/leads/date";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,8 +66,29 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1 text-sm text-destructive">{message}</p>;
 }
 
+/** Pré-preenche com o que já foi informado no atendimento (nome/telefone/e-mail via querystring). */
+function prefillFromSearch(): FormState {
+  if (typeof window === "undefined") return EMPTY_FORM;
+  const params = new URLSearchParams(window.location.search);
+  return {
+    ...EMPTY_FORM,
+    fullName: params.get("nome") || "",
+    whatsapp: params.get("telefone") || "",
+    email: params.get("email") || "",
+  };
+}
+
+function closeWindow() {
+  try {
+    window.open("", "_self");
+    window.close();
+  } catch {
+    // ignore
+  }
+}
+
 function TrabalheConoscoPage() {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(prefillFromSearch);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -96,9 +117,18 @@ function TrabalheConoscoPage() {
       next.email = "Informe um e-mail válido.";
     }
     if (form.city.trim().length < 2) next.city = "Informe sua cidade.";
-    if (form.birthDate.trim()) {
+    if (!form.birthDate.trim()) {
+      next.birthDate = "Informe sua data de nascimento.";
+    } else {
       const dateError = validateLeadDate(form.birthDate, { futureOnly: false });
-      if (dateError && dateError !== "Escolhe uma data pra continuar.") next.birthDate = dateError;
+      if (dateError && dateError !== "Escolhe uma data pra continuar.") {
+        next.birthDate = dateError;
+      } else {
+        const parsed = parseLeadDate(form.birthDate);
+        if (parsed && calculateAgeFromIso(parsed.iso) < 18) {
+          next.birthDate = "É necessário ter 18 anos ou mais para se candidatar.";
+        }
+      }
     }
     if (!form.roleInterest) next.roleInterest = "Escolha a função de interesse.";
     if (!form.hasExperience) next.hasExperience = "Selecione uma opção.";
@@ -166,6 +196,12 @@ function TrabalheConoscoPage() {
               faça isso via e-mail.
             </p>
             <p className="font-medium text-foreground">E-mail: {careersContactEmail()}</p>
+            <Button className="h-12 w-full text-base font-semibold" onClick={closeWindow}>
+              Fechar janela
+            </Button>
+            <p className="text-xs">
+              Se o botão não fechar sozinho, pode fechar esta aba com segurança.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -248,7 +284,7 @@ function TrabalheConoscoPage() {
                   <FieldError message={errors.city} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birthDate">Data de nascimento (opcional)</Label>
+                  <Label htmlFor="birthDate">Data de nascimento</Label>
                   <Input
                     id="birthDate"
                     className="h-12 text-base"
