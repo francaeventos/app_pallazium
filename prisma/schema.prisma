@@ -577,6 +577,8 @@ model LeadForm {
   headerSubtitle          String?  @map("header_subtitle")
   whatsappDestination     String   @map("whatsapp_destination")
   whatsappMessage         String?  @map("whatsapp_message")
+  whatsappAutoOpen        Boolean  @default(true) @map("whatsapp_auto_open")
+  whatsappAutoOpenDelaySec Int     @default(3) @map("whatsapp_auto_open_delay_sec")
   privacyUrl              String?  @map("privacy_url")
   termsUrl                String?  @map("terms_url")
   qualificationThreshold  Int      @default(50) @map("qualification_threshold")

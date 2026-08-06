@@ -89,6 +89,8 @@ export type MetaState = {
   header_subtitle: string;
   whatsapp_destination: string;
   whatsapp_message: string;
+  whatsapp_auto_open: boolean;
+  whatsapp_auto_open_delay_sec: number;
   qualification_threshold: number;
   score_cold_max: number;
   score_warm_max: number;
@@ -247,6 +249,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     header_subtitle: "",
     whatsapp_destination: "",
     whatsapp_message: "",
+    whatsapp_auto_open: true,
+    whatsapp_auto_open_delay_sec: 3,
     qualification_threshold: 50,
     score_cold_max: 24,
     score_warm_max: 49,
@@ -321,6 +325,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
         header_subtitle: data.header_subtitle || "",
         whatsapp_destination: data.whatsapp_destination,
         whatsapp_message: data.whatsapp_message || "",
+        whatsapp_auto_open: data.whatsapp_auto_open,
+        whatsapp_auto_open_delay_sec: data.whatsapp_auto_open_delay_sec,
         qualification_threshold: data.qualification_threshold,
         score_cold_max: data.score_cold_max,
         score_warm_max: data.score_warm_max,
@@ -410,6 +416,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
           header_subtitle: meta.header_subtitle || null,
           whatsapp_destination: meta.whatsapp_destination,
           whatsapp_message: meta.whatsapp_message || null,
+          whatsapp_auto_open: meta.whatsapp_auto_open,
+          whatsapp_auto_open_delay_sec: meta.whatsapp_auto_open_delay_sec,
           score_cold_max: meta.score_cold_max,
           score_warm_max: meta.score_warm_max,
           score_hot_max: meta.score_hot_max,

@@ -516,7 +516,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
       url: `https://wa.me/${form.whatsappDestination.replace(/\D/g, "")}?text=${encodeURIComponent(
         interpolate(form.whatsappMessage || "Olá!", nextAnswers),
       )}`,
-      delaySec: 3,
+      delaySec: form.whatsappAutoOpen ? form.whatsappAutoOpenDelaySec ?? 3 : -1,
       buttonLabel: "Falar no WhatsApp",
     };
     closingStartedRef.current = true;

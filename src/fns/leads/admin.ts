@@ -285,6 +285,8 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
         header_subtitle: form.headerSubtitle,
         whatsapp_destination: form.whatsappDestination,
         whatsapp_message: form.whatsappMessage,
+        whatsapp_auto_open: form.whatsappAutoOpen,
+        whatsapp_auto_open_delay_sec: form.whatsappAutoOpenDelaySec,
         privacy_url: form.privacyUrl,
         terms_url: form.termsUrl,
         qualification_threshold: form.qualificationThreshold,
@@ -380,6 +382,8 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
         header_subtitle: z.string().trim().max(160).nullable().optional(),
         whatsapp_destination: z.string().trim().min(10).max(30).optional(),
         whatsapp_message: z.string().trim().max(2000).nullable().optional(),
+        whatsapp_auto_open: z.boolean().optional(),
+        whatsapp_auto_open_delay_sec: z.number().int().min(0).max(120).optional(),
         privacy_url: z.string().trim().max(500).nullable().optional(),
         terms_url: z.string().trim().max(500).nullable().optional(),
         qualification_threshold: z.number().int().min(0).max(200).optional(),
@@ -430,6 +434,12 @@ export const updateLeadFormFn = createServerFn({ method: "POST" })
           ? { whatsappDestination: rest.whatsapp_destination }
           : {}),
         ...(rest.whatsapp_message !== undefined ? { whatsappMessage: rest.whatsapp_message } : {}),
+        ...(rest.whatsapp_auto_open !== undefined
+          ? { whatsappAutoOpen: rest.whatsapp_auto_open }
+          : {}),
+        ...(rest.whatsapp_auto_open_delay_sec !== undefined
+          ? { whatsappAutoOpenDelaySec: rest.whatsapp_auto_open_delay_sec }
+          : {}),
         ...(rest.privacy_url !== undefined ? { privacyUrl: rest.privacy_url } : {}),
         ...(rest.terms_url !== undefined ? { termsUrl: rest.terms_url } : {}),
         ...(rest.qualification_threshold !== undefined

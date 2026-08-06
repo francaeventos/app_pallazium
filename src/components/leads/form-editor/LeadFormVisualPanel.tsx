@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { LEAD_PRIMARY_PRESETS } from "@/lib/leads/theme";
 import { buildFlowVariableChips } from "@/lib/leads/variables";
@@ -249,6 +250,38 @@ export function LeadFormVisualPanel() {
               }
             />
           </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label>Abrir WhatsApp automaticamente</Label>
+              <p className="text-xs text-muted-foreground">
+                Ao terminar o quiz pelo fluxo padrão, abre o WhatsApp sozinho. Se
+                desligado, o visitante precisa clicar no botão “Falar no WhatsApp”.
+              </p>
+            </div>
+            <Switch
+              checked={meta.whatsapp_auto_open}
+              onCheckedChange={(checked) => setMeta({ ...meta, whatsapp_auto_open: checked })}
+            />
+          </div>
+          {meta.whatsapp_auto_open ? (
+            <Field
+              label="Tempo de espera antes de abrir (segundos)"
+              hint="0 = abre assim que a tela de encerramento aparece."
+            >
+              <Input
+                type="number"
+                min={0}
+                max={120}
+                value={meta.whatsapp_auto_open_delay_sec}
+                onChange={(e) =>
+                  setMeta({
+                    ...meta,
+                    whatsapp_auto_open_delay_sec: Number(e.target.value) || 0,
+                  })
+                }
+              />
+            </Field>
+          ) : null}
         </CardContent>
       </Card>
 

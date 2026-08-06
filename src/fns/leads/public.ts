@@ -51,6 +51,8 @@ function publicFormShape(form: {
   headerSubtitle: string | null;
   whatsappDestination: string;
   whatsappMessage: string | null;
+  whatsappAutoOpen: boolean;
+  whatsappAutoOpenDelaySec: number;
   privacyUrl: string | null;
   termsUrl: string | null;
   qualificationThreshold: number;
@@ -107,6 +109,8 @@ function publicFormShape(form: {
     headerSubtitle: form.headerSubtitle,
     whatsappDestination: form.whatsappDestination,
     whatsappMessage: form.whatsappMessage,
+    whatsappAutoOpen: form.whatsappAutoOpen,
+    whatsappAutoOpenDelaySec: form.whatsappAutoOpenDelaySec,
     privacyUrl: form.privacyUrl,
     termsUrl: form.termsUrl,
     qualificationThreshold: form.qualificationThreshold,
