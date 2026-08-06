@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
 import { ChevronRight, MessageCircle, Users } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/app/parceiros")({ component: Page });
+export const Route = createFileRoute("/_authenticated/app/parceiros/")({ component: Page });
 
 function Page() {
   const [items, setItems] = useState<PartnerRow[]>([]);

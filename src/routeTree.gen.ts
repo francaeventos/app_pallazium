@@ -28,7 +28,6 @@ import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
 import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
 import { Route as AuthenticatedAppPendenciasRouteImport } from './routes/_authenticated/app/pendencias'
-import { Route as AuthenticatedAppParceirosRouteImport } from './routes/_authenticated/app/parceiros'
 import { Route as AuthenticatedAppEbookRouteImport } from './routes/_authenticated/app/ebook'
 import { Route as AuthenticatedAppDicasRouteImport } from './routes/_authenticated/app/dicas'
 import { Route as AuthenticatedAppConvitesRouteImport } from './routes/_authenticated/app/convites'
@@ -48,6 +47,7 @@ import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
+import { Route as AuthenticatedAppParceirosIndexRouteImport } from './routes/_authenticated/app/parceiros.index'
 import { Route as AuthenticatedAdminLeadsIndexRouteImport } from './routes/_authenticated/admin/leads.index'
 import { Route as AuthenticatedAdminConvitesIndexRouteImport } from './routes/_authenticated/admin/convites.index'
 import { Route as AuthenticatedAdminChecklistIndexRouteImport } from './routes/_authenticated/admin/checklist.index'
@@ -165,12 +165,6 @@ const AuthenticatedAppPendenciasRoute =
     path: '/pendencias',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
-const AuthenticatedAppParceirosRoute =
-  AuthenticatedAppParceirosRouteImport.update({
-    id: '/parceiros',
-    path: '/parceiros',
-    getParentRoute: () => AuthenticatedAppRoute,
-  } as any)
 const AuthenticatedAppEbookRoute = AuthenticatedAppEbookRouteImport.update({
   id: '/ebook',
   path: '/ebook',
@@ -281,6 +275,12 @@ const AuthenticatedAdminAcessosRoute =
     path: '/acessos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAppParceirosIndexRoute =
+  AuthenticatedAppParceirosIndexRouteImport.update({
+    id: '/parceiros/',
+    path: '/parceiros/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAdminLeadsIndexRoute =
   AuthenticatedAdminLeadsIndexRouteImport.update({
     id: '/',
@@ -301,9 +301,9 @@ const AuthenticatedAdminChecklistIndexRoute =
   } as any)
 const AuthenticatedAppParceirosPartnerIdRoute =
   AuthenticatedAppParceirosPartnerIdRouteImport.update({
-    id: '/$partnerId',
-    path: '/$partnerId',
-    getParentRoute: () => AuthenticatedAppParceirosRoute,
+    id: '/parceiros/$partnerId',
+    path: '/parceiros/$partnerId',
+    getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 const AuthenticatedAdminLeadsParceirosRoute =
   AuthenticatedAdminLeadsParceirosRouteImport.update({
@@ -407,7 +407,6 @@ export interface FileRoutesByFullPath {
   '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/ebook': typeof AuthenticatedAppEbookRoute
-  '/app/parceiros': typeof AuthenticatedAppParceirosRouteWithChildren
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
@@ -427,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
   '/admin/convites/': typeof AuthenticatedAdminConvitesIndexRoute
   '/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
+  '/app/parceiros/': typeof AuthenticatedAppParceirosIndexRoute
   '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
   '/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
@@ -459,7 +459,6 @@ export interface FileRoutesByTo {
   '/app/convites': typeof AuthenticatedAppConvitesRoute
   '/app/dicas': typeof AuthenticatedAppDicasRoute
   '/app/ebook': typeof AuthenticatedAppEbookRoute
-  '/app/parceiros': typeof AuthenticatedAppParceirosRouteWithChildren
   '/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
@@ -478,6 +477,7 @@ export interface FileRoutesByTo {
   '/admin/checklist': typeof AuthenticatedAdminChecklistIndexRoute
   '/admin/convites': typeof AuthenticatedAdminConvitesIndexRoute
   '/admin/leads': typeof AuthenticatedAdminLeadsIndexRoute
+  '/app/parceiros': typeof AuthenticatedAppParceirosIndexRoute
   '/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
   '/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
@@ -516,7 +516,6 @@ export interface FileRoutesById {
   '/_authenticated/app/convites': typeof AuthenticatedAppConvitesRoute
   '/_authenticated/app/dicas': typeof AuthenticatedAppDicasRoute
   '/_authenticated/app/ebook': typeof AuthenticatedAppEbookRoute
-  '/_authenticated/app/parceiros': typeof AuthenticatedAppParceirosRouteWithChildren
   '/_authenticated/app/pendencias': typeof AuthenticatedAppPendenciasRoute
   '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
@@ -536,6 +535,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/checklist/': typeof AuthenticatedAdminChecklistIndexRoute
   '/_authenticated/admin/convites/': typeof AuthenticatedAdminConvitesIndexRoute
   '/_authenticated/admin/leads/': typeof AuthenticatedAdminLeadsIndexRoute
+  '/_authenticated/app/parceiros/': typeof AuthenticatedAppParceirosIndexRoute
   '/_authenticated/admin/leads/formulario/diagnostico': typeof AuthenticatedAdminLeadsFormularioDiagnosticoRoute
   '/_authenticated/admin/leads/formulario/pixels': typeof AuthenticatedAdminLeadsFormularioPixelsRoute
   '/_authenticated/admin/leads/formulario/score': typeof AuthenticatedAdminLeadsFormularioScoreRoute
@@ -574,7 +574,6 @@ export interface FileRouteTypes {
     | '/app/convites'
     | '/app/dicas'
     | '/app/ebook'
-    | '/app/parceiros'
     | '/app/pendencias'
     | '/app/portfolio'
     | '/app/referencias'
@@ -594,6 +593,7 @@ export interface FileRouteTypes {
     | '/admin/checklist/'
     | '/admin/convites/'
     | '/admin/leads/'
+    | '/app/parceiros/'
     | '/admin/leads/formulario/diagnostico'
     | '/admin/leads/formulario/pixels'
     | '/admin/leads/formulario/score'
@@ -626,7 +626,6 @@ export interface FileRouteTypes {
     | '/app/convites'
     | '/app/dicas'
     | '/app/ebook'
-    | '/app/parceiros'
     | '/app/pendencias'
     | '/app/portfolio'
     | '/app/referencias'
@@ -645,6 +644,7 @@ export interface FileRouteTypes {
     | '/admin/checklist'
     | '/admin/convites'
     | '/admin/leads'
+    | '/app/parceiros'
     | '/admin/leads/formulario/diagnostico'
     | '/admin/leads/formulario/pixels'
     | '/admin/leads/formulario/score'
@@ -682,7 +682,6 @@ export interface FileRouteTypes {
     | '/_authenticated/app/convites'
     | '/_authenticated/app/dicas'
     | '/_authenticated/app/ebook'
-    | '/_authenticated/app/parceiros'
     | '/_authenticated/app/pendencias'
     | '/_authenticated/app/portfolio'
     | '/_authenticated/app/referencias'
@@ -702,6 +701,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/checklist/'
     | '/_authenticated/admin/convites/'
     | '/_authenticated/admin/leads/'
+    | '/_authenticated/app/parceiros/'
     | '/_authenticated/admin/leads/formulario/diagnostico'
     | '/_authenticated/admin/leads/formulario/pixels'
     | '/_authenticated/admin/leads/formulario/score'
@@ -857,13 +857,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppPendenciasRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
-    '/_authenticated/app/parceiros': {
-      id: '/_authenticated/app/parceiros'
-      path: '/parceiros'
-      fullPath: '/app/parceiros'
-      preLoaderRoute: typeof AuthenticatedAppParceirosRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
     '/_authenticated/app/ebook': {
       id: '/_authenticated/app/ebook'
       path: '/ebook'
@@ -997,6 +990,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAcessosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/app/parceiros/': {
+      id: '/_authenticated/app/parceiros/'
+      path: '/parceiros'
+      fullPath: '/app/parceiros/'
+      preLoaderRoute: typeof AuthenticatedAppParceirosIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/admin/leads/': {
       id: '/_authenticated/admin/leads/'
       path: '/'
@@ -1020,10 +1020,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/app/parceiros/$partnerId': {
       id: '/_authenticated/app/parceiros/$partnerId'
-      path: '/$partnerId'
+      path: '/parceiros/$partnerId'
       fullPath: '/app/parceiros/$partnerId'
       preLoaderRoute: typeof AuthenticatedAppParceirosPartnerIdRouteImport
-      parentRoute: typeof AuthenticatedAppParceirosRoute
+      parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/admin/leads/parceiros': {
       id: '/_authenticated/admin/leads/parceiros'
@@ -1217,33 +1217,19 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedAppParceirosRouteChildren {
-  AuthenticatedAppParceirosPartnerIdRoute: typeof AuthenticatedAppParceirosPartnerIdRoute
-}
-
-const AuthenticatedAppParceirosRouteChildren: AuthenticatedAppParceirosRouteChildren =
-  {
-    AuthenticatedAppParceirosPartnerIdRoute:
-      AuthenticatedAppParceirosPartnerIdRoute,
-  }
-
-const AuthenticatedAppParceirosRouteWithChildren =
-  AuthenticatedAppParceirosRoute._addFileChildren(
-    AuthenticatedAppParceirosRouteChildren,
-  )
-
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppCardapiosRoute: typeof AuthenticatedAppCardapiosRoute
   AuthenticatedAppChecklistRoute: typeof AuthenticatedAppChecklistRoute
   AuthenticatedAppConvitesRoute: typeof AuthenticatedAppConvitesRoute
   AuthenticatedAppDicasRoute: typeof AuthenticatedAppDicasRoute
   AuthenticatedAppEbookRoute: typeof AuthenticatedAppEbookRoute
-  AuthenticatedAppParceirosRoute: typeof AuthenticatedAppParceirosRouteWithChildren
   AuthenticatedAppPendenciasRoute: typeof AuthenticatedAppPendenciasRoute
   AuthenticatedAppPortfolioRoute: typeof AuthenticatedAppPortfolioRoute
   AuthenticatedAppReferenciasRoute: typeof AuthenticatedAppReferenciasRoute
   AuthenticatedAppUpgradesRoute: typeof AuthenticatedAppUpgradesRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppParceirosPartnerIdRoute: typeof AuthenticatedAppParceirosPartnerIdRoute
+  AuthenticatedAppParceirosIndexRoute: typeof AuthenticatedAppParceirosIndexRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
@@ -1252,12 +1238,14 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppConvitesRoute: AuthenticatedAppConvitesRoute,
   AuthenticatedAppDicasRoute: AuthenticatedAppDicasRoute,
   AuthenticatedAppEbookRoute: AuthenticatedAppEbookRoute,
-  AuthenticatedAppParceirosRoute: AuthenticatedAppParceirosRouteWithChildren,
   AuthenticatedAppPendenciasRoute: AuthenticatedAppPendenciasRoute,
   AuthenticatedAppPortfolioRoute: AuthenticatedAppPortfolioRoute,
   AuthenticatedAppReferenciasRoute: AuthenticatedAppReferenciasRoute,
   AuthenticatedAppUpgradesRoute: AuthenticatedAppUpgradesRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppParceirosPartnerIdRoute:
+    AuthenticatedAppParceirosPartnerIdRoute,
+  AuthenticatedAppParceirosIndexRoute: AuthenticatedAppParceirosIndexRoute,
 }
 
 const AuthenticatedAppRouteWithChildren =
