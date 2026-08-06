@@ -22,6 +22,7 @@ function Layout() {
 
   if (loading) return null;
   if (role === "admin") return <Navigate to="/admin" />;
+  if (role === "parceiro") return <Navigate to="/parceiro" />;
 
   const nav: NavItem[] = [
     painelItem,

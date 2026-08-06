@@ -16,8 +16,10 @@ import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
+import { Route as AuthenticatedParceiroRouteImport } from './routes/_authenticated/parceiro'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedParceiroIndexRouteImport } from './routes/_authenticated/parceiro/index'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as ConvitePreviewInvitationIdRouteImport } from './routes/convite.preview.$invitationId'
@@ -96,6 +98,11 @@ const ConviteTokenRoute = ConviteTokenRouteImport.update({
   path: '/convite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedParceiroRoute = AuthenticatedParceiroRouteImport.update({
+  id: '/parceiro',
+  path: '/parceiro',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -106,6 +113,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedParceiroIndexRoute =
+  AuthenticatedParceiroIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedParceiroRoute,
+  } as any)
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -366,6 +379,7 @@ export interface FileRoutesByFullPath {
   '/trabalhe-conosco': typeof TrabalheConoscoRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/app': typeof AuthenticatedAppRouteWithChildren
+  '/parceiro': typeof AuthenticatedParceiroRouteWithChildren
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
@@ -395,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/parceiro/': typeof AuthenticatedParceiroIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
@@ -445,6 +460,7 @@ export interface FileRoutesByTo {
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/parceiro': typeof AuthenticatedParceiroIndexRoute
   '/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
@@ -470,6 +486,7 @@ export interface FileRoutesById {
   '/trabalhe-conosco': typeof TrabalheConoscoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/parceiro': typeof AuthenticatedParceiroRouteWithChildren
   '/convite/$token': typeof ConviteTokenRoute
   '/_authenticated/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
@@ -499,6 +516,7 @@ export interface FileRoutesById {
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/parceiro/': typeof AuthenticatedParceiroIndexRoute
   '/_authenticated/admin/checklist/$eventId': typeof AuthenticatedAdminChecklistEventIdRoute
   '/_authenticated/admin/convites/$eventId': typeof AuthenticatedAdminConvitesEventIdRoute
   '/_authenticated/admin/leads/candidaturas': typeof AuthenticatedAdminLeadsCandidaturasRoute
@@ -525,6 +543,7 @@ export interface FileRouteTypes {
     | '/trabalhe-conosco'
     | '/admin'
     | '/app'
+    | '/parceiro'
     | '/convite/$token'
     | '/admin/acessos'
     | '/admin/cardapios'
@@ -554,6 +573,7 @@ export interface FileRouteTypes {
     | '/convite/preview/$invitationId'
     | '/admin/'
     | '/app/'
+    | '/parceiro/'
     | '/admin/checklist/$eventId'
     | '/admin/convites/$eventId'
     | '/admin/leads/candidaturas'
@@ -604,6 +624,7 @@ export interface FileRouteTypes {
     | '/convite/preview/$invitationId'
     | '/admin'
     | '/app'
+    | '/parceiro'
     | '/admin/checklist/$eventId'
     | '/admin/convites/$eventId'
     | '/admin/leads/candidaturas'
@@ -628,6 +649,7 @@ export interface FileRouteTypes {
     | '/trabalhe-conosco'
     | '/_authenticated/admin'
     | '/_authenticated/app'
+    | '/_authenticated/parceiro'
     | '/convite/$token'
     | '/_authenticated/admin/acessos'
     | '/_authenticated/admin/cardapios'
@@ -657,6 +679,7 @@ export interface FileRouteTypes {
     | '/convite/preview/$invitationId'
     | '/_authenticated/admin/'
     | '/_authenticated/app/'
+    | '/_authenticated/parceiro/'
     | '/_authenticated/admin/checklist/$eventId'
     | '/_authenticated/admin/convites/$eventId'
     | '/_authenticated/admin/leads/candidaturas'
@@ -737,6 +760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/parceiro': {
+      id: '/_authenticated/parceiro'
+      path: '/parceiro'
+      fullPath: '/parceiro'
+      preLoaderRoute: typeof AuthenticatedParceiroRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/app': {
       id: '/_authenticated/app'
       path: '/app'
@@ -750,6 +780,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/parceiro/': {
+      id: '/_authenticated/parceiro/'
+      path: '/'
+      fullPath: '/parceiro/'
+      preLoaderRoute: typeof AuthenticatedParceiroIndexRouteImport
+      parentRoute: typeof AuthenticatedParceiroRoute
     }
     '/_authenticated/app/': {
       id: '/_authenticated/app/'
@@ -1191,14 +1228,29 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
 const AuthenticatedAppRouteWithChildren =
   AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
 
+interface AuthenticatedParceiroRouteChildren {
+  AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
+}
+
+const AuthenticatedParceiroRouteChildren: AuthenticatedParceiroRouteChildren = {
+  AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
+}
+
+const AuthenticatedParceiroRouteWithChildren =
+  AuthenticatedParceiroRoute._addFileChildren(
+    AuthenticatedParceiroRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+  AuthenticatedParceiroRoute: typeof AuthenticatedParceiroRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+  AuthenticatedParceiroRoute: AuthenticatedParceiroRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

@@ -48,10 +48,14 @@ const partnerSaveSchema = z.object({
   name: z.string().trim().min(1),
   category: z.string().trim().min(1),
   description: z.string().trim().nullable().optional(),
+  email: z.string().trim().email().nullable().optional().or(z.literal("")),
   phone: z.string().trim().nullable().optional(),
   whatsapp: z.string().trim().nullable().optional(),
   instagram: z.string().trim().nullable().optional(),
+  website_url: z.string().trim().nullable().optional(),
   image_url: z.string().trim().nullable().optional(),
+  logo_url: z.string().trim().nullable().optional(),
+  gallery_urls: z.array(z.string().trim()).max(4).optional(),
   active: z.boolean().default(true),
 });
 
@@ -195,10 +199,14 @@ export const savePartnerFn = createServerFn({ method: "POST" })
       name: data.name,
       category: data.category,
       description: data.description || null,
+      email: data.email || null,
       phone: data.phone || null,
       whatsapp: data.whatsapp || null,
       instagram: data.instagram || null,
+      websiteUrl: data.website_url || null,
       imageUrl: data.image_url || null,
+      logoUrl: data.logo_url || null,
+      galleryUrls: (data.gallery_urls ?? []).slice(0, 4),
       active: data.active,
     };
 

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminEmptyState } from "@/components/AdminEmptyState";
-import { StorageImageInput } from "@/components/StorageImageInput";
+import { StorageImageInput, StorageImagesTextarea } from "@/components/StorageImageInput";
 import { Eye, EyeOff, Handshake, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/admin/parceiros")({ component: Page });
@@ -51,10 +51,18 @@ function Page() {
       name: String(fd.get("name")),
       category: String(fd.get("category")),
       description: String(fd.get("description") || "") || null,
+      email: String(fd.get("email") || "") || null,
       phone: String(fd.get("phone") || "") || null,
       whatsapp: String(fd.get("whatsapp") || "") || null,
       instagram: String(fd.get("instagram") || "") || null,
+      website_url: String(fd.get("website_url") || "") || null,
       image_url: String(fd.get("image_url") || "") || null,
+      logo_url: String(fd.get("logo_url") || "") || null,
+      gallery_urls: String(fd.get("gallery_urls") || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 4),
       active: fd.get("active") === "on",
     };
     try {
@@ -147,13 +155,50 @@ function Page() {
                 <Input name="instagram" defaultValue={editing?.instagram ?? ""} />
               </div>
               <div>
+                <Label>Site</Label>
+                <Input
+                  name="website_url"
+                  type="url"
+                  placeholder="https://..."
+                  defaultValue={editing?.website_url ?? ""}
+                />
+              </div>
+              <div>
+                <Label>E-mail de acesso do parceiro</Label>
+                <Input name="email" type="email" defaultValue={editing?.email ?? ""} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  O parceiro cria a conta com este e-mail em /login para editar o próprio perfil,
+                  ou pode ser vinculado depois em Acessos.
+                </p>
+              </div>
+              <div>
                 <StorageImageInput
                   bucket="catalogos"
                   name="image_url"
-                  label="Imagem"
+                  label="Imagem principal"
                   defaultValue={editing?.image_url ?? ""}
                   folder="parceiros"
                   recommendedSize="600 x 600 pixels"
+                />
+              </div>
+              <div>
+                <StorageImageInput
+                  bucket="catalogos"
+                  name="logo_url"
+                  label="Logo"
+                  defaultValue={editing?.logo_url ?? ""}
+                  folder="parceiros/logos"
+                  recommendedSize="400 x 400 pixels"
+                />
+              </div>
+              <div>
+                <StorageImagesTextarea
+                  bucket="catalogos"
+                  name="gallery_urls"
+                  label="Galeria de fotos"
+                  defaultValue={(editing?.gallery_urls ?? []).join("\n")}
+                  folder="parceiros/galeria"
+                  maxImages={4}
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">

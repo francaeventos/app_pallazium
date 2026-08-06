@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
-import { Instagram, MessageCircle, Phone, Users } from "lucide-react";
+import { Globe, Instagram, MessageCircle, Phone, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/parceiros")({ component: Page });
 
@@ -57,13 +57,33 @@ function Page() {
             )}
             <CardContent className="p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-serif text-xl">{partner.name}</h3>
-                <Badge variant="outline" className="text-xs capitalize">
+                <div className="flex items-center gap-2 min-w-0">
+                  {partner.logo_url && (
+                    <img
+                      src={partner.logo_url}
+                      alt=""
+                      className="h-8 w-8 shrink-0 rounded-full border object-cover"
+                    />
+                  )}
+                  <h3 className="font-serif text-xl truncate">{partner.name}</h3>
+                </div>
+                <Badge variant="outline" className="text-xs capitalize shrink-0">
                   {partner.category}
                 </Badge>
               </div>
               {partner.description && (
                 <p className="text-sm text-muted-foreground">{partner.description}</p>
+              )}
+              {partner.gallery_urls.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {partner.gallery_urls.slice(0, 4).map((image, index) => (
+                    <div
+                      key={`${image}-${index}`}
+                      className="h-14 rounded-lg bg-muted bg-cover bg-center"
+                      style={{ backgroundImage: `url(${image})` }}
+                    />
+                  ))}
+                </div>
               )}
               <div className="flex flex-wrap gap-2">
                 {partner.whatsapp && (
@@ -91,6 +111,14 @@ function Page() {
                     <a href={instagramUrl(partner.instagram)} target="_blank" rel="noreferrer">
                       <Instagram className="h-3 w-3 mr-1" />
                       Instagram
+                    </a>
+                  </Button>
+                )}
+                {partner.website_url && (
+                  <Button asChild size="sm" variant="ghost">
+                    <a href={partner.website_url} target="_blank" rel="noreferrer">
+                      <Globe className="h-3 w-3 mr-1" />
+                      Site
                     </a>
                   </Button>
                 )}

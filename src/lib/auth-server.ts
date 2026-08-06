@@ -43,6 +43,19 @@ export async function registerUser(input: {
       data: { userId: created.id },
     });
 
+    const linkedPartner = await tx.partner.updateMany({
+      where: {
+        userId: null,
+        email: { equals: email, mode: "insensitive" },
+      },
+      data: { userId: created.id },
+    });
+    if (linkedPartner.count > 0) {
+      await tx.userRole.create({
+        data: { userId: created.id, role: "parceiro" },
+      });
+    }
+
     return created;
   });
 

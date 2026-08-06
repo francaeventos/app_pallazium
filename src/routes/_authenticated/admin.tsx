@@ -44,6 +44,7 @@ const nav: NavItem[] = [
 function Layout() {
   const { role, loading } = useAuth();
   if (loading) return null;
+  if (role === "parceiro") return <Navigate to="/parceiro" />;
   if (role !== "admin") return <Navigate to="/app" />;
   return (
     <AppShell title="Painel Pallazium" nav={nav}>

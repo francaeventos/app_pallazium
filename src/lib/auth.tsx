@@ -7,7 +7,7 @@ import {
   type AuthSessionResponse,
 } from "@/fns/auth";
 
-type Role = "admin" | "client";
+type Role = "admin" | "client" | "parceiro";
 
 export interface AuthUser {
   id: string;

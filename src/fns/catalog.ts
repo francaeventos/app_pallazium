@@ -33,7 +33,10 @@ export type PartnerRow = {
   phone: string | null;
   whatsapp: string | null;
   instagram: string | null;
+  website_url: string | null;
   image_url: string | null;
+  logo_url: string | null;
+  gallery_urls: string[];
   active: boolean;
   created_at: string;
 };
@@ -118,7 +121,10 @@ export const listActivePartnersFn = createServerFn({ method: "GET" })
       phone: partner.phone,
       whatsapp: partner.whatsapp,
       instagram: partner.instagram,
+      website_url: partner.websiteUrl,
       image_url: partner.imageUrl,
+      logo_url: partner.logoUrl,
+      gallery_urls: partner.galleryUrls,
       active: partner.active,
       created_at: toIsoString(partner.createdAt)!,
     }));

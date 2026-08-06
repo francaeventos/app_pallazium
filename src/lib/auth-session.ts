@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
-export type AppRole = "admin" | "client";
+export type AppRole = "admin" | "client" | "parceiro";
 
 export interface SessionUser {
   id: string;
@@ -51,7 +51,11 @@ export async function resolveSession(token: string): Promise<SessionUser | null>
   }
 
   const roles = session.user.roles.map((item) => item.role);
-  const role: AppRole = roles.includes("admin") ? "admin" : "client";
+  const role: AppRole = roles.includes("admin")
+    ? "admin"
+    : roles.includes("parceiro")
+      ? "parceiro"
+      : "client";
 
   return {
     id: session.user.id,
@@ -65,7 +69,9 @@ export async function resolveSession(token: string): Promise<SessionUser | null>
 export async function getUserRole(userId: string): Promise<AppRole> {
   const roles = await db.userRole.findMany({ where: { userId } });
   const values = roles.map((item) => item.role);
-  return values.includes("admin") ? "admin" : "client";
+  if (values.includes("admin")) return "admin";
+  if (values.includes("parceiro")) return "parceiro";
+  return "client";
 }
 
 export async function assertAdmin(userId: string) {
@@ -88,4 +94,8 @@ export async function clientOwnsEvent(userId: string, eventId: string) {
 
 export async function getClientForUser(userId: string) {
   return db.client.findFirst({ where: { userId } });
+}
+
+export async function getPartnerForUser(userId: string) {
+  return db.partner.findFirst({ where: { userId } });
 }

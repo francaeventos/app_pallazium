@@ -18,6 +18,8 @@ type StorageImageInputProps = {
   previewClassName?: string;
   /** Dimensão ideal sugerida para a imagem, ex.: "1600 x 900 pixels". */
   recommendedSize?: string;
+  /** Limite de fotos (apenas StorageImagesTextarea). Sem limite se omitido. */
+  maxImages?: number;
 };
 
 export function StorageImageInput({
@@ -134,17 +136,22 @@ export function StorageImagesTextarea({
   label,
   defaultValue,
   folder = "uploads",
+  maxImages,
 }: StorageImageInputProps) {
   const [images, setImages] = useState(() => splitImageLines(defaultValue ?? ""));
   const [manualUrl, setManualUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const atLimit = maxImages != null && images.length >= maxImages;
 
   useEffect(() => {
     setImages(splitImageLines(defaultValue ?? ""));
   }, [defaultValue]);
 
   const addImages = (urls: string[]) => {
-    setImages((current) => [...current, ...urls.filter(Boolean)]);
+    setImages((current) => {
+      const next = [...current, ...urls.filter(Boolean)];
+      return maxImages != null ? next.slice(0, maxImages) : next;
+    });
   };
 
   const removeImage = (index: number) => {
@@ -152,6 +159,9 @@ export function StorageImagesTextarea({
   };
 
   const addManualUrl = () => {
+    if (maxImages != null && images.length >= maxImages) {
+      return toast.error(`Limite de ${maxImages} fotos atingido.`);
+    }
     const cleanUrl = manualUrl.trim();
     if (!cleanUrl) return;
     addImages([cleanUrl]);
@@ -161,6 +171,10 @@ export function StorageImagesTextarea({
   const upload = async (files?: FileList | null) => {
     const fileItems = Array.from(files ?? []);
     if (fileItems.length === 0) return;
+
+    if (maxImages != null && images.length >= maxImages) {
+      return toast.error(`Limite de ${maxImages} fotos atingido.`);
+    }
 
     for (const file of fileItems) {
       const validationError = validateImageFile(file);
@@ -201,7 +215,10 @@ export function StorageImagesTextarea({
 
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        {maxImages != null ? ` (${images.length}/${maxImages})` : ""}
+      </Label>
       <textarea name={name} value={images.join("\n")} readOnly className="hidden" />
       {images.length > 0 ? (
         <div className="grid grid-cols-3 gap-2">
@@ -238,13 +255,13 @@ export function StorageImagesTextarea({
           onChange={(event) => setManualUrl(event.target.value)}
           placeholder="Colar URL de imagem"
         />
-        <Button type="button" variant="outline" onClick={addManualUrl}>
+        <Button type="button" variant="outline" onClick={addManualUrl} disabled={atLimit}>
           <Upload className="mr-1 h-4 w-4" />
           Adicionar URL
         </Button>
       </div>
-      <Button type="button" variant="outline" disabled={uploading} asChild>
-        <label className="cursor-pointer">
+      <Button type="button" variant="outline" disabled={uploading || atLimit} asChild>
+        <label className={atLimit ? undefined : "cursor-pointer"}>
           <Upload className="mr-1 h-4 w-4" />
           {uploading ? "Enviando..." : "Adicionar fotos"}
           <input
@@ -252,6 +269,7 @@ export function StorageImagesTextarea({
             accept="image/png,image/jpeg,image/webp,image/gif"
             multiple
             className="sr-only"
+            disabled={atLimit}
             onChange={(event) => upload(event.target.files)}
           />
         </label>

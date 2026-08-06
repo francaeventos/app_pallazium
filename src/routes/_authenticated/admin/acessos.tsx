@@ -3,10 +3,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   addUserRoleFn,
   linkClientToProfileFn,
+  linkPartnerToProfileFn,
   listAccessRowsFn,
   promoteAdminByEmailFn,
   removeUserRoleFn,
   unlinkClientFromUserFn,
+  unlinkPartnerFromUserFn,
   updateAccessProfileFn,
 } from "@/fns/access";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +17,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
+import { Handshake, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/acessos")({ component: Page });
 
-type AppRole = "admin" | "client";
+type AppRole = "admin" | "client" | "parceiro";
 
 type UserRole = {
   id: string;
@@ -36,6 +38,13 @@ type Client = {
   status: string;
 };
 
+type Partner = {
+  user_id: string | null;
+  name: string;
+  email: string | null;
+  active: boolean;
+};
+
 type AccessRow = {
   id: string;
   full_name: string | null;
@@ -47,6 +56,7 @@ type AccessRow = {
   updated_at: string;
   roles: UserRole[];
   client: Client | null;
+  partner: Partner | null;
 };
 
 function Page() {
@@ -67,10 +77,13 @@ function Page() {
     load();
   }, []);
 
+  const roleLabel = (role: AppRole) =>
+    role === "admin" ? "Admin" : role === "parceiro" ? "Parceiro" : "Cliente";
+
   const addRole = async (userId: string, role: AppRole) => {
     try {
       await addUserRoleFn({ data: { user_id: userId, role } });
-      toast.success(role === "admin" ? "Admin liberado" : "Cliente liberado");
+      toast.success(`${roleLabel(role)} liberado`);
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao adicionar papel.");
@@ -80,7 +93,7 @@ function Page() {
   const removeRole = async (roleId: string, role: AppRole) => {
     try {
       await removeUserRoleFn({ data: { role_id: roleId } });
-      toast.success(role === "admin" ? "Admin removido" : "Perfil cliente removido");
+      toast.success(`Perfil ${roleLabel(role).toLowerCase()} removido`);
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao remover papel.");
@@ -108,6 +121,27 @@ function Page() {
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao vincular cliente.");
+    }
+  };
+
+  const linkPartnerByEmail = async (row: AccessRow) => {
+    if (!row.email) return toast.error("Este perfil não tem e-mail salvo.");
+    try {
+      await linkPartnerToProfileFn({ data: { user_id: row.id, email: row.email } });
+      toast.success("Parceiro vinculado pelo e-mail");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao vincular parceiro.");
+    }
+  };
+
+  const unlinkPartner = async (row: AccessRow) => {
+    try {
+      await unlinkPartnerFromUserFn({ data: { user_id: row.id } });
+      toast.success("Parceiro desvinculado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao desvincular parceiro.");
     }
   };
 
@@ -186,6 +220,7 @@ function Page() {
           const isAdmin = row.roles.some((role) => role.role === "admin");
           const clientRole = row.roles.find((role) => role.role === "client");
           const adminRole = row.roles.find((role) => role.role === "admin");
+          const partnerRole = row.roles.find((role) => role.role === "parceiro");
 
           return (
             <Card key={row.id}>
@@ -195,7 +230,7 @@ function Page() {
                     <p className="font-serif text-xl">{row.full_name || "Usuário sem nome"}</p>
                     {row.roles.map((role) => (
                       <Badge key={role.id} variant={role.role === "admin" ? "default" : "outline"}>
-                        {role.role === "admin" ? "Admin" : "Cliente"}
+                        {roleLabel(role.role)}
                       </Badge>
                     ))}
                   </div>
@@ -206,6 +241,13 @@ function Page() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Cliente: {row.client.full_name} • {row.client.email} •{" "}
                       {row.client.status.replace("_", " ")}
+                    </p>
+                  )}
+                  {row.partner && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Parceiro: {row.partner.name}
+                      {row.partner.email ? ` • ${row.partner.email}` : ""} •{" "}
+                      {row.partner.active ? "ativo" : "oculto"}
                     </p>
                   )}
                 </div>
@@ -249,6 +291,28 @@ function Page() {
                     <Button variant="ghost" size="sm" onClick={() => linkClientByEmail(row)}>
                       <Link2 className="mr-1 h-3 w-3" />
                       Vincular cliente
+                    </Button>
+                  )}
+                  {!partnerRole && (
+                    <Button variant="ghost" size="sm" onClick={() => addRole(row.id, "parceiro")}>
+                      <Handshake className="mr-1 h-3 w-3" />
+                      Liberar parceiro
+                    </Button>
+                  )}
+                  {row.partner ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose"
+                      onClick={() => unlinkPartner(row)}
+                    >
+                      <Unlink className="mr-1 h-3 w-3" />
+                      Desvincular parceiro
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => linkPartnerByEmail(row)}>
+                      <Link2 className="mr-1 h-3 w-3" />
+                      Vincular parceiro
                     </Button>
                   )}
                 </div>

@@ -37,5 +37,6 @@ function Index() {
   if (!user) return <Navigate to="/login" />;
   if (isRecoveryUrl()) return <Navigate to="/login" />;
   if (role === "admin") return <Navigate to="/admin" />;
+  if (role === "parceiro") return <Navigate to="/parceiro" />;
   return <Navigate to="/app" />;
 }
