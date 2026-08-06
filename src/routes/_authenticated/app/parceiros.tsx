@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { listActivePartnersFn, type PartnerRow } from "@/fns/catalog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientEmptyState } from "@/components/ClientEmptyState";
-import { Globe, Instagram, MessageCircle, Phone, Users } from "lucide-react";
+import { ChevronRight, MessageCircle, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/parceiros")({ component: Page });
 
@@ -44,17 +44,19 @@ function Page() {
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((partner) => (
-          <Card key={partner.id} className="overflow-hidden">
-            {partner.image_url ? (
-              <div
-                className="aspect-square w-full bg-muted bg-cover bg-center"
-                style={{ backgroundImage: `url(${partner.image_url})` }}
-              />
-            ) : (
-              <div className="aspect-square w-full bg-muted flex items-center justify-center">
-                <Users className="h-8 w-8 text-gold" />
-              </div>
-            )}
+          <Card key={partner.id} className="overflow-hidden transition hover:shadow-soft">
+            <Link to="/app/parceiros/$partnerId" params={{ partnerId: partner.id }}>
+              {partner.image_url ? (
+                <div
+                  className="aspect-square w-full bg-muted bg-cover bg-center"
+                  style={{ backgroundImage: `url(${partner.image_url})` }}
+                />
+              ) : (
+                <div className="aspect-square w-full bg-muted flex items-center justify-center">
+                  <Users className="h-8 w-8 text-gold" />
+                </div>
+              )}
+            </Link>
             <CardContent className="p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -65,14 +67,22 @@ function Page() {
                       className="h-8 w-8 shrink-0 rounded-full border object-cover"
                     />
                   )}
-                  <h3 className="font-serif text-xl truncate">{partner.name}</h3>
+                  <Link
+                    to="/app/parceiros/$partnerId"
+                    params={{ partnerId: partner.id }}
+                    className="min-w-0"
+                  >
+                    <h3 className="font-serif text-xl truncate hover:underline">{partner.name}</h3>
+                  </Link>
                 </div>
                 <Badge variant="outline" className="text-xs capitalize shrink-0">
                   {partner.category}
                 </Badge>
               </div>
               {partner.description && (
-                <p className="text-sm text-muted-foreground">{partner.description}</p>
+                <p className="line-clamp-2 text-sm text-muted-foreground">
+                  {partner.description}
+                </p>
               )}
               {partner.gallery_urls.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
@@ -85,7 +95,7 @@ function Page() {
                   ))}
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 {partner.whatsapp && (
                   <Button asChild size="sm" variant="outline">
                     <a
@@ -98,30 +108,12 @@ function Page() {
                     </a>
                   </Button>
                 )}
-                {partner.phone && (
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={`tel:${partner.phone}`}>
-                      <Phone className="h-3 w-3 mr-1" />
-                      Ligar
-                    </a>
-                  </Button>
-                )}
-                {partner.instagram && (
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={instagramUrl(partner.instagram)} target="_blank" rel="noreferrer">
-                      <Instagram className="h-3 w-3 mr-1" />
-                      Instagram
-                    </a>
-                  </Button>
-                )}
-                {partner.website_url && (
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={partner.website_url} target="_blank" rel="noreferrer">
-                      <Globe className="h-3 w-3 mr-1" />
-                      Site
-                    </a>
-                  </Button>
-                )}
+                <Button asChild size="sm">
+                  <Link to="/app/parceiros/$partnerId" params={{ partnerId: partner.id }}>
+                    Ver perfil
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -133,9 +125,4 @@ function Page() {
 
 function onlyNumbers(value: string) {
   return value.replace(/\D/g, "");
-}
-
-function instagramUrl(value: string) {
-  if (value.startsWith("http")) return value;
-  return `https://instagram.com/${value.replace("@", "")}`;
 }

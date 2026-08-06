@@ -3,7 +3,11 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { assertAdmin } from "@/lib/auth-session";
-import { menuInterestRecord, upgradeInterestRecord } from "@/lib/admin-records";
+import {
+  menuInterestRecord,
+  partnerInterestRecord,
+  upgradeInterestRecord,
+} from "@/lib/admin-records";
 import type { Prisma } from "@/generated/prisma/client";
 
 async function guardAdmin(context: { userId?: string }) {
@@ -26,7 +30,7 @@ export const listInterestsFn = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await guardAdmin(context);
 
-    const [upgrades, menus] = await Promise.all([
+    const [upgrades, menus, partners] = await Promise.all([
       db.upgradeInterest.findMany({
         orderBy: { createdAt: "desc" },
         include: {
@@ -43,11 +47,20 @@ export const listInterestsFn = createServerFn({ method: "GET" })
           event: { select: { eventType: true, eventDate: true } },
         },
       }),
+      db.partnerInterest.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+          partner: { select: { name: true, category: true } },
+          client: { select: { fullName: true, email: true, whatsapp: true } },
+          event: { select: { eventType: true, eventDate: true } },
+        },
+      }),
     ]);
 
     return {
       upgradeInterests: upgrades.map(upgradeInterestRecord),
       menuInterests: menus.map(menuInterestRecord),
+      partnerInterests: partners.map(partnerInterestRecord),
     };
   });
 
@@ -131,6 +144,46 @@ export const saveMenuInterestFn = createServerFn({ method: "POST" })
       },
     });
     return menuInterestRecord(row);
+  });
+
+export const updatePartnerInterestStatusFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), status: interestStatusSchema }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.partnerInterest.update({
+      where: { id: data.id },
+      data: { status: data.status },
+    });
+    return { ok: true as const };
+  });
+
+export const savePartnerInterestFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => updateInterestSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const row = await db.partnerInterest.update({
+      where: { id: data.id },
+      data: { status: data.status, notes: data.notes || null },
+      include: {
+        partner: { select: { name: true, category: true } },
+        client: { select: { fullName: true, email: true, whatsapp: true } },
+        event: { select: { eventType: true, eventDate: true } },
+      },
+    });
+    return partnerInterestRecord(row);
+  });
+
+export const deletePartnerInterestFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => idSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    await db.partnerInterest.delete({ where: { id: data.id } });
+    return { ok: true as const };
   });
 
 export const deleteUpgradeInterestFn = createServerFn({ method: "POST" })

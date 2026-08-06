@@ -237,6 +237,7 @@ model Client {
   events           Event[]
   upgradeInterests UpgradeInterest[]
   menuInterests    MenuInterest[]
+  partnerInterests PartnerInterest[]
 
   @@map("clients")
 }
@@ -264,6 +265,7 @@ model Event {
   checklistItems   ChecklistItem[]
   upgradeInterests UpgradeInterest[]
   menuInterests    MenuInterest[]
+  partnerInterests PartnerInterest[]
   eventUpgrades    EventUpgrade[]
   eventReferences  EventReference[]
   invitation       EventInvitation?
@@ -391,9 +393,27 @@ model Partner {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  interests PartnerInterest[]
 
   @@map("partners")
+}
+
+model PartnerInterest {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partnerId String         @map("partner_id") @db.Uuid
+  eventId   String         @map("event_id") @db.Uuid
+  clientId  String         @map("client_id") @db.Uuid
+  status    InterestStatus @default(novo)
+  notes     String?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, eventId, partnerId], map: "partner_interests_unique_event_partner")
+  @@map("partner_interests")
 }
 
 model Tip {

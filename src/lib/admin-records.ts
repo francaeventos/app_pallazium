@@ -10,6 +10,7 @@ import type {
   MenuInterest,
   Notification,
   Partner,
+  PartnerInterest,
   PortfolioItem,
   Tip,
   Upgrade,
@@ -201,6 +202,40 @@ export function upgradeInterestRecord(
     created_at: isoDateTime(row.createdAt),
     upgrades: row.upgrade
       ? { name: row.upgrade.name, category: row.upgrade.category }
+      : null,
+    clients: row.client
+      ? {
+          full_name: row.client.fullName,
+          email: row.client.email,
+          whatsapp: row.client.whatsapp,
+        }
+      : null,
+    events: row.event
+      ? {
+          event_type: row.event.eventType,
+          event_date: isoDate(row.event.eventDate),
+        }
+      : null,
+  };
+}
+
+export function partnerInterestRecord(
+  row: PartnerInterest & {
+    partner?: Pick<Partner, "name" | "category"> | null;
+    client?: Pick<Client, "fullName" | "email" | "whatsapp"> | null;
+    event?: Pick<Event, "eventType" | "eventDate"> | null;
+  },
+) {
+  return {
+    id: row.id,
+    partner_id: row.partnerId,
+    event_id: row.eventId,
+    client_id: row.clientId,
+    status: row.status,
+    notes: row.notes,
+    created_at: isoDateTime(row.createdAt),
+    partners: row.partner
+      ? { name: row.partner.name, category: row.partner.category }
       : null,
     clients: row.client
       ? {
