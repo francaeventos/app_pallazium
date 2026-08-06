@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   addUserRoleFn,
+  adminResetPasswordFn,
   linkClientToProfileFn,
   linkPartnerToProfileFn,
   listAccessRowsFn,
@@ -11,13 +12,14 @@ import {
   unlinkPartnerFromUserFn,
   updateAccessProfileFn,
 } from "@/fns/access";
+import { AppConfirmDialog } from "@/components/AppConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Handshake, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
+import { Copy, Handshake, KeyRound, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/acessos")({ component: Page });
@@ -63,6 +65,10 @@ function Page() {
   const [rows, setRows] = useState<AccessRow[]>([]);
   const [adminEmail, setAdminEmail] = useState("");
   const [editingProfile, setEditingProfile] = useState<AccessRow | null>(null);
+  const [resetTarget, setResetTarget] = useState<AccessRow | null>(null);
+  const [resetResult, setResetResult] = useState<{ row: AccessRow; password: string } | null>(
+    null,
+  );
 
   const load = async () => {
     try {
@@ -152,6 +158,28 @@ function Page() {
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao desvincular cliente.");
+    }
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetTarget) return;
+    try {
+      const { password } = await adminResetPasswordFn({ data: { user_id: resetTarget.id } });
+      setResetResult({ row: resetTarget, password });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível gerar a nova senha.");
+    } finally {
+      setResetTarget(null);
+    }
+  };
+
+  const copyPassword = async () => {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(resetResult.password);
+      toast.success("Senha copiada.");
+    } catch {
+      toast.error("Não foi possível copiar. Selecione e copie manualmente.");
     }
   };
 
@@ -260,6 +288,10 @@ function Page() {
                   <Button variant="outline" size="sm" onClick={() => setEditingProfile(row)}>
                     <Pencil className="mr-1 h-3 w-3" />
                     Editar perfil
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setResetTarget(row)}>
+                    <KeyRound className="mr-1 h-3 w-3" />
+                    Gerar nova senha
                   </Button>
                   {isAdmin ? (
                     <Button
@@ -373,6 +405,45 @@ function Page() {
                 Salvar alterações
               </Button>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AppConfirmDialog
+        open={!!resetTarget}
+        title="Gerar nova senha?"
+        description={`Isso substitui a senha atual de ${
+          resetTarget?.full_name || resetTarget?.email || "este usuário"
+        } imediatamente. A senha antiga deixa de funcionar. Você vai precisar repassar a nova senha para a pessoa.`}
+        confirmLabel="Gerar nova senha"
+        destructive
+        onConfirm={confirmResetPassword}
+        onCancel={() => setResetTarget(null)}
+      />
+
+      <Dialog open={!!resetResult} onOpenChange={(value) => !value && setResetResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Nova senha gerada</DialogTitle>
+          </DialogHeader>
+          {resetResult && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Copie e envie com segurança para{" "}
+                <strong>{resetResult.row.full_name || resetResult.row.email}</strong>. Essa senha
+                não fica salva em nenhum lugar — se você fechar sem copiar, vai precisar gerar
+                outra.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={resetResult.password} className="font-mono text-lg" />
+                <Button type="button" variant="outline" size="icon" onClick={copyPassword}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button type="button" className="w-full" onClick={() => setResetResult(null)}>
+                Concluído
+              </Button>
+            </div>
           )}
         </DialogContent>
       </Dialog>

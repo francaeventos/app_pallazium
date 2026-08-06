@@ -1,8 +1,20 @@
+import { randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth-session";
 
 const SALT_ROUNDS = 12;
+
+/** Sem caracteres ambíguos (0/O, 1/l/I) para facilitar leitura e digitação. */
+const TEMP_PASSWORD_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+export function generateTempPassword(length = 10) {
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += TEMP_PASSWORD_CHARS[randomInt(TEMP_PASSWORD_CHARS.length)];
+  }
+  return password;
+}
 
 export async function registerUser(input: {
   email: string;
