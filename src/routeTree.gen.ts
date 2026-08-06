@@ -24,6 +24,7 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as ConvitePreviewInvitationIdRouteImport } from './routes/convite.preview.$invitationId'
 import { Route as ConvitePadrinhoTokenRouteImport } from './routes/convite.padrinho.$token'
+import { Route as AuthenticatedParceiroPreviewRouteImport } from './routes/_authenticated/parceiro.preview'
 import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenticated/app/upgrades'
 import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
 import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
@@ -141,6 +142,12 @@ const ConvitePadrinhoTokenRoute = ConvitePadrinhoTokenRouteImport.update({
   path: '/convite/padrinho/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedParceiroPreviewRoute =
+  AuthenticatedParceiroPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => AuthenticatedParceiroRoute,
+  } as any)
 const AuthenticatedAppUpgradesRoute =
   AuthenticatedAppUpgradesRouteImport.update({
     id: '/upgrades',
@@ -411,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -463,6 +471,7 @@ export interface FileRoutesByTo {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -520,6 +529,7 @@ export interface FileRoutesById {
   '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/_authenticated/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/_authenticated/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
     | '/admin/'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
     | '/admin'
@@ -686,6 +698,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/portfolio'
     | '/_authenticated/app/referencias'
     | '/_authenticated/app/upgrades'
+    | '/_authenticated/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
     | '/_authenticated/admin/'
@@ -828,6 +841,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/convite/padrinho/$token'
       preLoaderRoute: typeof ConvitePadrinhoTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/parceiro/preview': {
+      id: '/_authenticated/parceiro/preview'
+      path: '/preview'
+      fullPath: '/parceiro/preview'
+      preLoaderRoute: typeof AuthenticatedParceiroPreviewRouteImport
+      parentRoute: typeof AuthenticatedParceiroRoute
     }
     '/_authenticated/app/upgrades': {
       id: '/_authenticated/app/upgrades'
@@ -1252,10 +1272,12 @@ const AuthenticatedAppRouteWithChildren =
   AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
 
 interface AuthenticatedParceiroRouteChildren {
+  AuthenticatedParceiroPreviewRoute: typeof AuthenticatedParceiroPreviewRoute
   AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
 }
 
 const AuthenticatedParceiroRouteChildren: AuthenticatedParceiroRouteChildren = {
+  AuthenticatedParceiroPreviewRoute: AuthenticatedParceiroPreviewRoute,
   AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
 }
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { getOwnPartnerFn, updateOwnPartnerFn } from "@/fns/partner-profile";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StorageImageInput, StorageImagesTextarea } from "@/components/StorageImageInput";
-import { Handshake, Save } from "lucide-react";
+import { Eye, Handshake, Save } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/parceiro/")({ component: Page });
@@ -93,9 +93,17 @@ function Page() {
           </p>
           <h1 className="mt-2 font-serif text-4xl">{partner.name}</h1>
         </div>
-        <Badge variant={partner.active ? "default" : "outline"}>
-          {partner.active ? "Visível para clientes" : "Oculto"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={partner.active ? "default" : "outline"}>
+            {partner.active ? "Visível para clientes" : "Oculto"}
+          </Badge>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/parceiro/preview">
+              <Eye className="h-4 w-4" />
+              Ver como o cliente vê
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="border-gold/15 shadow-soft">
