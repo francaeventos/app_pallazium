@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/integrations/auth/auth-middleware";
 import { assertAdmin } from "@/lib/auth-session";
-import { CLIENT_MENU_ITEMS } from "@/lib/client-menu";
+import { CLIENT_MENU_ITEMS, DASHBOARD_SECTIONS } from "@/lib/client-menu";
 
 async function getOrCreateSettings() {
   const existing = await db.appSettings.findUnique({ where: { id: "default" } });
@@ -30,10 +30,13 @@ export const updateClientMenuVisibilityFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
 
-    const allowedKeys = new Set(CLIENT_MENU_ITEMS.map((item) => item.key));
+    const allowedKeys = new Set<string>([
+      ...CLIENT_MENU_ITEMS.map((item) => item.key),
+      ...DASHBOARD_SECTIONS.map((item) => item.key),
+    ]);
     const visibility: Record<string, boolean> = {};
     for (const [key, value] of Object.entries(data.visibility)) {
-      if (allowedKeys.has(key as (typeof CLIENT_MENU_ITEMS)[number]["key"])) {
+      if (allowedKeys.has(key)) {
         visibility[key] = value;
       }
     }

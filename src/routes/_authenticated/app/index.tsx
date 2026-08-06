@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMyEvent } from "@/hooks/use-my-event";
+import { getClientMenuVisibilityFn } from "@/fns/app-settings";
+import { CLIENT_MENU_ITEMS, isClientMenuItemVisible } from "@/lib/client-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -29,16 +31,23 @@ import { GUEST_LIMIT_ERROR_MESSAGE } from "@/lib/guest-limit";
 export const Route = createFileRoute("/_authenticated/app/")({ component: Dashboard });
 
 const quickLinks = [
-  { to: "/app/checklist", label: "Checklist", icon: ListChecks },
-  { to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
-  { to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-  { to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
-  { to: "/app/referencias", label: "Referências", icon: Images },
-];
+  { key: "checklist", to: "/app/checklist", label: "Checklist", icon: ListChecks },
+  { key: "pendencias", to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
+  { key: "cardapios", to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
+  { key: "upgrades", to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
+  { key: "referencias", to: "/app/referencias", label: "Referências", icon: Images },
+] satisfies Array<{ key: (typeof CLIENT_MENU_ITEMS)[number]["key"]; to: string; label: string; icon: typeof ListChecks }>;
 
 function Dashboard() {
   const { data, loading } = useMyEvent();
   const [menuDialogOpen, setMenuDialogOpen] = useState(false);
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    getClientMenuVisibilityFn()
+      .then(({ visibility }) => setVisibility(visibility))
+      .catch(() => {});
+  }, []);
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando seu evento…</div>;
 
@@ -66,6 +75,9 @@ function Dashboard() {
       return p[a.priority] - p[b.priority];
     })
     .slice(0, 4);
+  const visibleQuickLinks = quickLinks.filter((q) => isClientMenuItemVisible(visibility, q.key));
+  const showProgress = isClientMenuItemVisible(visibility, "dashboardProgress");
+  const showPendingPreview = isClientMenuItemVisible(visibility, "dashboardPendingPreview");
 
   return (
     <div className="w-full space-y-6 p-4 sm:p-6 lg:p-7">
@@ -125,20 +137,22 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="font-serif text-2xl">Progresso da organização</CardTitle>
-            <span className="text-2xl font-serif text-gold">{pct}%</span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Progress value={pct} className="h-2" />
-          <p className="text-sm text-muted-foreground mt-3">
-            {done} de {checklist.length} itens concluídos
-          </p>
-        </CardContent>
-      </Card>
+      {showProgress && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="font-serif text-2xl">Progresso da organização</CardTitle>
+              <span className="text-2xl font-serif text-gold">{pct}%</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Progress value={pct} className="h-2" />
+            <p className="text-sm text-muted-foreground mt-3">
+              {done} de {checklist.length} itens concluídos
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
@@ -190,54 +204,60 @@ function Dashboard() {
         onClose={() => setMenuDialogOpen(false)}
       />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-2xl">Próximas pendências</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {upcoming.length === 0 && (
-              <p className="text-sm text-muted-foreground">Tudo em ordem! 🥂</p>
-            )}
-            {upcoming.map((item) => (
-              <Link
-                key={item.id}
-                to="/app/checklist"
-                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{item.title}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    Prioridade {item.priority}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+      {(showPendingPreview || visibleQuickLinks.length > 0) && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {showPendingPreview && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-serif text-2xl">Próximas pendências</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {upcoming.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Tudo em ordem! 🥂</p>
+                )}
+                {upcoming.map((item) => (
+                  <Link
+                    key={item.id}
+                    to="/app/checklist"
+                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        Prioridade {item.priority}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-2xl">Acessos rápidos</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            {quickLinks.map((q) => {
-              const Icon = q.icon;
-              return (
-                <Link
-                  key={q.to}
-                  to={q.to}
-                  className="group rounded-xl border p-4 hover:border-gold hover:shadow-soft transition-all"
-                >
-                  <Icon className="h-5 w-5 text-gold mb-2" />
-                  <p className="text-sm font-medium">{q.label}</p>
-                </Link>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
+          {visibleQuickLinks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-serif text-2xl">Acessos rápidos</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                {visibleQuickLinks.map((q) => {
+                  const Icon = q.icon;
+                  return (
+                    <Link
+                      key={q.to}
+                      to={q.to}
+                      className="group rounded-xl border p-4 hover:border-gold hover:shadow-soft transition-all"
+                    >
+                      <Icon className="h-5 w-5 text-gold mb-2" />
+                      <p className="text-sm font-medium">{q.label}</p>
+                    </Link>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
