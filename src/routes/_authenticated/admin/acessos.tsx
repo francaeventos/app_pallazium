@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   addUserRoleFn,
-  adminResetPasswordFn,
+  adminSetPasswordFn,
   linkClientToProfileFn,
   linkPartnerToProfileFn,
   listAccessRowsFn,
@@ -12,14 +12,13 @@ import {
   unlinkPartnerFromUserFn,
   updateAccessProfileFn,
 } from "@/fns/access";
-import { AppConfirmDialog } from "@/components/AppConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Handshake, KeyRound, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
+import { Handshake, KeyRound, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/acessos")({ component: Page });
@@ -65,10 +64,8 @@ function Page() {
   const [rows, setRows] = useState<AccessRow[]>([]);
   const [adminEmail, setAdminEmail] = useState("");
   const [editingProfile, setEditingProfile] = useState<AccessRow | null>(null);
-  const [resetTarget, setResetTarget] = useState<AccessRow | null>(null);
-  const [resetResult, setResetResult] = useState<{ row: AccessRow; password: string } | null>(
-    null,
-  );
+  const [passwordTarget, setPasswordTarget] = useState<AccessRow | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const load = async () => {
     try {
@@ -161,25 +158,24 @@ function Page() {
     }
   };
 
-  const confirmResetPassword = async () => {
-    if (!resetTarget) return;
-    try {
-      const { password } = await adminResetPasswordFn({ data: { user_id: resetTarget.id } });
-      setResetResult({ row: resetTarget, password });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível gerar a nova senha.");
-    } finally {
-      setResetTarget(null);
-    }
-  };
+  const savePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!passwordTarget) return;
+    const fd = new FormData(event.currentTarget);
+    const password = String(fd.get("password") || "");
+    const confirmPassword = String(fd.get("confirm_password") || "");
+    if (password.length < 6) return toast.error("A senha precisa ter pelo menos 6 caracteres.");
+    if (password !== confirmPassword) return toast.error("As senhas não coincidem.");
 
-  const copyPassword = async () => {
-    if (!resetResult) return;
+    setSavingPassword(true);
     try {
-      await navigator.clipboard.writeText(resetResult.password);
-      toast.success("Senha copiada.");
-    } catch {
-      toast.error("Não foi possível copiar. Selecione e copie manualmente.");
+      await adminSetPasswordFn({ data: { user_id: passwordTarget.id, password } });
+      toast.success("Senha atualizada.");
+      setPasswordTarget(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar a senha.");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -289,9 +285,9 @@ function Page() {
                     <Pencil className="mr-1 h-3 w-3" />
                     Editar perfil
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setResetTarget(row)}>
+                  <Button variant="outline" size="sm" onClick={() => setPasswordTarget(row)}>
                     <KeyRound className="mr-1 h-3 w-3" />
-                    Gerar nova senha
+                    Alterar senha
                   </Button>
                   {isAdmin ? (
                     <Button
@@ -409,41 +405,45 @@ function Page() {
         </DialogContent>
       </Dialog>
 
-      <AppConfirmDialog
-        open={!!resetTarget}
-        title="Gerar nova senha?"
-        description={`Isso substitui a senha atual de ${
-          resetTarget?.full_name || resetTarget?.email || "este usuário"
-        } imediatamente. A senha antiga deixa de funcionar. Você vai precisar repassar a nova senha para a pessoa.`}
-        confirmLabel="Gerar nova senha"
-        destructive
-        onConfirm={confirmResetPassword}
-        onCancel={() => setResetTarget(null)}
-      />
-
-      <Dialog open={!!resetResult} onOpenChange={(value) => !value && setResetResult(null)}>
+      <Dialog
+        open={!!passwordTarget}
+        onOpenChange={(value) => !value && setPasswordTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-serif text-2xl">Nova senha gerada</DialogTitle>
+            <DialogTitle className="font-serif text-2xl">Alterar senha</DialogTitle>
           </DialogHeader>
-          {resetResult && (
-            <div className="space-y-4">
+          {passwordTarget && (
+            <form onSubmit={savePassword} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Copie e envie com segurança para{" "}
-                <strong>{resetResult.row.full_name || resetResult.row.email}</strong>. Essa senha
-                não fica salva em nenhum lugar — se você fechar sem copiar, vai precisar gerar
-                outra.
+                Defina uma nova senha para{" "}
+                <strong>{passwordTarget.full_name || passwordTarget.email}</strong>. A senha
+                atual deixa de funcionar imediatamente.
               </p>
-              <div className="flex items-center gap-2">
-                <Input readOnly value={resetResult.password} className="font-mono text-lg" />
-                <Button type="button" variant="outline" size="icon" onClick={copyPassword}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div>
+                <Label>Nova senha</Label>
+                <Input
+                  name="password"
+                  type="password"
+                  minLength={6}
+                  required
+                  autoComplete="new-password"
+                />
               </div>
-              <Button type="button" className="w-full" onClick={() => setResetResult(null)}>
-                Concluído
+              <div>
+                <Label>Confirmar nova senha</Label>
+                <Input
+                  name="confirm_password"
+                  type="password"
+                  minLength={6}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={savingPassword}>
+                {savingPassword ? "Salvando…" : "Salvar nova senha"}
               </Button>
-            </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>

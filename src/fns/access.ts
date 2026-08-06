@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "@/integrations/auth/auth-middleware";
-import { generateTempPassword, promoteUserToAdminByEmail, updateUserPassword } from "@/lib/auth-server";
+import { promoteUserToAdminByEmail, updateUserPassword } from "@/lib/auth-server";
 import { assertAdmin } from "@/lib/auth-session";
 import { mapProfileRow, mapUserRoleRow } from "@/lib/admin-mappers";
 import { db } from "@/lib/db";
@@ -165,14 +165,17 @@ export const unlinkPartnerFromUserFn = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-export const adminResetPasswordFn = createServerFn({ method: "POST" })
+export const adminSetPasswordFn = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data) => z.object({ user_id: z.string().uuid() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({ user_id: z.string().uuid(), password: z.string().min(6).max(72) })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const password = generateTempPassword();
-    await updateUserPassword(data.user_id, password);
-    return { password };
+    await updateUserPassword(data.user_id, data.password);
+    return { ok: true as const };
   });
 
 export const updateAccessProfileFn = createServerFn({ method: "POST" })
