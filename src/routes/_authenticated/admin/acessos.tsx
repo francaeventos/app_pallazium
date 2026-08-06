@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   addUserRoleFn,
+  adminSetLoginEmailFn,
   adminSetPasswordFn,
   linkClientToProfileFn,
   linkPartnerToProfileFn,
@@ -18,7 +19,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Handshake, KeyRound, Link2, Pencil, Shield, Unlink, UserCog } from "lucide-react";
+import {
+  Handshake,
+  KeyRound,
+  Link2,
+  Mail,
+  Pencil,
+  Shield,
+  Unlink,
+  UserCog,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/acessos")({ component: Page });
@@ -50,6 +60,7 @@ type AccessRow = {
   id: string;
   full_name: string | null;
   email: string | null;
+  login_email: string | null;
   phone: string | null;
   whatsapp: string | null;
   document: string | null;
@@ -66,6 +77,8 @@ function Page() {
   const [editingProfile, setEditingProfile] = useState<AccessRow | null>(null);
   const [passwordTarget, setPasswordTarget] = useState<AccessRow | null>(null);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [emailTarget, setEmailTarget] = useState<AccessRow | null>(null);
+  const [savingEmail, setSavingEmail] = useState(false);
 
   const load = async () => {
     try {
@@ -179,6 +192,26 @@ function Page() {
     }
   };
 
+  const saveLoginEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!emailTarget) return;
+    const fd = new FormData(event.currentTarget);
+    const email = String(fd.get("login_email") || "").trim();
+    if (!email) return toast.error("Informe o e-mail.");
+
+    setSavingEmail(true);
+    try {
+      await adminSetLoginEmailFn({ data: { user_id: emailTarget.id, email } });
+      toast.success("E-mail de login atualizado.");
+      setEmailTarget(null);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o e-mail.");
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   const updateProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingProfile) return;
@@ -264,7 +297,11 @@ function Page() {
                       ))}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {row.email ?? "E-mail não salvo"} • ID: {row.id}
+                    Login: <strong>{row.login_email ?? "—"}</strong>
+                    {row.email && row.email !== row.login_email
+                      ? ` • Vínculo: ${row.email}`
+                      : ""}{" "}
+                    • ID: {row.id}
                   </p>
                   {row.client && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -288,6 +325,10 @@ function Page() {
                   <Button variant="outline" size="sm" onClick={() => setPasswordTarget(row)}>
                     <KeyRound className="mr-1 h-3 w-3" />
                     Alterar senha
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEmailTarget(row)}>
+                    <Mail className="mr-1 h-3 w-3" />
+                    Alterar e-mail de login
                   </Button>
                   {isAdmin ? (
                     <Button
@@ -379,8 +420,9 @@ function Page() {
                 <Label>E-mail de exibição/vínculo</Label>
                 <Input name="email" type="email" defaultValue={editingProfile.email ?? ""} />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Este campo ajuda no vínculo com clientes. O login continua sendo o e-mail da
-                  conta do usuário.
+                  Isto NÃO é o e-mail de login. Serve só para casar com o cadastro de
+                  Cliente/Parceiro. Para mudar o e-mail que a pessoa usa em /login, use o botão
+                  "Alterar e-mail de login".
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -442,6 +484,35 @@ function Page() {
               </div>
               <Button type="submit" className="w-full" disabled={savingPassword}>
                 {savingPassword ? "Salvando…" : "Salvar nova senha"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!emailTarget} onOpenChange={(value) => !value && setEmailTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Alterar e-mail de login</DialogTitle>
+          </DialogHeader>
+          {emailTarget && (
+            <form onSubmit={saveLoginEmail} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Este é o e-mail que <strong>{emailTarget.full_name || "o usuário"}</strong> usa
+                para entrar em /login — diferente do e-mail de exibição/vínculo. A pessoa passa a
+                usar o e-mail novo no próximo acesso.
+              </p>
+              <div>
+                <Label>E-mail de login</Label>
+                <Input
+                  name="login_email"
+                  type="email"
+                  required
+                  defaultValue={emailTarget.login_email ?? ""}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={savingEmail}>
+                {savingEmail ? "Salvando…" : "Salvar e-mail de login"}
               </Button>
             </form>
           )}

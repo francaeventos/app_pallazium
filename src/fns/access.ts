@@ -15,7 +15,10 @@ export const listAccessRowsFn = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
 
     const [profiles, roles, clients, partners] = await Promise.all([
-      db.profile.findMany({ orderBy: { createdAt: "desc" } }),
+      db.profile.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { email: true } } },
+      }),
       db.userRole.findMany(),
       db.client.findMany({
         where: { userId: { not: null } },
@@ -63,6 +66,7 @@ export const listAccessRowsFn = createServerFn({ method: "GET" })
 
     return profiles.map((profile) => ({
       ...mapProfileRow(profile),
+      login_email: profile.user.email,
       roles: rolesByUser.get(profile.id) ?? [],
       client: clientByUser.get(profile.id) ?? null,
       partner: partnerByUser.get(profile.id) ?? null,
@@ -175,6 +179,24 @@ export const adminSetPasswordFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     await updateUserPassword(data.user_id, data.password);
+    return { ok: true as const };
+  });
+
+export const adminSetLoginEmailFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ user_id: z.string().uuid(), email: z.string().trim().email() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const email = data.email.toLowerCase();
+
+    const existing = await db.user.findUnique({ where: { email } });
+    if (existing && existing.id !== data.user_id) {
+      throw new Error("Já existe uma conta com este e-mail.");
+    }
+
+    await db.user.update({ where: { id: data.user_id }, data: { email } });
     return { ok: true as const };
   });
 
