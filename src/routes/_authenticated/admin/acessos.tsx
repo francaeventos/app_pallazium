@@ -228,11 +228,16 @@ function Page() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-serif text-xl">{row.full_name || "Usuário sem nome"}</p>
-                    {row.roles.map((role) => (
-                      <Badge key={role.id} variant={role.role === "admin" ? "default" : "outline"}>
-                        {roleLabel(role.role)}
-                      </Badge>
-                    ))}
+                    {row.roles
+                      .filter((role) => !(role.role === "client" && partnerRole))
+                      .map((role) => (
+                        <Badge
+                          key={role.id}
+                          variant={role.role === "admin" ? "default" : "outline"}
+                        >
+                          {roleLabel(role.role)}
+                        </Badge>
+                      ))}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {row.email ?? "E-mail não salvo"} • ID: {row.id}
@@ -293,7 +298,16 @@ function Page() {
                       Vincular cliente
                     </Button>
                   )}
-                  {!partnerRole && (
+                  {partnerRole ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeRole(partnerRole.id, "parceiro")}
+                    >
+                      <Handshake className="mr-1 h-3 w-3" />
+                      Remover parceiro
+                    </Button>
+                  ) : (
                     <Button variant="ghost" size="sm" onClick={() => addRole(row.id, "parceiro")}>
                       <Handshake className="mr-1 h-3 w-3" />
                       Liberar parceiro
