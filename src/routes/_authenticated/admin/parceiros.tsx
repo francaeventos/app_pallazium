@@ -121,7 +121,7 @@ function Page() {
               Novo
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
                 {editing ? "Editar parceiro" : "Novo parceiro"}
