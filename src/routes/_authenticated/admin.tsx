@@ -14,6 +14,7 @@ import {
   MessageSquareHeart,
   Sparkles,
   UtensilsCrossed,
+  Settings,
   Shield,
   Users,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const nav: NavItem[] = [
   { to: "/admin/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
   { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
   { to: "/admin/acessos", label: "Acessos", icon: Shield },
+  { to: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 function Layout() {

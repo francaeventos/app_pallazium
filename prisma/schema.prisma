@@ -802,3 +802,12 @@ model PartnerApplication {
   @@index([createdAt])
   @@map("partner_applications")
 }
+
+/// Linha única com preferências globais do sistema (ex.: menus visíveis na Área VIP).
+model AppSettings {
+  id                   String   @id @default("default")
+  clientMenuVisibility Json     @default("{}") @map("client_menu_visibility")
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("app_settings")
+}

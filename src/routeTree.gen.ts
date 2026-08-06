@@ -42,6 +42,7 @@ import { Route as AuthenticatedAdminInteressesRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminEventosRouteImport } from './routes/_authenticated/admin/eventos'
 import { Route as AuthenticatedAdminEbooksRouteImport } from './routes/_authenticated/admin/ebooks'
 import { Route as AuthenticatedAdminDicasRouteImport } from './routes/_authenticated/admin/dicas'
+import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin/configuracoes'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin/clientes'
 import { Route as AuthenticatedAdminCardapiosRouteImport } from './routes/_authenticated/admin/cardapios'
 import { Route as AuthenticatedAdminAcessosRouteImport } from './routes/_authenticated/admin/acessos'
@@ -242,6 +243,12 @@ const AuthenticatedAdminDicasRoute = AuthenticatedAdminDicasRouteImport.update({
   path: '/dicas',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminConfiguracoesRoute =
+  AuthenticatedAdminConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/clientes',
@@ -363,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -413,6 +421,7 @@ export interface FileRoutesByTo {
   '/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -465,6 +474,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/acessos': typeof AuthenticatedAdminAcessosRoute
   '/_authenticated/admin/cardapios': typeof AuthenticatedAdminCardapiosRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/dicas': typeof AuthenticatedAdminDicasRoute
   '/_authenticated/admin/ebooks': typeof AuthenticatedAdminEbooksRoute
   '/_authenticated/admin/eventos': typeof AuthenticatedAdminEventosRoute
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/configuracoes'
     | '/admin/dicas'
     | '/admin/ebooks'
     | '/admin/eventos'
@@ -569,6 +580,7 @@ export interface FileRouteTypes {
     | '/admin/acessos'
     | '/admin/cardapios'
     | '/admin/clientes'
+    | '/admin/configuracoes'
     | '/admin/dicas'
     | '/admin/ebooks'
     | '/admin/eventos'
@@ -620,6 +632,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/acessos'
     | '/_authenticated/admin/cardapios'
     | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/dicas'
     | '/_authenticated/admin/ebooks'
     | '/_authenticated/admin/eventos'
@@ -906,6 +919,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDicasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/configuracoes': {
+      id: '/_authenticated/admin/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAdminConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/clientes': {
       id: '/_authenticated/admin/clientes'
       path: '/clientes'
@@ -1095,6 +1115,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAcessosRoute: typeof AuthenticatedAdminAcessosRoute
   AuthenticatedAdminCardapiosRoute: typeof AuthenticatedAdminCardapiosRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminDicasRoute: typeof AuthenticatedAdminDicasRoute
   AuthenticatedAdminEbooksRoute: typeof AuthenticatedAdminEbooksRoute
   AuthenticatedAdminEventosRoute: typeof AuthenticatedAdminEventosRoute
@@ -1116,6 +1137,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAcessosRoute: AuthenticatedAdminAcessosRoute,
   AuthenticatedAdminCardapiosRoute: AuthenticatedAdminCardapiosRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminDicasRoute: AuthenticatedAdminDicasRoute,
   AuthenticatedAdminEbooksRoute: AuthenticatedAdminEbooksRoute,
   AuthenticatedAdminEventosRoute: AuthenticatedAdminEventosRoute,

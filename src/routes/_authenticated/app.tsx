@@ -1,40 +1,33 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppShell, type NavItem } from "@/components/AppShell";
-import {
-  BookOpen,
-  LayoutDashboard,
-  ListChecks,
-  AlertCircle,
-  UtensilsCrossed,
-  Sparkles,
-  Images,
-  Users,
-  Lightbulb,
-  GalleryHorizontalEnd,
-  MailCheck,
-} from "lucide-react";
+import { getClientMenuVisibilityFn } from "@/fns/app-settings";
+import { CLIENT_MENU_ITEMS, isClientMenuItemVisible } from "@/lib/client-menu";
+import { LayoutDashboard } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app")({ component: Layout });
 
-const nav: NavItem[] = [
-  { to: "/app", label: "Painel", icon: LayoutDashboard },
-  { to: "/app/checklist", label: "Checklist", icon: ListChecks },
-  { to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
-  { to: "/app/convites", label: "Convites", icon: MailCheck },
-  { to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-  { to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
-  { to: "/app/referencias", label: "Referências", icon: Images },
-  { to: "/app/parceiros", label: "Parceiros", icon: Users },
-  { to: "/app/dicas", label: "Dicas", icon: Lightbulb },
-  { to: "/app/ebook", label: "Ebooks", icon: BookOpen },
-  { to: "/app/portfolio", label: "Portfólio", icon: GalleryHorizontalEnd },
-];
+const painelItem: NavItem = { to: "/app", label: "Painel", icon: LayoutDashboard };
 
 function Layout() {
   const { role, loading } = useAuth();
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    getClientMenuVisibilityFn()
+      .then(({ visibility }) => setVisibility(visibility))
+      .catch(() => {});
+  }, []);
+
   if (loading) return null;
   if (role === "admin") return <Navigate to="/admin" />;
+
+  const nav: NavItem[] = [
+    painelItem,
+    ...CLIENT_MENU_ITEMS.filter((item) => isClientMenuItemVisible(visibility, item.key)),
+  ];
+
   return (
     <AppShell title="Área VIP" nav={nav}>
       <Outlet />
