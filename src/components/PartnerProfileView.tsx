@@ -47,7 +47,7 @@ export function PartnerProfileView({
       )}
 
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-3">
+        <div className="order-1 space-y-3 lg:col-start-1 lg:row-start-1 lg:row-span-2">
           {activePhoto ? (
             <div
               className="aspect-square w-full rounded-2xl bg-muted bg-cover bg-center shadow-soft"
@@ -74,20 +74,9 @@ export function PartnerProfileView({
               ))}
             </div>
           )}
-
-          {partner.description && (
-            <Card className="mt-4">
-              <CardContent className="p-5">
-                <h2 className="font-serif text-xl">Sobre</h2>
-                <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-                  {partner.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        <div className="space-y-4">
+        <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-1">
           <Card className="border-gold/20 shadow-soft">
             <CardContent className="space-y-4 p-5">
               <div className="flex items-center gap-3">
@@ -153,6 +142,19 @@ export function PartnerProfileView({
             </CardContent>
           </Card>
         </div>
+
+        {partner.description && (
+          <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-2">
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="font-serif text-xl">Sobre</h2>
+                <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                  {partner.description}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
