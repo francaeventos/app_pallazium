@@ -50,11 +50,11 @@ export function PartnerProfileView({
         <div className="space-y-3">
           {activePhoto ? (
             <div
-              className="aspect-[4/3] w-full rounded-2xl bg-muted bg-cover bg-center shadow-soft"
+              className="aspect-square w-full rounded-2xl bg-muted bg-cover bg-center shadow-soft"
               style={{ backgroundImage: `url(${activePhoto})` }}
             />
           ) : (
-            <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl bg-muted">
+            <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-muted">
               <Users className="h-10 w-10 text-gold" />
             </div>
           )}
