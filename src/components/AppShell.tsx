@@ -68,7 +68,9 @@ export function AppShell({
   const [now, setNow] = useState<Date | null>(null);
 
   const isActive = (to: string) =>
-    to === "/app" || to === "/admin" ? location.pathname === to : location.pathname.startsWith(to);
+    to === "/app" || to === "/admin" || to === "/parceiro"
+      ? location.pathname === to
+      : location.pathname.startsWith(to);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);

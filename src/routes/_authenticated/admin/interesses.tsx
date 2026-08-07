@@ -8,6 +8,7 @@ import {
   saveMenuInterestFn,
   savePartnerInterestFn,
   saveUpgradeInterestFn,
+  setPartnerInterestReleaseFn,
   updateMenuInterestStatusFn,
   updatePartnerInterestStatusFn,
   updateUpgradeInterestStatusFn,
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Lock, Pencil, Trash2, Unlock } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/admin/interesses")({ component: Page });
@@ -88,6 +89,16 @@ function Page() {
         data: { id, status: status as InterestStatus },
       });
       toast.success("Atualizado");
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
+    }
+  };
+
+  const toggleRelease = async (id: string, released: boolean) => {
+    try {
+      await setPartnerInterestReleaseFn({ data: { id, released } });
+      toast.success(released ? "Dados do cliente liberados para o parceiro" : "Acesso revogado");
       load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
@@ -339,6 +350,13 @@ function Page() {
                   <Badge variant="outline" className="text-xs ml-2 capitalize">
                     {i.partners?.category}
                   </Badge>
+                  {i.client_data_released ? (
+                    <Badge className="text-xs ml-2">Dados liberados</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs ml-2">
+                      Dados não liberados
+                    </Badge>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {i.clients?.full_name} • {i.clients?.email}
@@ -362,6 +380,21 @@ function Page() {
                     <SelectItem value="perdido">Perdido</SelectItem>
                   </SelectContent>
                 </Select>
+                {i.client_data_released ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleRelease(i.id, false)}
+                  >
+                    <Lock className="mr-1 h-3 w-3" />
+                    Revogar acesso
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => toggleRelease(i.id, true)}>
+                    <Unlock className="mr-1 h-3 w-3" />
+                    Liberar dados do cliente
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => openPartnerEdit(i)}>
                   <Pencil className="mr-1 h-3 w-3" />
                   Editar

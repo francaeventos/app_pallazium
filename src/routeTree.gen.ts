@@ -25,6 +25,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as ConvitePreviewInvitationIdRouteImport } from './routes/convite.preview.$invitationId'
 import { Route as ConvitePadrinhoTokenRouteImport } from './routes/convite.padrinho.$token'
 import { Route as AuthenticatedParceiroPreviewRouteImport } from './routes/_authenticated/parceiro.preview'
+import { Route as AuthenticatedParceiroInteressesRouteImport } from './routes/_authenticated/parceiro.interesses'
 import { Route as AuthenticatedAppUpgradesRouteImport } from './routes/_authenticated/app/upgrades'
 import { Route as AuthenticatedAppReferenciasRouteImport } from './routes/_authenticated/app/referencias'
 import { Route as AuthenticatedAppPortfolioRouteImport } from './routes/_authenticated/app/portfolio'
@@ -146,6 +147,12 @@ const AuthenticatedParceiroPreviewRoute =
   AuthenticatedParceiroPreviewRouteImport.update({
     id: '/preview',
     path: '/preview',
+    getParentRoute: () => AuthenticatedParceiroRoute,
+  } as any)
+const AuthenticatedParceiroInteressesRoute =
+  AuthenticatedParceiroInteressesRouteImport.update({
+    id: '/interesses',
+    path: '/interesses',
     getParentRoute: () => AuthenticatedParceiroRoute,
   } as any)
 const AuthenticatedAppUpgradesRoute =
@@ -418,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/parceiro/interesses': typeof AuthenticatedParceiroInteressesRoute
   '/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
@@ -471,6 +479,7 @@ export interface FileRoutesByTo {
   '/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/parceiro/interesses': typeof AuthenticatedParceiroInteressesRoute
   '/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
@@ -529,6 +538,7 @@ export interface FileRoutesById {
   '/_authenticated/app/portfolio': typeof AuthenticatedAppPortfolioRoute
   '/_authenticated/app/referencias': typeof AuthenticatedAppReferenciasRoute
   '/_authenticated/app/upgrades': typeof AuthenticatedAppUpgradesRoute
+  '/_authenticated/parceiro/interesses': typeof AuthenticatedParceiroInteressesRoute
   '/_authenticated/parceiro/preview': typeof AuthenticatedParceiroPreviewRoute
   '/convite/padrinho/$token': typeof ConvitePadrinhoTokenRoute
   '/convite/preview/$invitationId': typeof ConvitePreviewInvitationIdRoute
@@ -588,6 +598,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/parceiro/interesses'
     | '/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
@@ -641,6 +652,7 @@ export interface FileRouteTypes {
     | '/app/portfolio'
     | '/app/referencias'
     | '/app/upgrades'
+    | '/parceiro/interesses'
     | '/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
@@ -698,6 +710,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/portfolio'
     | '/_authenticated/app/referencias'
     | '/_authenticated/app/upgrades'
+    | '/_authenticated/parceiro/interesses'
     | '/_authenticated/parceiro/preview'
     | '/convite/padrinho/$token'
     | '/convite/preview/$invitationId'
@@ -847,6 +860,13 @@ declare module '@tanstack/react-router' {
       path: '/preview'
       fullPath: '/parceiro/preview'
       preLoaderRoute: typeof AuthenticatedParceiroPreviewRouteImport
+      parentRoute: typeof AuthenticatedParceiroRoute
+    }
+    '/_authenticated/parceiro/interesses': {
+      id: '/_authenticated/parceiro/interesses'
+      path: '/interesses'
+      fullPath: '/parceiro/interesses'
+      preLoaderRoute: typeof AuthenticatedParceiroInteressesRouteImport
       parentRoute: typeof AuthenticatedParceiroRoute
     }
     '/_authenticated/app/upgrades': {
@@ -1272,11 +1292,13 @@ const AuthenticatedAppRouteWithChildren =
   AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
 
 interface AuthenticatedParceiroRouteChildren {
+  AuthenticatedParceiroInteressesRoute: typeof AuthenticatedParceiroInteressesRoute
   AuthenticatedParceiroPreviewRoute: typeof AuthenticatedParceiroPreviewRoute
   AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
 }
 
 const AuthenticatedParceiroRouteChildren: AuthenticatedParceiroRouteChildren = {
+  AuthenticatedParceiroInteressesRoute: AuthenticatedParceiroInteressesRoute,
   AuthenticatedParceiroPreviewRoute: AuthenticatedParceiroPreviewRoute,
   AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
 }

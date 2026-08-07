@@ -177,6 +177,39 @@ export const savePartnerInterestFn = createServerFn({ method: "POST" })
     return partnerInterestRecord(row);
   });
 
+export const setPartnerInterestReleaseFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z.object({ id: z.string().uuid(), released: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const row = await db.partnerInterest.update({
+      where: { id: data.id },
+      data: {
+        clientDataReleased: data.released,
+        releasedAt: data.released ? new Date() : null,
+      },
+      include: {
+        partner: { select: { name: true, category: true, userId: true } },
+        client: { select: { fullName: true, email: true, whatsapp: true } },
+        event: { select: { eventType: true, eventDate: true } },
+      },
+    });
+
+    if (data.released && row.partner.userId) {
+      await db.notification.create({
+        data: {
+          userId: row.partner.userId,
+          title: "Novo cliente liberado",
+          message: `Os dados de ${row.client.fullName} foram liberados. Veja em "Clientes com interesse".`,
+        },
+      });
+    }
+
+    return partnerInterestRecord(row);
+  });
+
 export const deletePartnerInterestFn = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data) => idSchema.parse(data))

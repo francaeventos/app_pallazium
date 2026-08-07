@@ -233,6 +233,8 @@ export function partnerInterestRecord(
     client_id: row.clientId,
     status: row.status,
     notes: row.notes,
+    client_data_released: row.clientDataReleased,
+    released_at: row.releasedAt ? isoDateTime(row.releasedAt) : null,
     created_at: isoDateTime(row.createdAt),
     partners: row.partner
       ? { name: row.partner.name, category: row.partner.category }
