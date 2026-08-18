@@ -348,6 +348,8 @@ export const getAdminLeadFormFn = createServerFn({ method: "GET" })
           meta_access_token: integrations.metaAccessToken ? "••••••••" : null,
           has_meta_token: Boolean(integrations.metaAccessToken),
           meta_test_event_code: integrations.metaTestEventCode,
+          openai_pixel_id: integrations.openaiPixelId,
+          openai_pixel_enabled: integrations.openaiPixelEnabled,
           webhook_url: integrations.webhookUrl,
           webhook_secret: integrations.webhookSecret ? "••••••••" : null,
           has_webhook_secret: Boolean(integrations.webhookSecret),
@@ -658,6 +660,8 @@ export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
         meta_pixel_id: z.string().trim().max(40).nullable().optional(),
         meta_access_token: z.string().trim().max(500).nullable().optional(),
         meta_test_event_code: z.string().trim().max(80).nullable().optional(),
+        openai_pixel_id: z.string().trim().max(80).nullable().optional(),
+        openai_pixel_enabled: z.boolean().optional(),
         webhook_url: z.string().trim().max(500).nullable().optional(),
         webhook_secret: z.string().trim().max(200).nullable().optional(),
         conversion_min_temperature: z
@@ -698,6 +702,8 @@ export const updateLeadIntegrationsFn = createServerFn({ method: "POST" })
       googleAdsConversionLabel: data.google_ads_conversion_label?.trim() || null,
       metaPixelId: data.meta_pixel_id?.trim() || null,
       metaTestEventCode: data.meta_test_event_code?.trim() || null,
+      openaiPixelId: data.openai_pixel_id?.trim() || null,
+      openaiPixelEnabled: data.openai_pixel_enabled ?? true,
       webhookUrl: data.webhook_url?.trim() || null,
       ...(data.conversion_min_temperature !== undefined
         ? { conversionMinTemperature: data.conversion_min_temperature }

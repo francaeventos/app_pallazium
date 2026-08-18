@@ -111,6 +111,8 @@ export type IntegrationsState = {
   meta_pixel_id: string;
   meta_access_token: string;
   meta_test_event_code: string;
+  openai_pixel_id: string;
+  openai_pixel_enabled: boolean;
   webhook_url: string;
   webhook_secret: string;
   conversion_min_temperature: ConversionMinTemperature;
@@ -270,6 +272,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
     meta_pixel_id: "",
     meta_access_token: "",
     meta_test_event_code: "",
+    openai_pixel_id: "",
+    openai_pixel_enabled: true,
     webhook_url: "",
     webhook_secret: "",
     conversion_min_temperature: "quente",
@@ -346,6 +350,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
         meta_pixel_id: data.integrations.meta_pixel_id || "",
         meta_access_token: "",
         meta_test_event_code: data.integrations.meta_test_event_code || "",
+        openai_pixel_id: data.integrations.openai_pixel_id || "",
+        openai_pixel_enabled: data.integrations.openai_pixel_enabled,
         webhook_url: data.integrations.webhook_url || "",
         webhook_secret: "",
         conversion_min_temperature:
@@ -453,6 +459,8 @@ export function LeadFormEditorProvider({ children }: { children: ReactNode }) {
           meta_pixel_id: integrations.meta_pixel_id.trim() || null,
           meta_access_token: integrations.meta_access_token.trim() || undefined,
           meta_test_event_code: integrations.meta_test_event_code.trim() || null,
+          openai_pixel_id: integrations.openai_pixel_id.trim() || null,
+          openai_pixel_enabled: integrations.openai_pixel_enabled,
           webhook_url: integrations.webhook_url.trim() || null,
           webhook_secret: integrations.webhook_secret.trim() || undefined,
           conversion_min_temperature: integrations.conversion_min_temperature,

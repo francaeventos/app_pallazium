@@ -93,6 +93,8 @@ function publicFormShape(form: {
     metaPixelId: string | null;
     pixelEnabled: boolean;
     gtmEnabled: boolean;
+    openaiPixelId: string | null;
+    openaiPixelEnabled: boolean;
   } | null;
 }) {
   return {
@@ -154,16 +156,21 @@ function resolvePublicTracking(
     metaPixelId: string | null;
     pixelEnabled: boolean;
     gtmEnabled: boolean;
+    openaiPixelId: string | null;
+    openaiPixelEnabled: boolean;
   } | null,
 ) {
   const gtmEnabled = integrations?.gtmEnabled ?? true;
   const pixelEnabled = integrations?.pixelEnabled ?? true;
+  const openaiPixelEnabled = integrations?.openaiPixelEnabled ?? true;
   const gtmId =
     (gtmEnabled ? integrations?.gtmId || process.env.LEAD_GTM_ID || null : null)?.trim() || null;
   const metaPixelId =
     (pixelEnabled ? integrations?.metaPixelId || process.env.META_PIXEL_ID || null : null)?.trim() ||
     null;
-  return { gtmId, metaPixelId, gtmEnabled, pixelEnabled };
+  const openaiPixelId =
+    (openaiPixelEnabled ? integrations?.openaiPixelId || null : null)?.trim() || null;
+  return { gtmId, metaPixelId, gtmEnabled, pixelEnabled, openaiPixelId, openaiPixelEnabled };
 }
 
 async function getActiveForm(slug: string) {

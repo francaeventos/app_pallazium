@@ -9,9 +9,11 @@ import { formatDateMaskBr, formatLeadDateBr, parseLeadDate, validateLeadDate } f
 import {
   ensureGtm,
   ensureMetaPixel,
+  ensureOpenAiPixel,
   pushDataLayer,
   resolveFbc,
   resolveFbp,
+  trackOpenAiEvent,
   trackPixel,
 } from "@/lib/leads/tracking";
 import { darkenHex } from "@/lib/leads/theme";
@@ -274,6 +276,7 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     if (!bootstrapped) return;
     if (form.tracking.gtmId) ensureGtm(form.tracking.gtmId);
     if (form.tracking.metaPixelId) ensureMetaPixel(form.tracking.metaPixelId);
+    if (form.tracking.openaiPixelId) ensureOpenAiPixel(form.tracking.openaiPixelId);
     if (!startedRef.current) {
       startedRef.current = true;
       pushDataLayer("quiz_started", { form: form.slug, resumed });
@@ -346,6 +349,9 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
           qualified: result.qualified,
           threshold: form.qualificationThreshold,
         });
+        if (form.tracking.openaiPixelId) {
+          trackOpenAiEvent("lead_created", { type: "customer_action" });
+        }
         if (result.qualified) {
           pushDataLayer("quiz_lead", {
             lead_id: result.leadId,

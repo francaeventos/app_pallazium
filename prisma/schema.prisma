@@ -770,6 +770,8 @@ model LeadIntegrationSettings {
   metaPixelId               String?                       @map("meta_pixel_id")
   metaAccessToken           String?                       @map("meta_access_token")
   metaTestEventCode         String?                       @map("meta_test_event_code")
+  openaiPixelId             String?                       @map("openai_pixel_id")
+  openaiPixelEnabled        Boolean                       @default(true) @map("openai_pixel_enabled")
   webhookUrl                String?                       @map("webhook_url")
   webhookSecret             String?                       @map("webhook_secret")
   conversionMinTemperature  LeadConversionMinTemperature  @default(quente) @map("conversion_min_temperature")

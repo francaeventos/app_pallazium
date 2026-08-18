@@ -2,6 +2,7 @@ declare global {
   interface Window {
     dataLayer?: Record<string, unknown>[];
     fbq?: (...args: unknown[]) => void;
+    oaiq?: ((...args: unknown[]) => void) & { q?: unknown[] };
   }
 }
 
@@ -76,6 +77,35 @@ export function ensureMetaPixel(pixelId: string) {
     noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${encodeURIComponent(pixelId)}&ev=PageView&noscript=1" alt="" />`;
     document.body.appendChild(noscript);
   }
+}
+
+export function ensureOpenAiPixel(pixelId: string, debug = false) {
+  if (typeof document === "undefined" || !pixelId) return;
+  const existing = document.getElementById("openai-pixel-script");
+  if (existing?.getAttribute("data-pixel-id") === pixelId) return;
+
+  if (!window.oaiq) {
+    const q = ((...args: unknown[]) => {
+      q.q!.push(args);
+    }) as ((...args: unknown[]) => void) & { q?: unknown[] };
+    q.q = [];
+    window.oaiq = q;
+  }
+
+  if (existing) existing.remove();
+  const script = document.createElement("script");
+  script.id = "openai-pixel-script";
+  script.async = true;
+  script.setAttribute("data-pixel-id", pixelId);
+  script.src = "https://bzrcdn.openai.com/sdk/oaiq.min.js";
+  document.head.appendChild(script);
+
+  window.oaiq("init", { pixelId, debug });
+}
+
+export function trackOpenAiEvent(eventName: string, params: Record<string, unknown> = {}) {
+  if (typeof window === "undefined" || typeof window.oaiq !== "function") return;
+  window.oaiq("measure", eventName, params);
 }
 
 export function readCookie(name: string): string | null {

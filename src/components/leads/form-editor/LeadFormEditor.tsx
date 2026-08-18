@@ -1712,6 +1712,36 @@ export function LeadFormPixelsPanel() {
 
       <Card className="border-gold/15 shadow-soft">
         <CardHeader>
+          <CardTitle className="font-serif text-xl">OpenAI Ads (ChatGPT)</CardTitle>
+          <CardDescription>
+            Dispara "lead_created" quando o formulário é enviado, para o Gerenciador de Anúncios
+            do ChatGPT.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="Pixel ID">
+            <Input
+              value={integrations.openai_pixel_id}
+              placeholder="Dnou4p78eScb71XV8XE9ns"
+              onChange={(e) =>
+                setIntegrations({ ...integrations, openai_pixel_id: e.target.value })
+              }
+            />
+          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <Switch
+              checked={integrations.openai_pixel_enabled}
+              onCheckedChange={(v) =>
+                setIntegrations({ ...integrations, openai_pixel_enabled: v })
+              }
+            />
+            Pixel ativo
+          </label>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gold/15 shadow-soft">
+        <CardHeader>
           <CardTitle className="font-serif text-xl">Webhook CRM</CardTitle>
           <CardDescription>Enviado para leads qualificados (quente+).</CardDescription>
         </CardHeader>
