@@ -20,6 +20,8 @@ type StorageImageInputProps = {
   recommendedSize?: string;
   /** Limite de fotos (apenas StorageImagesTextarea). Sem limite se omitido. */
   maxImages?: number;
+  /** Classes do quadrado de cada miniatura (apenas StorageImagesTextarea). */
+  itemClassName?: string;
 };
 
 export function StorageImageInput({
@@ -137,6 +139,7 @@ export function StorageImagesTextarea({
   defaultValue,
   folder = "uploads",
   maxImages,
+  itemClassName,
 }: StorageImageInputProps) {
   const [images, setImages] = useState(() => splitImageLines(defaultValue ?? ""));
   const [manualUrl, setManualUrl] = useState("");
@@ -228,7 +231,7 @@ export function StorageImagesTextarea({
               className="group relative overflow-hidden rounded-xl border"
             >
               <div
-                className="h-24 bg-muted bg-cover bg-center"
+                className={itemClassName ?? "h-24 bg-muted bg-cover bg-center"}
                 style={{ backgroundImage: `url(${image})` }}
               />
               <Button

@@ -159,6 +159,7 @@ function Page() {
                 defaultValue={partner.image_url ?? ""}
                 folder="parceiros"
                 recommendedSize="600 x 600 pixels"
+                previewClassName="aspect-square w-full max-w-[220px] rounded-xl border bg-muted bg-cover bg-center"
               />
             </div>
             <div>
@@ -169,6 +170,7 @@ function Page() {
                 defaultValue={partner.logo_url ?? ""}
                 folder="parceiros/logos"
                 recommendedSize="400 x 400 pixels"
+                previewClassName="h-28 w-28 rounded-full border bg-muted bg-cover bg-center"
               />
             </div>
             <div>
@@ -179,6 +181,7 @@ function Page() {
                 defaultValue={(partner.gallery_urls ?? []).join("\n")}
                 folder="parceiros/galeria"
                 maxImages={4}
+                itemClassName="aspect-square rounded-lg bg-muted bg-cover bg-center"
               />
             </div>
             <Button type="submit" className="w-full" disabled={saving}>
