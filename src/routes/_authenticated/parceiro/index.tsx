@@ -182,6 +182,8 @@ function Page() {
                 folder="parceiros/galeria"
                 maxImages={4}
                 itemClassName="aspect-square rounded-lg bg-muted bg-cover bg-center"
+                gridClassName="grid grid-cols-4 gap-2"
+                recommendedSize="600 x 600 pixels"
               />
             </div>
             <Button type="submit" className="w-full" disabled={saving}>

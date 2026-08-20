@@ -22,6 +22,8 @@ type StorageImageInputProps = {
   maxImages?: number;
   /** Classes do quadrado de cada miniatura (apenas StorageImagesTextarea). */
   itemClassName?: string;
+  /** Classes do grid de miniaturas (apenas StorageImagesTextarea). */
+  gridClassName?: string;
 };
 
 export function StorageImageInput({
@@ -140,6 +142,8 @@ export function StorageImagesTextarea({
   folder = "uploads",
   maxImages,
   itemClassName,
+  gridClassName,
+  recommendedSize,
 }: StorageImageInputProps) {
   const [images, setImages] = useState(() => splitImageLines(defaultValue ?? ""));
   const [manualUrl, setManualUrl] = useState("");
@@ -224,7 +228,7 @@ export function StorageImagesTextarea({
       </Label>
       <textarea name={name} value={images.join("\n")} readOnly className="hidden" />
       {images.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className={gridClassName ?? "grid grid-cols-3 gap-2"}>
           {images.map((image, index) => (
             <div
               key={`${image}-${index}`}
@@ -250,6 +254,11 @@ export function StorageImagesTextarea({
         <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
           Nenhuma foto adicionada ainda.
         </div>
+      )}
+      {recommendedSize && (
+        <p className="text-xs text-muted-foreground">
+          Tamanho ideal: <span className="font-medium">{recommendedSize}</span>
+        </p>
       )}
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
         <Input
@@ -277,7 +286,9 @@ export function StorageImagesTextarea({
           />
         </label>
       </Button>
-      <p className="text-xs text-muted-foreground">Você pode enviar várias fotos.</p>
+      <p className="text-xs text-muted-foreground">
+        {maxImages != null ? `Você pode enviar até ${maxImages} fotos.` : "Você pode enviar várias fotos."}
+      </p>
     </div>
   );
 }
