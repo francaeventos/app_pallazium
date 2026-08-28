@@ -36,7 +36,7 @@ function Page() {
     try {
       setItems(await listUpgradesFn());
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os upgrades.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar os adicionais.");
     }
   };
   useEffect(() => {
@@ -59,7 +59,7 @@ function Page() {
     } catch (error) {
       return toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
     }
-    toast.success(editing ? "Upgrade atualizado" : "Upgrade criado");
+    toast.success(editing ? "Adicional atualizado" : "Adicional criado");
     setOpen(false);
     setEditing(null);
     load();
@@ -71,7 +71,7 @@ function Page() {
     } catch (error) {
       return toast.error(error instanceof Error ? error.message : "Não foi possível excluir.");
     }
-    toast.success("Upgrade excluído");
+    toast.success("Adicional excluído");
     load();
   };
 
@@ -81,7 +81,7 @@ function Page() {
     } catch (error) {
       return toast.error(error instanceof Error ? error.message : "Não foi possível atualizar.");
     }
-    toast.success(item.active ? "Upgrade ocultado" : "Upgrade publicado");
+    toast.success(item.active ? "Adicional ocultado" : "Adicional publicado");
     load();
   };
 
@@ -95,7 +95,7 @@ function Page() {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Comercial</p>
-          <h1 className="font-serif text-4xl mt-2">Upgrades</h1>
+          <h1 className="font-serif text-4xl mt-2">Adicionais</h1>
         </div>
         <Dialog
           open={open}
@@ -113,7 +113,7 @@ function Page() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
-                {editing ? "Editar upgrade" : "Novo upgrade"}
+                {editing ? "Editar adicional" : "Novo adicional"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={save} className="space-y-3">
@@ -144,6 +144,7 @@ function Page() {
                   label="Imagem"
                   defaultValue={editing?.image_url ?? ""}
                   folder="upgrades"
+                  recommendedSize="1200 x 900 pixels"
                 />
               </div>
               <label className="flex items-center gap-2 text-sm">
@@ -160,9 +161,9 @@ function Page() {
       {items.length === 0 && (
         <AdminEmptyState
           icon={Sparkles}
-          title="Cadastre o primeiro upgrade"
+          title="Cadastre o primeiro adicional"
           description="Publique experiências extras, serviços premium e adicionais comerciais para o cliente demonstrar interesse."
-          actionLabel="Novo upgrade"
+          actionLabel="Novo adicional"
           onAction={openCreate}
         />
       )}

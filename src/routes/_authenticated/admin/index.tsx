@@ -260,11 +260,11 @@ function Dashboard() {
                 >
                   <Badge variant="destructive">🔴 Solicitação pendente</Badge>
                   <p className="mt-2 font-medium text-destructive">
-                    Solicitação de upgrade pendente
+                    Solicitação de adicional pendente
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Cliente: {request.client_name} • Evento: {request.event_type} –{" "}
-                    {formatDate(request.event_date)} • Upgrade solicitado: {request.upgrade_name}
+                    {formatDate(request.event_date)} • Adicional solicitado: {request.upgrade_name}
                   </p>
                 </Link>
               ))}

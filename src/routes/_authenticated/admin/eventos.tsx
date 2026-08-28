@@ -420,7 +420,7 @@ function Page() {
                 </Select>
               </div>
               <div>
-                <Label>Upgrades contratados</Label>
+                <Label>Adicionais contratados</Label>
                 <UpgradeCheckboxList
                   upgrades={upgrades}
                   selectedIds={createUpgradeIds}
@@ -543,7 +543,7 @@ function Page() {
             <AdminEmptyState
               icon={Calendar}
               title="Crie o primeiro evento"
-              description="Eventos conectam o cliente ao checklist, referências, cardápios, upgrades e painel de acompanhamento."
+              description="Eventos conectam o cliente ao checklist, referências, cardápios, adicionais e painel de acompanhamento."
               actionLabel="Novo evento"
               onAction={() => setOpen(true)}
             />
@@ -641,7 +641,7 @@ function Page() {
                 </Select>
               </div>
               <div>
-                <Label>Upgrades contratados</Label>
+                <Label>Adicionais contratados</Label>
                 <UpgradeCheckboxList
                   upgrades={upgrades}
                   selectedIds={editUpgradeIds}
@@ -907,7 +907,7 @@ function UpgradeCheckboxList({
   if (upgrades.length === 0) {
     return (
       <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-        Nenhum upgrade cadastrado ainda.
+        Nenhum adicional cadastrado ainda.
       </p>
     );
   }

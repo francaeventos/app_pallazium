@@ -218,7 +218,7 @@ function Page() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-xl">Pipeline</CardTitle>
+          <CardTitle className="font-serif text-xl">Interesses em adicionais</CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
           {list.length === 0 && (
@@ -416,7 +416,7 @@ function Page() {
       <Dialog open={!!editingUpgrade} onOpenChange={(value) => !value && setEditingUpgrade(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-serif text-2xl">Editar interesse em upgrade</DialogTitle>
+            <DialogTitle className="font-serif text-2xl">Editar interesse em adicional</DialogTitle>
           </DialogHeader>
           {editingUpgrade && (
             <form onSubmit={saveUpgradeInterest} className="space-y-4">

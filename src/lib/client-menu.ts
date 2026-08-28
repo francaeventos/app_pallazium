@@ -43,7 +43,7 @@ export const CLIENT_MENU_ITEMS: ClientMenuItem[] = [
   { key: "pendencias", to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
   { key: "convites", to: "/app/convites", label: "Convites", icon: MailCheck },
   { key: "cardapios", to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-  { key: "upgrades", to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
+  { key: "upgrades", to: "/app/upgrades", label: "Adicionais", icon: Sparkles },
   { key: "referencias", to: "/app/referencias", label: "Referências", icon: Images },
   { key: "parceiros", to: "/app/parceiros", label: "Parceiros", icon: Users },
   { key: "dicas", to: "/app/dicas", label: "Dicas", icon: Lightbulb },

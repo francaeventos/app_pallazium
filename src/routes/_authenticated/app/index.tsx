@@ -34,7 +34,7 @@ const quickLinks = [
   { key: "checklist", to: "/app/checklist", label: "Checklist", icon: ListChecks },
   { key: "pendencias", to: "/app/pendencias", label: "Pendências", icon: AlertCircle },
   { key: "cardapios", to: "/app/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-  { key: "upgrades", to: "/app/upgrades", label: "Upgrades", icon: Sparkles },
+  { key: "upgrades", to: "/app/upgrades", label: "Adicionais", icon: Sparkles },
   { key: "referencias", to: "/app/referencias", label: "Referências", icon: Images },
 ] satisfies Array<{ key: (typeof CLIENT_MENU_ITEMS)[number]["key"]; to: string; label: string; icon: typeof ListChecks }>;
 
@@ -178,7 +178,7 @@ function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif text-2xl">Upgrades contratados</CardTitle>
+            <CardTitle className="font-serif text-2xl">Adicionais contratados</CardTitle>
           </CardHeader>
           <CardContent>
             {event.upgrades.length === 0 ? (

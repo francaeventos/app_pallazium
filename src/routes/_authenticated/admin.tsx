@@ -29,7 +29,7 @@ const nav: NavItem[] = [
   { to: "/admin/convites", label: "Convites", icon: MailCheck },
   { to: "/admin/checklist", label: "Checklists", icon: ListChecks },
   { to: "/admin/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-  { to: "/admin/upgrades", label: "Upgrades", icon: Sparkles },
+  { to: "/admin/upgrades", label: "Adicionais", icon: Sparkles },
   { to: "/admin/interesses", label: "Interesses", icon: Sparkles },
   { to: "/admin/referencias", label: "Referências", icon: Images },
   { to: "/admin/parceiros", label: "Parceiros", icon: Users },

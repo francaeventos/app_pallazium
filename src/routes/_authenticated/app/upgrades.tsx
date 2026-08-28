@@ -62,7 +62,7 @@ function Page() {
     <div className="p-6 lg:p-10 space-y-6 max-w-6xl mx-auto">
       <div>
         <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Eleve sua festa</p>
-        <h1 className="font-serif text-4xl mt-2">Upgrades e experiências</h1>
+        <h1 className="font-serif text-4xl mt-2">Adicionais e experiências</h1>
         <p className="text-muted-foreground mt-2">Deixe sua celebração ainda mais inesquecível.</p>
         {!data?.event && (
           <p className="text-sm text-rose mt-2">
@@ -75,7 +75,7 @@ function Page() {
         <Card className="border-gold/40 bg-champagne/30">
           <CardContent className="p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
-              Upgrades contratados
+              Adicionais contratados
             </p>
             <ul className="space-y-2">
               {contractedUpgrades.map((upgrade) => (
@@ -93,7 +93,7 @@ function Page() {
         <ClientEmptyState
           icon={Sparkles}
           title="Experiências em curadoria"
-          description="As opções extras do Pallazium são publicadas pela equipe conforme o perfil do evento. Quando houver upgrades ativos, eles aparecerão aqui para você registrar interesse com um clique."
+          description="As opções extras do Pallazium são publicadas pela equipe conforme o perfil do evento. Quando houver adicionais ativos, eles aparecerão aqui para você registrar interesse com um clique."
         />
       )}
 
@@ -108,11 +108,11 @@ function Page() {
             >
               {u.image_url ? (
                 <div
-                  className="h-40 bg-cover bg-center"
+                  className="aspect-[4/3] w-full bg-muted bg-cover bg-center"
                   style={{ backgroundImage: `url(${u.image_url})` }}
                 />
               ) : (
-                <div className="h-40 bg-gradient-luxe flex items-center justify-center">
+                <div className="aspect-[4/3] w-full bg-gradient-luxe flex items-center justify-center">
                   <Sparkles className="h-8 w-8 text-gold" />
                 </div>
               )}
@@ -122,7 +122,9 @@ function Page() {
                 </Badge>
                 <h3 className="font-serif text-xl">{u.name}</h3>
                 {u.description && (
-                  <p className="text-sm text-muted-foreground mt-2 flex-1">{u.description}</p>
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2 flex-1">
+                    {u.description}
+                  </p>
                 )}
                 <div className="mt-4 flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-gold">
