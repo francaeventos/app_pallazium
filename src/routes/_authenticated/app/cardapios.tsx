@@ -60,11 +60,6 @@ function Page() {
 
   if (loading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
 
-  const byCat: Record<string, MenuRow[]> = {};
-  menus.forEach((menu) => {
-    (byCat[menu.category] ||= []).push(menu);
-  });
-
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-6xl mx-auto">
       <div>
@@ -114,87 +109,84 @@ function Page() {
         />
       )}
 
-      {Object.entries(byCat).map(([cat, items]) => (
-        <section key={cat}>
-          <h2 className="font-serif text-2xl mb-4 capitalize">{cat}</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((m) => (
-              <Card key={m.id} className="overflow-hidden hover:shadow-luxe transition-shadow">
+      {menus.length > 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {menus.map((m) => (
+            <Card key={m.id} className="overflow-hidden hover:shadow-luxe transition-shadow">
+              <button
+                type="button"
+                className="block w-full text-left"
+                onClick={() => {
+                  setSelectedMenu(m);
+                  setSelectedImageIndex(0);
+                }}
+              >
+                {menuImages(m)[0] ? (
+                  <div
+                    className="relative h-40 bg-muted bg-cover bg-center"
+                    style={{ backgroundImage: `url(${menuImages(m)[0]})` }}
+                  >
+                    {menuImages(m).length > 1 && (
+                      <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs text-foreground shadow-soft">
+                        {menuImages(m).length} fotos
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-40 bg-muted flex items-center justify-center">
+                    <UtensilsCrossed className="h-8 w-8 text-gold" />
+                  </div>
+                )}
+              </button>
+              <CardContent className="p-5 flex min-h-56 flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-serif text-xl">{m.name}</h3>
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {m.category}
+                  </Badge>
+                </div>
+                {m.description && (
+                  <p className="text-sm text-muted-foreground mt-2">{m.description}</p>
+                )}
                 <button
                   type="button"
-                  className="block w-full text-left"
+                  className="mt-2 text-left text-xs text-gold"
                   onClick={() => {
                     setSelectedMenu(m);
                     setSelectedImageIndex(0);
                   }}
                 >
-                  {menuImages(m)[0] ? (
-                    <div
-                      className="relative h-40 bg-muted bg-cover bg-center"
-                      style={{ backgroundImage: `url(${menuImages(m)[0]})` }}
-                    >
-                      {menuImages(m).length > 1 && (
-                        <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs text-foreground shadow-soft">
-                          {menuImages(m).length} fotos
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-40 bg-muted flex items-center justify-center">
-                      <UtensilsCrossed className="h-8 w-8 text-gold" />
-                    </div>
-                  )}
+                  Abrir fotos e detalhes
                 </button>
-                <CardContent className="p-5 flex min-h-56 flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-serif text-xl">{m.name}</h3>
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {m.category}
-                    </Badge>
-                  </div>
-                  {m.description && (
-                    <p className="text-sm text-muted-foreground mt-2">{m.description}</p>
-                  )}
-                  <button
-                    type="button"
-                    className="mt-2 text-left text-xs text-gold"
-                    onClick={() => {
-                      setSelectedMenu(m);
-                      setSelectedImageIndex(0);
-                    }}
+                {m.items && (
+                  <p className="text-xs text-muted-foreground mt-3 border-t pt-3 whitespace-pre-line">
+                    {m.items}
+                  </p>
+                )}
+                {m.notes && <p className="text-xs text-muted-foreground mt-3">{m.notes}</p>}
+                <div className="mt-auto pt-4">
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant={interests.has(m.id) ? "outline" : "default"}
+                    disabled={interests.has(m.id) || !data?.event}
+                    onClick={() => chooseMenu(m.id)}
                   >
-                    Abrir fotos e detalhes
-                  </button>
-                  {m.items && (
-                    <p className="text-xs text-muted-foreground mt-3 border-t pt-3 whitespace-pre-line">
-                      {m.items}
-                    </p>
-                  )}
-                  {m.notes && <p className="text-xs text-muted-foreground mt-3">{m.notes}</p>}
-                  <div className="mt-auto pt-4">
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      variant={interests.has(m.id) ? "outline" : "default"}
-                      disabled={interests.has(m.id) || !data?.event}
-                      onClick={() => chooseMenu(m.id)}
-                    >
-                      {interests.has(m.id) ? (
-                        <>
-                          <Check className="h-3 w-3 mr-1" />
-                          Registrado
-                        </>
-                      ) : (
-                        "Tenho interesse"
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      ))}
+                    {interests.has(m.id) ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1" />
+                        Registrado
+                      </>
+                    ) : (
+                      "Tenho interesse"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <MenuGalleryDialog
         menu={selectedMenu}

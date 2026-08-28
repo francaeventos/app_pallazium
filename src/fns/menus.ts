@@ -69,7 +69,7 @@ export const getMenusPageDataFn = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<MenusPageData> => {
     const allMenus = await db.menu.findMany({
       where: { active: true },
-      orderBy: [{ category: "asc" }, { hierarchyLevel: "asc" }],
+      orderBy: [{ hierarchyLevel: "asc" }, { category: "asc" }],
     });
 
     const client = await getClientForUser(context.userId);
