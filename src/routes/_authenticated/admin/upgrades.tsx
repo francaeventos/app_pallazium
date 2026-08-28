@@ -172,7 +172,7 @@ function Page() {
           <Card key={m.id} className={!m.active ? "opacity-70" : undefined}>
             {m.image_url && (
               <div
-                className="h-36 bg-muted bg-cover bg-center"
+                className="aspect-[4/3] w-full bg-muted bg-cover bg-center"
                 style={{ backgroundImage: `url(${m.image_url})` }}
               />
             )}
@@ -186,7 +186,9 @@ function Page() {
                   {m.active ? "Ativo" : "Oculto"}
                 </Badge>
               </div>
-              {m.description && <p className="text-sm mt-2">{m.description}</p>}
+              {m.description && (
+                <p className="text-sm mt-2 line-clamp-2">{m.description}</p>
+              )}
               {m.price_text && <p className="text-sm text-gold mt-2">{m.price_text}</p>}
               <div className="flex flex-wrap gap-2">
                 <Button
