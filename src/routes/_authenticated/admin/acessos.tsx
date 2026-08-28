@@ -290,7 +290,12 @@ function Page() {
                       .map((role) => (
                         <Badge
                           key={role.id}
-                          variant={role.role === "admin" ? "default" : "outline"}
+                          variant={role.role === "admin" || role.role === "parceiro" ? "default" : "outline"}
+                          className={
+                            role.role === "parceiro"
+                              ? "border-transparent bg-gold text-primary-foreground hover:bg-gold/80"
+                              : undefined
+                          }
                         >
                           {roleLabel(role.role)}
                         </Badge>
