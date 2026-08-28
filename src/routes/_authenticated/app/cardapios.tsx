@@ -106,6 +106,14 @@ function Page() {
         />
       )}
 
+      {menus.length === 0 && contractedMenu && (
+        <ClientEmptyState
+          icon={ChefHat}
+          title="Cardápio mais completo já contratado"
+          description={`Você já possui o ${contractedMenu.name} contratado para este evento — nossa opção mais completa disponível no momento.`}
+        />
+      )}
+
       {Object.entries(byCat).map(([cat, items]) => (
         <section key={cat}>
           <h2 className="font-serif text-2xl mb-4 capitalize">{cat}</h2>

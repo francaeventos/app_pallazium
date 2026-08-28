@@ -31,6 +31,7 @@ const menuSaveSchema = z.object({
   images: z.array(z.string()).optional(),
   notes: z.string().trim().nullable().optional(),
   active: z.boolean().default(true),
+  hierarchy_level: z.coerce.number().int().min(0).default(0),
 });
 
 const upgradeSaveSchema = z.object({
@@ -102,6 +103,7 @@ export const saveMenuFn = createServerFn({ method: "POST" })
       images,
       notes: data.notes || null,
       active: data.active,
+      hierarchyLevel: data.hierarchy_level,
     };
 
     const row = data.id

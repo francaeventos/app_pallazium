@@ -47,6 +47,7 @@ export function menuRecord(row: Menu) {
     images: row.images,
     notes: row.notes,
     active: row.active,
+    hierarchy_level: row.hierarchyLevel,
     created_at: isoDateTime(row.createdAt),
   };
 }

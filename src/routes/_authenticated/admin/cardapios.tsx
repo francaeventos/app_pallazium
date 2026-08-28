@@ -56,6 +56,7 @@ function Page() {
       images,
       notes: String(fd.get("notes") || "") || null,
       active: fd.get("active") === "on",
+      hierarchy_level: Number(fd.get("hierarchy_level") || 0),
     };
     try {
       await saveMenuFn({
@@ -176,6 +177,21 @@ function Page() {
                 <Textarea name="notes" defaultValue={editing?.notes ?? ""} />
               </div>
               <div>
+                <Label>Nível de hierarquia</Label>
+                <Input
+                  name="hierarchy_level"
+                  type="number"
+                  min={0}
+                  step={1}
+                  defaultValue={editing?.hierarchy_level ?? 0}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Define a ordem de upgrade exibida ao cliente: quem já tem um cardápio contratado
+                  só vê opções com nível maior que o dele. Ex.: Coquetel = 1, Jantar = 2,
+                  Churrasco = 3.
+                </p>
+              </div>
+              <div>
                 <StorageImagesTextarea
                   bucket="catalogos"
                   name="images"
@@ -261,6 +277,7 @@ function Page() {
                     {menu.active ? "Publicado" : "Oculto"}
                   </Badge>
                   <Badge variant="outline">{menuImages(menu).length} foto(s)</Badge>
+                  <Badge variant="outline">Nível {menu.hierarchy_level}</Badge>
                 </div>
                 {menu.description && (
                   <p className="text-sm text-muted-foreground">{menu.description}</p>

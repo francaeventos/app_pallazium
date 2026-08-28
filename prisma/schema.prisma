@@ -306,6 +306,7 @@ model Menu {
   images      String[]
   notes       String?
   active      Boolean  @default(true)
+  hierarchyLevel Int   @default(0) @map("hierarchy_level")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   menuInterests MenuInterest[]

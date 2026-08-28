@@ -16,6 +16,7 @@ export type MenuRow = {
   images: string[];
   notes: string | null;
   active: boolean;
+  hierarchy_level: number;
   created_at: string;
 };
 
@@ -45,6 +46,7 @@ function mapMenuRow(menu: {
   images: string[];
   notes: string | null;
   active: boolean;
+  hierarchyLevel: number;
   createdAt: Date;
 }): MenuRow {
   return {
@@ -57,6 +59,7 @@ function mapMenuRow(menu: {
     images: menu.images,
     notes: menu.notes,
     active: menu.active,
+    hierarchy_level: menu.hierarchyLevel,
     created_at: toIsoString(menu.createdAt)!,
   };
 }
@@ -64,9 +67,9 @@ function mapMenuRow(menu: {
 export const getMenusPageDataFn = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }): Promise<MenusPageData> => {
-    const menus = await db.menu.findMany({
+    const allMenus = await db.menu.findMany({
       where: { active: true },
-      orderBy: { category: "asc" },
+      orderBy: [{ category: "asc" }, { hierarchyLevel: "asc" }],
     });
 
     const client = await getClientForUser(context.userId);
@@ -96,8 +99,14 @@ export const getMenusPageDataFn = createServerFn({ method: "GET" })
       }
     }
 
+    // Cliente com cardápio contratado só visualiza opções de upgrade (nível superior);
+    // sem cardápio contratado, vê todas as opções publicadas.
+    const visibleMenus = contractedMenu
+      ? allMenus.filter((menu) => menu.hierarchyLevel > contractedMenu!.hierarchy_level)
+      : allMenus;
+
     return {
-      menus: menus.map(mapMenuRow),
+      menus: visibleMenus.map(mapMenuRow),
       interests,
       contracted_menu: contractedMenu,
     };
