@@ -159,6 +159,42 @@ function IntentBadge({ intent }: { intent?: string }) {
   return <Badge variant="outline">{LEAD_INTENT_LABEL[value] || value}</Badge>;
 }
 
+const SOURCE_BADGES: Array<{ test: (source: string) => boolean; label: string; className: string }> = [
+  {
+    test: (s) => s.includes("google"),
+    label: "google",
+    className: "border-transparent bg-sky-100 text-sky-700 hover:bg-sky-100",
+  },
+  {
+    test: (s) => s.includes("chatgpt") || s.includes("gpt") || s.includes("openai"),
+    label: "GPT",
+    className: "border-neutral-300 bg-white text-neutral-800 hover:bg-white",
+  },
+  {
+    test: (s) => s.includes("youtube") || s === "yt",
+    label: "youtube",
+    className: "border-transparent bg-red-600 text-white hover:bg-red-600",
+  },
+  {
+    test: (s) => s.includes("instagram") || s === "ig",
+    label: "instagram",
+    className: "border-transparent bg-pink-500 text-white hover:bg-pink-500",
+  },
+  {
+    test: (s) => s.includes("facebook") || s === "fb" || s.includes("meta"),
+    label: "facebook",
+    className: "border-transparent bg-blue-900 text-white hover:bg-blue-900",
+  },
+];
+
+function SourceBadge({ source }: { source: unknown }) {
+  const value = source == null ? "" : String(source).trim().toLowerCase();
+  if (!value) return null;
+  const match = SOURCE_BADGES.find((entry) => entry.test(value));
+  if (!match) return null;
+  return <Badge className={match.className}>{match.label}</Badge>;
+}
+
 function WhatsAppLink({ phone }: { phone: string }) {
   const digits = phone.replace(/\D/g, "");
   if (!digits) return <span>{phone || "—"}</span>;
@@ -446,6 +482,7 @@ function Page() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <SourceBadge source={lead.utm?.utm_source} />
                 <IntentBadge intent={lead.intent} />
                 <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>
                 <TemperatureBadge temperature={lead.temperature} />
