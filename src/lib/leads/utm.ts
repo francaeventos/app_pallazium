@@ -10,7 +10,18 @@ export const UTM_KEYS = [
 ] as const;
 
 export type UtmKey = (typeof UTM_KEYS)[number];
-export type UtmParams = Partial<Record<UtmKey, string>>;
+
+/**
+ * Origem secundária capturada na entrada: usada quando o anúncio não vem
+ * marcado com UTM (ex.: ChatGPT Ads chega apenas com referrer).
+ */
+export const ATTRIBUTION_KEYS = ["referrer", "landing_page", "first_visit_at"] as const;
+
+export type AttributionKey = (typeof ATTRIBUTION_KEYS)[number];
+
+const STORED_KEYS = [...UTM_KEYS, ...ATTRIBUTION_KEYS] as const;
+
+export type UtmParams = Partial<Record<UtmKey | AttributionKey, string>>;
 
 const STORAGE_PREFIX = "pallazium_lead_utm:";
 
@@ -57,7 +68,7 @@ export function loadStoredUtm(slug: string): UtmParams {
     const parsed = JSON.parse(raw) as UtmParams;
     if (!parsed || typeof parsed !== "object") return {};
     const out: UtmParams = {};
-    for (const key of UTM_KEYS) {
+    for (const key of STORED_KEYS) {
       const value = cleanValue(parsed[key]);
       if (value) out[key] = value;
     }
@@ -83,7 +94,7 @@ export function saveStoredUtm(slug: string, utm: UtmParams) {
  */
 export function mergeUtmFirstTouch(existing: UtmParams, incoming: UtmParams): UtmParams {
   const out: UtmParams = { ...existing };
-  for (const key of UTM_KEYS) {
+  for (const key of STORED_KEYS) {
     const next = cleanValue(incoming[key]);
     if (!next) continue;
     if (!out[key]) out[key] = next;
@@ -91,11 +102,24 @@ export function mergeUtmFirstTouch(existing: UtmParams, incoming: UtmParams): Ut
   return out;
 }
 
+/** Contexto da URL de entrada: vale como origem quando o anúncio não traz UTM. */
+function readEntryAttribution(): UtmParams {
+  if (typeof window === "undefined") return {};
+  const out: UtmParams = {};
+  const referrer = cleanValue(document.referrer);
+  // Referrer do próprio app não indica origem de campanha
+  if (referrer && !referrer.startsWith(window.location.origin)) out.referrer = referrer;
+  const landing = cleanValue(window.location.href);
+  if (landing) out.landing_page = landing;
+  out.first_visit_at = new Date().toISOString();
+  return out;
+}
+
 /** Captura da URL + first-touch no localStorage (por formulário). */
 export function captureLeadUtm(slug: string): UtmParams {
   const fromUrl = readUtmFromLocation();
   const stored = loadStoredUtm(slug);
-  const merged = mergeUtmFirstTouch(stored, fromUrl);
+  const merged = mergeUtmFirstTouch(stored, { ...readEntryAttribution(), ...fromUrl });
   if (Object.keys(merged).length) saveStoredUtm(slug, merged);
   return merged;
 }
@@ -113,4 +137,10 @@ export const UTM_LABELS: Record<UtmKey, string> = {
   utm_content: "Content / Creative",
   gclid: "Google Click ID",
   fbclid: "Meta Click ID",
+};
+
+export const ATTRIBUTION_LABELS: Record<AttributionKey, string> = {
+  referrer: "Referrer (origem)",
+  landing_page: "URL de entrada",
+  first_visit_at: "Primeira visita",
 };

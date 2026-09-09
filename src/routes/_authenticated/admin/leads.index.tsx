@@ -54,7 +54,15 @@ import {
 } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { formatLeadDateBr } from "@/lib/leads/date";
-import { UTM_KEYS, UTM_LABELS, utmHasValues, type UtmKey } from "@/lib/leads/utm";
+import {
+  ATTRIBUTION_KEYS,
+  ATTRIBUTION_LABELS,
+  UTM_KEYS,
+  UTM_LABELS,
+  utmHasValues,
+  type AttributionKey,
+  type UtmKey,
+} from "@/lib/leads/utm";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { temperatureLabel, type LeadTemperature } from "@/lib/leads/score";
@@ -117,6 +125,11 @@ function formatAnswerValue(key: string, value: unknown) {
     if (br) return br;
   }
   return str;
+}
+
+function formatFirstVisit(value: string) {
+  const parsed = parseISO(value);
+  return isValid(parsed) ? format(parsed, "dd/MM/yyyy HH:mm", { locale: ptBR }) : value;
 }
 
 function temperatureBadgeClass(temperature: string) {
@@ -293,6 +306,11 @@ function Page() {
     : [];
   const utmEntries = selected
     ? UTM_KEYS.map((key) => [key, selected.utm?.[key]] as const).filter(
+        ([, v]) => v != null && String(v).trim() !== "",
+      )
+    : [];
+  const attributionEntries = selected
+    ? ATTRIBUTION_KEYS.map((key) => [key, selected.utm?.[key]] as const).filter(
         ([, v]) => v != null && String(v).trim() !== "",
       )
     : [];
@@ -539,6 +557,25 @@ function Page() {
                             {UTM_LABELS[key as UtmKey] || key}
                           </dt>
                           <dd className="break-all font-medium text-foreground">{String(value)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {attributionEntries.length > 0 && (
+                    <dl className="divide-y rounded-xl border">
+                      {attributionEntries.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="grid grid-cols-[minmax(7rem,38%)_1fr] gap-3 px-4 py-3 text-sm"
+                        >
+                          <dt className="text-muted-foreground">
+                            {ATTRIBUTION_LABELS[key as AttributionKey] || key}
+                          </dt>
+                          <dd className="break-all font-medium text-foreground">
+                            {key === "first_visit_at"
+                              ? formatFirstVisit(String(value))
+                              : String(value)}
+                          </dd>
                         </div>
                       ))}
                     </dl>

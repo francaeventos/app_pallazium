@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPublicLeadFormFn } from "@/fns/leads/public";
 import { LeadsQuiz } from "@/components/leads/LeadsQuiz";
+import { captureLeadUtm } from "@/lib/leads/utm";
 
 export const Route = createFileRoute("/leads")({
   component: LeadsPage,
@@ -27,6 +28,11 @@ export const Route = createFileRoute("/leads")({
 function LeadsPage() {
   const [form, setForm] = useState<Awaited<ReturnType<typeof getPublicLeadFormFn>> | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Antes do formulário carregar: a URL de entrada ainda tem os parâmetros da campanha
+  useEffect(() => {
+    captureLeadUtm("leads");
+  }, []);
 
   useEffect(() => {
     getPublicLeadFormFn({ data: { slug: "leads" } })

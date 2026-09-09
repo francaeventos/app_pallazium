@@ -322,13 +322,18 @@ export function LeadsQuiz({ form }: { form: PublicForm }) {
     [botDelayMs, persistProgress, stepIndex],
   );
 
-  const trackingMeta = () => ({
-    fbp: resolveFbp(),
-    fbc: resolveFbc(),
-    sourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
-    utm: captureLeadUtm(form.slug),
-    anonId,
-  });
+  const trackingMeta = () => {
+    const utm = captureLeadUtm(form.slug);
+    return {
+      fbp: resolveFbp(),
+      fbc: resolveFbc(),
+      // A origem é a URL de entrada da campanha, não a URL interna do quiz
+      sourceUrl:
+        utm.landing_page || (typeof window !== "undefined" ? window.location.href : undefined),
+      utm,
+      anonId,
+    };
+  };
 
   const completeLeadInBackground = useCallback(
     async (nextAnswers: Record<string, string>, card: ClosingCard, nextBubbles: ChatBubble[]) => {
