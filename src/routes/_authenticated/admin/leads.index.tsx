@@ -7,6 +7,7 @@ import {
   listLeadsFn,
   resendLeadWebhookFn,
   updateLeadFn,
+  updateLeadNegotiationStatusFn,
 } from "@/fns/leads/admin";
 import {
   AlertDialog,
@@ -78,6 +79,29 @@ const STATUS_LABEL: Record<string, string> = {
   completo: "Completo",
   agendado: "Agendado",
   descartado: "Descartado",
+};
+
+type NegotiationStatus =
+  | "contratou"
+  | "cancelou"
+  | "nao_responde"
+  | "negociacao_quente"
+  | "negociacao";
+
+const NEGOTIATION_STATUS_LABEL: Record<NegotiationStatus, string> = {
+  contratou: "Contratou",
+  cancelou: "Cancelou",
+  nao_responde: "Não responde",
+  negociacao_quente: "Negociação quente",
+  negociacao: "Negociação",
+};
+
+const NEGOTIATION_STATUS_CLASS: Record<NegotiationStatus, string> = {
+  contratou: "border-green-300 bg-green-100 text-green-800 focus:ring-green-300",
+  cancelou: "border-rose-300 bg-rose-100 text-rose-800 focus:ring-rose-300",
+  nao_responde: "border-neutral-300 bg-neutral-100 text-neutral-700 focus:ring-neutral-300",
+  negociacao_quente: "border-orange-300 bg-orange-100 text-orange-800 focus:ring-orange-300",
+  negociacao: "border-blue-300 bg-blue-100 text-blue-800 focus:ring-blue-300",
 };
 
 const ANSWER_LABEL: Record<string, string> = {
@@ -195,6 +219,37 @@ function SourceBadge({ source }: { source: unknown }) {
   return <Badge className={match.className}>{match.label}</Badge>;
 }
 
+function NegotiationStatusSelect({
+  value,
+  onChange,
+}: {
+  value: string | null | undefined;
+  onChange: (value: string) => void;
+}) {
+  const current = (value || undefined) as NegotiationStatus | undefined;
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Select value={value || "none"} onValueChange={onChange}>
+        <SelectTrigger
+          className={`h-7 w-auto gap-1 rounded-full border px-2.5 text-xs font-medium ${
+            current ? NEGOTIATION_STATUS_CLASS[current] : "border-dashed text-muted-foreground"
+          }`}
+        >
+          <SelectValue placeholder="Negociação" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Sem status</SelectItem>
+          {(Object.keys(NEGOTIATION_STATUS_LABEL) as NegotiationStatus[]).map((key) => (
+            <SelectItem key={key} value={key}>
+              {NEGOTIATION_STATUS_LABEL[key]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function WhatsAppLink({ phone }: { phone: string }) {
   const digits = phone.replace(/\D/g, "");
   if (!digits) return <span>{phone || "—"}</span>;
@@ -308,6 +363,17 @@ function Page() {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateNegotiationStatus = async (id: string, value: string) => {
+    try {
+      await updateLeadNegotiationStatusFn({
+        data: { id, negotiationStatus: value === "none" ? null : (value as NegotiationStatus) },
+      });
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar status.");
     }
   };
 
@@ -482,6 +548,10 @@ function Page() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <NegotiationStatusSelect
+                  value={lead.negotiation_status}
+                  onChange={(value) => updateNegotiationStatus(lead.id, value)}
+                />
                 <SourceBadge source={lead.utm?.utm_source} />
                 <IntentBadge intent={lead.intent} />
                 <Badge variant="outline">{STATUS_LABEL[lead.status] || lead.status}</Badge>

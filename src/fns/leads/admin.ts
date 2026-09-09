@@ -34,6 +34,7 @@ function leadRecord(lead: {
   score: number;
   temperature?: string;
   qualified: boolean;
+  negotiationStatus?: string | null;
   answers: unknown;
   utm: unknown;
   slot: string | null;
@@ -57,6 +58,7 @@ function leadRecord(lead: {
     score: lead.score,
     temperature: lead.temperature ?? "frio",
     qualified: lead.qualified,
+    negotiation_status: lead.negotiationStatus ?? null,
     answers: (lead.answers ?? {}) as Record<string, string | number | boolean | null>,
     utm: (lead.utm ?? {}) as Record<string, string | number | boolean | null>,
     slot: lead.slot,
@@ -162,6 +164,30 @@ export const updateLeadFn = createServerFn({ method: "POST" })
             }
           : {}),
       },
+    });
+    return { lead: leadRecord(lead) };
+  });
+
+const negotiationStatusSchema = z.enum([
+  "contratou",
+  "cancelou",
+  "nao_responde",
+  "negociacao_quente",
+  "negociacao",
+]);
+
+export const updateLeadNegotiationStatusFn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({ id: z.string().uuid(), negotiationStatus: negotiationStatusSchema.nullable() })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await guardAdmin(context);
+    const lead = await db.lead.update({
+      where: { id: data.id },
+      data: { negotiationStatus: data.negotiationStatus },
     });
     return { lead: leadRecord(lead) };
   });

@@ -103,6 +103,16 @@ enum LeadStatus {
   @@map("lead_status")
 }
 
+enum LeadNegotiationStatus {
+  contratou
+  cancelou
+  nao_responde
+  negociacao_quente
+  negociacao
+
+  @@map("lead_negotiation_status")
+}
+
 enum LeadEventType {
   partial_created
   completed
@@ -721,6 +731,7 @@ model Lead {
   score         Int             @default(0)
   temperature   LeadTemperature @default(frio)
   qualified     Boolean         @default(false)
+  negotiationStatus LeadNegotiationStatus? @map("negotiation_status")
   answers       Json       @default("{}")
   utm           Json       @default("{}")
   fbp           String?
